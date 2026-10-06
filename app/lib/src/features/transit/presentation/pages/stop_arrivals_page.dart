@@ -29,11 +29,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBinding
     switch (state) {
       case AppLifecycleState.resumed:
         cubit.resumeTracking();
+        return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         cubit.pauseTracking();
+        return;
     }
   }
 
