@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/network/api_exception.dart';
@@ -41,11 +43,22 @@ final class StopArrivalsLoaded extends StopArrivalsState {
 }
 
 class StopArrivalsCubit extends Cubit<StopArrivalsState> {
-  StopArrivalsCubit(this._repository) : super(const StopArrivalsInitial());
+  StopArrivalsCubit(
+    this._repository, {
+    this.trackingRefreshInterval = const Duration(seconds: 15),
+  }) : super(const StopArrivalsInitial());
 
   final TransitRepository _repository;
+  final Duration? trackingRefreshInterval;
+
+  Timer? _trackingTimer;
+  String? _trackedVehicleNumber;
+  String? _trackedStopId;
+  bool _positionRequestInFlight = false;
 
   Future<void> load(String rawStopId) async {
+    _clearTracking();
+
     final stopId = rawStopId.trim();
     if (!RegExp(r'^\d+$').hasMatch(stopId)) {
       emit(const StopArrivalsFailure('Informe um código de ponto válido.'));
@@ -69,6 +82,10 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     final current = state;
     if (current is! StopArrivalsLoaded) return;
 
+    _trackingTimer?.cancel();
+    _trackedVehicleNumber = vehicleNumber;
+    _trackedStopId = current.stopId;
+
     emit(
       StopArrivalsLoaded(
         stopId: current.stopId,
@@ -78,36 +95,108 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       ),
     );
 
+    await _refreshTrackedVehicle(showInitialError: true);
+    _startTrackingTimer();
+  }
+
+  void pauseTracking() {
+    _trackingTimer?.cancel();
+    _trackingTimer = null;
+  }
+
+  Future<void> resumeTracking() async {
+    if (_trackedVehicleNumber == null || _trackedStopId == null) return;
+    await _refreshTrackedVehicle(showInitialError: false);
+    _startTrackingTimer();
+  }
+
+  void _startTrackingTimer() {
+    final interval = trackingRefreshInterval;
+    if (interval == null || _trackedVehicleNumber == null) return;
+
+    _trackingTimer?.cancel();
+    _trackingTimer = Timer.periodic(interval, (_) {
+      unawaited(_refreshTrackedVehicle(showInitialError: false));
+    });
+  }
+
+  Future<void> _refreshTrackedVehicle({
+    required bool showInitialError,
+  }) async {
+    if (_positionRequestInFlight) return;
+
+    final vehicleNumber = _trackedVehicleNumber;
+    final stopId = _trackedStopId;
+    final current = state;
+    if (
+      vehicleNumber == null ||
+      stopId == null ||
+      current is! StopArrivalsLoaded
+    ) {
+      return;
+    }
+
+    _positionRequestInFlight = true;
     try {
       final vehicle = await _repository.getVehiclePosition(
         vehicleNumber: vehicleNumber,
-        stopId: current.stopId,
+        stopId: stopId,
       );
-      emit(
-        StopArrivalsLoaded(
-          stopId: current.stopId,
-          arrivals: current.arrivals,
-          trackedVehicle: vehicle,
-        ),
-      );
+
+      final latest = state;
+      if (
+        latest is StopArrivalsLoaded &&
+        _trackedVehicleNumber == vehicleNumber &&
+        _trackedStopId == stopId
+      ) {
+        emit(
+          StopArrivalsLoaded(
+            stopId: latest.stopId,
+            arrivals: latest.arrivals,
+            trackedVehicle: vehicle,
+          ),
+        );
+      }
     } on ApiException catch (error) {
-      emit(
-        StopArrivalsLoaded(
-          stopId: current.stopId,
-          arrivals: current.arrivals,
-          trackedVehicle: current.trackedVehicle,
-          trackingError: error.message,
-        ),
+      _emitTrackingFailure(
+        showInitialError ? error.message : 'Posição temporariamente indisponível.',
       );
     } catch (_) {
-      emit(
-        StopArrivalsLoaded(
-          stopId: current.stopId,
-          arrivals: current.arrivals,
-          trackedVehicle: current.trackedVehicle,
-          trackingError: 'Não foi possível localizar este ônibus agora.',
-        ),
+      _emitTrackingFailure(
+        showInitialError
+            ? 'Não foi possível localizar este ônibus agora.'
+            : 'Posição temporariamente indisponível.',
       );
+    } finally {
+      _positionRequestInFlight = false;
     }
+  }
+
+  void _emitTrackingFailure(String message) {
+    final latest = state;
+    if (latest is! StopArrivalsLoaded) return;
+
+    emit(
+      StopArrivalsLoaded(
+        stopId: latest.stopId,
+        arrivals: latest.arrivals,
+        trackedVehicle: latest.trackedVehicle,
+        trackingError: message,
+      ),
+    );
+  }
+
+  void _clearTracking() {
+    _trackingTimer?.cancel();
+    _trackingTimer = null;
+    _trackedVehicleNumber = null;
+    _trackedStopId = null;
+    _positionRequestInFlight = false;
+  }
+
+  @override
+  Future<void> close() {
+    _clearTracking();
+    return super.close();
   }
 }
