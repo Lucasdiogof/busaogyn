@@ -83,5 +83,13 @@ void main() {
     expect(find.text('No horário'), findsOneWidget);
     expect(find.text('Acessível'), findsOneWidget);
     expect(find.textContaining('Posição:'), findsOneWidget);
+    expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
+    expect(
+      find.text(
+        'Mapa-base ainda não configurado. '
+        'A posição do ônibus continua disponível.',
+      ),
+      findsOneWidget,
+    );
   });
 }
