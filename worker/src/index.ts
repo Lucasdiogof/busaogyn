@@ -57,7 +57,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     const vehicleNumber = rawVehicle.startsWith('rmtc:') ? rawVehicle.slice(5) : rawVehicle;
     const stopId = normalizeStopId(url.searchParams.get('stopId') ?? '');
     if (!/^\d+$/.test(vehicleNumber)) {
-      throw new AppError('SOURCE_INVALID_RESPONSE', 'Vehicle id must be an RMTC numeric vehicle number.', 400, false);
+      throw new AppError('INVALID_VEHICLE', 'Vehicle id must be an RMTC numeric vehicle number.', 400, false);
     }
     if (stopId === null) {
       throw new AppError('INVALID_STOP', 'A numeric stopId query parameter is required.', 400, false);
