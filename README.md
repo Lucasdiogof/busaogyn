@@ -6,7 +6,7 @@ Projeto Flutter + Cloudflare Worker para transporte público da RMTC de Goiânia
 
 ## Estado atual
 
-A fundação do backend está em `worker/`. O app Flutter será conectado exclusivamente à API BusãoGyn; nenhuma tela deve consumir endpoints RMTC diretamente.
+O backend está em `worker/` e publicado em produção no Cloudflare Workers. O app Flutter consome exclusivamente a API BusãoGyn; nenhuma tela deve consumir endpoints RMTC diretamente.
 
 ### Protocolos oficiais em andamento
 
@@ -31,6 +31,23 @@ GET /v1/version
 GET /v1/vehicles
 GET /v1/routes/020/vehicles
 GET /v1/stops/{stopId}/arrivals
+GET /v1/vehicles/{vehicleNumber}/position?stopId={stopId}
 ```
 
 Veja [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Produção
+
+API pública:
+
+```text
+https://busaogyn-api.lively-cloud-f009.workers.dev
+```
+
+O app Flutter usa essa URL por padrão. Para desenvolvimento local, sobrescreva com:
+
+```bash
+flutter run --dart-define=BUSAOGYN_API_BASE_URL=http://127.0.0.1:8787
+```
+
+O deploy do Worker executa um smoke de produção cobrindo health, ETA do ponto canário 30402, seleção de veículo realtime da linha 020, posição individual e cache.
