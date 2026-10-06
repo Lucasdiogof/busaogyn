@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../cubit/stop_arrivals_cubit.dart';
+import '../widgets/tracked_vehicle_map.dart';
 
 class StopArrivalsPage extends StatefulWidget {
   const StopArrivalsPage({super.key});
@@ -75,7 +76,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBinding
                       onSubmitted: (_) => _search(),
                       decoration: const InputDecoration(
                         labelText: 'Código do ponto',
-                        hintText: 'Ex.: 00300',
+                        hintText: 'Ex.: 30402',
                         prefixIcon: Icon(Icons.location_on_outlined),
                         border: OutlineInputBorder(),
                       ),
@@ -429,6 +430,8 @@ class _TrackedVehicleCard extends StatelessWidget {
                       : 'Acessibilidade desconhecida',
             ),
             if (vehicle.position != null) ...[
+              const SizedBox(height: 12),
+              TrackedVehicleMap(vehicle: vehicle),
               const SizedBox(height: 8),
               Text(
                 'Posição: '
