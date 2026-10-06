@@ -1,5 +1,6 @@
 const BASE = 'http://127.0.0.1:8787';
-const STOP = '00300';
+const STOP = '30402';
+const TARGET_ROUTE = '020';
 
 async function get(path) {
   const response = await fetch(BASE + path);
@@ -21,14 +22,18 @@ if (!Array.isArray(arrivals.json.data) || arrivals.json.data.length === 0) {
 let selected = null;
 for (const group of arrivals.json.data) {
   for (const item of [group.next, group.following]) {
-    if (item?.realtime && item?.vehicleNumber) {
+    if (
+      group.routeId === TARGET_ROUTE &&
+      item?.realtime &&
+      item?.vehicleNumber
+    ) {
       selected = { routeId: group.routeId, vehicleNumber: String(item.vehicleNumber) };
       break;
     }
   }
   if (selected) break;
 }
-if (!selected) throw new Error('no realtime arrival with vehicle number found');
+if (!selected) throw new Error(`no realtime arrival with vehicle number found for route ${TARGET_ROUTE}`);
 
 const position = await get(
   `/v1/vehicles/${encodeURIComponent(selected.vehicleNumber)}/position?stopId=${STOP}`,
