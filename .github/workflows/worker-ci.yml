@@ -25,6 +25,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - run: npm audit --json || true
       - run: npm run typecheck
       - run: npm test
       - run: node --check scripts/smoke-local-api.mjs
