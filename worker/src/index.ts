@@ -4,6 +4,7 @@ import { logEvent } from './infra/logger';
 import { json, serviceHeaders } from './infra/response';
 import { ArrivalService } from './services/arrival.service';
 import { VehicleService } from './services/vehicle.service';
+import { VehiclePositionService } from './services/vehicle-position.service';
 import type { Env } from './types/env';
 import { normalizeStopId } from './utils/normalize';
 
@@ -45,6 +46,35 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     const result = await vehicleService.getVehiclesByRoute(routeId);
     return json(
       { data: result.data, meta: { routeId, count: result.data.length, fetchedAt: result.fetchedAt, stale: result.stale, ageSeconds: result.ageSeconds } },
+      200,
+      serviceHeaders(result),
+    );
+  }
+
+  const positionMatch = path.match(/^\/v1\/vehicles\/([^/]+)\/position$/);
+  if (positionMatch !== null) {
+    const rawVehicle = decodeURIComponent(positionMatch[1] ?? '').trim();
+    const vehicleNumber = rawVehicle.startsWith('rmtc:') ? rawVehicle.slice(5) : rawVehicle;
+    const stopId = normalizeStopId(url.searchParams.get('stopId') ?? '');
+    if (!/^\d+$/.test(vehicleNumber)) {
+      throw new AppError('INVALID_VEHICLE', 'Vehicle id must be an RMTC numeric vehicle number.', 400, false);
+    }
+    if (stopId === null) {
+      throw new AppError('INVALID_STOP', 'A numeric stopId query parameter is required.', 400, false);
+    }
+
+    const result = await new VehiclePositionService(env).getVehiclePosition(vehicleNumber, stopId);
+    return json(
+      {
+        data: result.data,
+        meta: {
+          vehicleId: `rmtc:${vehicleNumber}`,
+          stopId,
+          fetchedAt: result.fetchedAt,
+          stale: result.stale,
+          ageSeconds: result.ageSeconds,
+        },
+      },
       200,
       serviceHeaders(result),
     );
