@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm ci
       - name: Start Worker locally
         run: |
           npx wrangler dev --local --port 8787 > /tmp/busaogyn-wrangler.log 2>&1 &
