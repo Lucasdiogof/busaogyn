@@ -1,5 +1,6 @@
 export type ErrorCode =
   | 'INVALID_STOP'
+  | 'INVALID_VEHICLE'
   | 'ROUTE_NOT_FOUND'
   | 'SOURCE_TIMEOUT'
   | 'SOURCE_UNAVAILABLE'
