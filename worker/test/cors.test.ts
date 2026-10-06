@@ -4,8 +4,12 @@ import { corsHeaders } from '../src/infra/cors';
 import type { Env } from '../src/types/env';
 
 function request(origin?: string): Request {
+  if (origin === undefined) {
+    return new Request('https://busaogyn-api.example/v1/health');
+  }
+
   return new Request('https://busaogyn-api.example/v1/health', {
-    headers: origin ? { Origin: origin } : undefined,
+    headers: { Origin: origin },
   });
 }
 
