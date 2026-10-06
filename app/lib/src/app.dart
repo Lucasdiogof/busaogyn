@@ -8,10 +8,12 @@ import 'features/transit/presentation/pages/stop_arrivals_page.dart';
 class BusaoGynApp extends StatelessWidget {
   const BusaoGynApp({
     required this.repository,
+    this.trackingRefreshInterval = const Duration(seconds: 15),
     super.key,
   });
 
   final TransitRepository repository;
+  final Duration? trackingRefreshInterval;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +29,10 @@ class BusaoGynApp extends StatelessWidget {
           useMaterial3: true,
         ),
         home: BlocProvider(
-          create: (_) => StopArrivalsCubit(repository),
+          create: (_) => StopArrivalsCubit(
+            repository,
+            trackingRefreshInterval: trackingRefreshInterval,
+          ),
           child: const StopArrivalsPage(),
         ),
       ),
