@@ -27,3 +27,4 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm test
+      - run: node --check scripts/smoke-local-api.mjs
