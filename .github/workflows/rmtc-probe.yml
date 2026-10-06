@@ -1,0 +1,23 @@
+name: RMTC Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'feat/**'
+    paths:
+      - 'worker/scripts/probe-rmtc.mjs'
+      - '.github/workflows/rmtc-probe.yml'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe RMTC sources once
+        working-directory: worker
+        run: node scripts/probe-rmtc.mjs
