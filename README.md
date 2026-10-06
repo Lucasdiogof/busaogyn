@@ -17,7 +17,7 @@ O backend está em `worker/` e publicado em produção no Cloudflare Workers. O 
 
 ```bash
 cd worker
-npm install
+npm ci
 npm run typecheck
 npm test
 npm run dev

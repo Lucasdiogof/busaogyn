@@ -20,12 +20,14 @@ O token deve ter somente as permissões necessárias para publicar o Worker `bus
 O workflow executa obrigatoriamente:
 
 ```text
-npm install
+npm ci
 npm run typecheck
 npm test
 ```
 
 Só depois chama `wrangler deploy`.
+
+O `worker/package-lock.json` é versionado e os workflows usam `npm ci` para instalações reproduzíveis.
 
 O SHA do commit é publicado na variável `BUILD_SHA` e fica disponível em:
 
