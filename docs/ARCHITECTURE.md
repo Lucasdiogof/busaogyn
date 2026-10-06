@@ -50,3 +50,24 @@ recuperarposicao.data[0].Numero
 ```
 
 A chamada individual também retornou `LinhaNumero`, posição, destino, acessibilidade, situação e previsão. Isso confirma operacionalmente que `NumeroOnibus` pode ser usado como identificador de veículo no endpoint `recuperarposicao`. A equivalência desse identificador com `cconaweb.Numero` continua não medida porque o feed de frota recusou o contexto server-to-server.
+
+
+## Canary MVP — linha 020
+
+Em 06/10/2026, o smoke end-to-end do Worker foi executado com o ponto oficial RMTC `30402` (Terminal Garavelo - Saída Tropical), que atende a linha 020.
+
+Resultado da execução:
+
+- 16 grupos de chegadas no ponto;
+- chegada em tempo real da linha `020`;
+- `vehicleNumber = 50462`;
+- consulta pelo endpoint BusãoGyn de posição retornou `routeId = 020`;
+- destino `T BIBLIA`;
+- coordenadas válidas;
+- acessibilidade `true`;
+- situação de pontualidade `Adiantado`;
+- primeira consulta ETA: cache `MISS`;
+- segunda consulta ETA: cache `HIT`;
+- stale: `false`.
+
+Portanto, o fluxo mínimo `ponto -> ETA realtime -> identidade do veículo -> posição individual` da linha 020 está validado de ponta a ponta.
