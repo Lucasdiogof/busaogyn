@@ -101,11 +101,28 @@ export class RmtcCconawebSource {
       throw new AppError('SOURCE_UNAVAILABLE', `RMTC vehicle source returned HTTP ${response.status}.`, 503, true);
     }
 
+    const text = await response.text();
+
+    if (/tipo de acesso inv[aá]lido/i.test(text)) {
+      throw new AppError(
+        'SOURCE_ACCESS_RESTRICTED',
+        'RMTC vehicle source rejected this server access context.',
+        503,
+        false,
+      );
+    }
+
     let payload: unknown;
     try {
-      payload = await response.json();
+      payload = JSON.parse(text);
     } catch (error) {
-      throw new AppError('SOURCE_INVALID_RESPONSE', 'RMTC vehicle source returned invalid JSON.', 502, true, { cause: error });
+      throw new AppError(
+        'SOURCE_INVALID_RESPONSE',
+        'RMTC vehicle source returned a non-JSON response.',
+        502,
+        true,
+        { cause: error },
+      );
     }
 
     return parseRmtcVehiclePayload(payload);
