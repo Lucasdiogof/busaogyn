@@ -23,7 +23,11 @@ function mapQuality(value: unknown): { quality: ArrivalQuality; raw: string | nu
   if (raw === null) return { quality: 'unknown', raw: null };
   const normalized = raw.toLowerCase();
   if (normalized === 'tempo real') return { quality: 'realtime', raw };
-  if (normalized.includes('aprox') || normalized.includes('program')) {
+  if (
+    normalized.includes('aprox') ||
+    normalized.includes('program') ||
+    normalized.includes('tabela')
+  ) {
     return { quality: 'scheduled', raw };
   }
   return { quality: 'unknown', raw };
