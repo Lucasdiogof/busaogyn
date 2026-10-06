@@ -12,11 +12,34 @@ class StopArrivalsPage extends StatefulWidget {
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
 }
 
-class _StopArrivalsPageState extends State<StopArrivalsPage> {
+class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBindingObserver {
   final _stopController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    final cubit = context.read<StopArrivalsCubit>();
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        cubit.resumeTracking();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        cubit.pauseTracking();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopController.dispose();
     super.dispose();
   }
