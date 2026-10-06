@@ -59,8 +59,8 @@ final class ApiTransitRepository implements TransitRepository {
         uri,
         headers: const {'Accept': 'application/json'},
       );
-    } on Exception catch (error) {
-      throw ApiException(
+    } on Exception {
+      throw const ApiException(
         code: 'NETWORK_ERROR',
         message: 'Não foi possível acessar a API do BusãoGyn.',
         retryable: true,
