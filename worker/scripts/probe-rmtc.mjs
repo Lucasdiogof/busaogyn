@@ -8,7 +8,7 @@ VEHICLES_URL.search = new URLSearchParams({
 
 const ARRIVALS_URL = 'https://simapp.rmtcgoiania.com.br/pontoparada/previsaochegada';
 const VEHICLE_POSITION_URL = 'https://simapp.rmtcgoiania.com.br/veiculo/recuperarposicao';
-const STOPS = ['00300', '1286'];
+const STOPS = ['00300', '1286', '30402'];
 
 async function timed(label, fn) {
   const started = performance.now();
