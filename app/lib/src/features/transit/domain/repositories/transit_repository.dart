@@ -1,10 +1,11 @@
 import '../entities/arrival.dart';
 import '../entities/tracked_vehicle.dart';
+import '../models/transit_snapshot.dart';
 
 abstract interface class TransitRepository {
-  Future<List<ArrivalGroup>> getArrivals(String stopId);
+  Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(String stopId);
 
-  Future<TrackedVehicle?> getVehiclePosition({
+  Future<TransitSnapshot<TrackedVehicle?>> getVehiclePosition({
     required String vehicleNumber,
     required String stopId,
   });
