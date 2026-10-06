@@ -76,6 +76,12 @@ void main() {
     expect(find.text('< 1 min'), findsOneWidget);
     expect(find.text('● Tempo real'), findsOneWidget);
     expect(find.text('Ônibus 20529'), findsOneWidget);
+    expect(
+      find.text(
+        'Acompanhe um ônibus em tempo real para ver sua posição no mapa.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Acompanhar'));
     await tester.pumpAndSettle();
@@ -83,6 +89,12 @@ void main() {
     expect(find.text('No horário'), findsOneWidget);
     expect(find.text('Acessível'), findsOneWidget);
     expect(find.textContaining('Posição:'), findsOneWidget);
+    expect(
+      find.text(
+        'Acompanhe um ônibus em tempo real para ver sua posição no mapa.',
+      ),
+      findsNothing,
+    );
     expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
     expect(
       find.text(
