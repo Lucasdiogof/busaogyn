@@ -56,6 +56,23 @@ describe('RMTC arrivals parser', () => {
     expect(result[0]?.next.realtime).toBe(false);
   });
 
+  it('classifies Tabela Horária as scheduled', () => {
+    const result = parseRmtcArrivalPayload({
+      data: [{
+        Linha: '003',
+        Proximo: {
+          Qualidade: 'Tabela Horária',
+          NumeroOnibus: '0',
+          PrevisaoChegada: 8,
+        },
+      }],
+    });
+
+    expect(result[0]?.next.realtime).toBe(false);
+    expect(result[0]?.next.quality).toBe('scheduled');
+    expect(result[0]?.next.sourceQuality).toBe('Tabela Horária');
+  });
+
   it('does not mark unknown quality as realtime', () => {
     const result = parseRmtcArrivalPayload({
       data: [{ Linha: '020', Proximo: { Qualidade: 'Outra', PrevisaoChegada: 3 } }],
