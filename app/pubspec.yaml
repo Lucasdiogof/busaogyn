@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   http: ^1.5.0
   flutter_bloc: ^9.1.1
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
