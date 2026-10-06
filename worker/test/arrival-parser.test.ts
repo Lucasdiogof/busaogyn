@@ -38,6 +38,24 @@ describe('RMTC arrivals parser', () => {
     expect(result[0]?.next.minutes).toBe(0);
   });
 
+  it('normalizes RMTC placeholder vehicle zero to null', () => {
+    const result = parseRmtcArrivalPayload({
+      data: [{
+        Linha: '003',
+        Destino: 'T MARANATA',
+        Proximo: {
+          Qualidade: 'Tabela Horária',
+          NumeroOnibus: '0',
+          PrevisaoChegada: 0,
+        },
+      }],
+    });
+
+    expect(result[0]?.next.vehicleNumber).toBeNull();
+    expect(result[0]?.next.vehicleId).toBeNull();
+    expect(result[0]?.next.realtime).toBe(false);
+  });
+
   it('does not mark unknown quality as realtime', () => {
     const result = parseRmtcArrivalPayload({
       data: [{ Linha: '020', Proximo: { Qualidade: 'Outra', PrevisaoChegada: 3 } }],
