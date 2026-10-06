@@ -33,7 +33,10 @@ function parseArrival(value: unknown): Arrival | null {
   const raw = asRecord(value);
   if (raw === null) return null;
 
-  const vehicleNumber = asNonEmptyString(raw.NumeroOnibus);
+  const rawVehicleNumber = asNonEmptyString(raw.NumeroOnibus);
+  const vehicleNumber = rawVehicleNumber !== null && /^0+$/.test(rawVehicleNumber)
+    ? null
+    : rawVehicleNumber;
   const quality = mapQuality(raw.Qualidade);
 
   return {
