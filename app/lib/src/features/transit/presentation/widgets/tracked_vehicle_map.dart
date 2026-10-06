@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/config/map_config.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 
-class TrackedVehicleMap extends StatelessWidget {
+class TrackedVehicleMap extends StatefulWidget {
   const TrackedVehicleMap({
     required this.vehicle,
     super.key,
@@ -14,13 +14,61 @@ class TrackedVehicleMap extends StatelessWidget {
   final TrackedVehicle vehicle;
 
   @override
+  State<TrackedVehicleMap> createState() => _TrackedVehicleMapState();
+}
+
+class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
+  final MapController _mapController = MapController();
+
+  LatLng? get _vehicleCenter {
+    final position = widget.vehicle.position;
+    if (position == null) return null;
+    return LatLng(position.latitude, position.longitude);
+  }
+
+  @override
+  void didUpdateWidget(covariant TrackedVehicleMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final previous = oldWidget.vehicle.position;
+    final current = widget.vehicle.position;
+    if (current == null) return;
+
+    final positionChanged = previous == null ||
+        previous.latitude != current.latitude ||
+        previous.longitude != current.longitude;
+
+    if (positionChanged) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _centerOnVehicle();
+      });
+    }
+  }
+
+  void _centerOnVehicle() {
+    final center = _vehicleCenter;
+    if (center == null) return;
+
+    _mapController.move(
+      center,
+      _mapController.camera.zoom,
+    );
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final position = vehicle.position;
-    if (position == null) {
+    final center = _vehicleCenter;
+    if (center == null) {
       return const SizedBox.shrink();
     }
 
-    final center = LatLng(position.latitude, position.longitude);
     final scheme = Theme.of(context).colorScheme;
 
     return ClipRRect(
@@ -30,6 +78,7 @@ class TrackedVehicleMap extends StatelessWidget {
         child: Stack(
           children: [
             FlutterMap(
+              mapController: _mapController,
               options: MapOptions(
                 initialCenter: center,
                 initialZoom: 16,
@@ -55,7 +104,7 @@ class TrackedVehicleMap extends StatelessWidget {
                       height: 64,
                       alignment: Alignment.center,
                       child: Semantics(
-                        label: 'Ônibus ${vehicle.vehicleNumber}',
+                        label: 'Ônibus ${widget.vehicle.vehicleNumber}',
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: scheme.primary,
@@ -82,6 +131,15 @@ class TrackedVehicleMap extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton.filledTonal(
+                onPressed: _centerOnVehicle,
+                tooltip: 'Centralizar ônibus',
+                icon: const Icon(Icons.my_location_rounded),
+              ),
             ),
             if (!MapConfig.hasTiles)
               Positioned(
