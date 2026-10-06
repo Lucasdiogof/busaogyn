@@ -1,4 +1,5 @@
-const BASE = 'http://127.0.0.1:8787';
+const BASE = process.env.BUSAOGYN_API_BASE_URL ?? 'http://127.0.0.1:8787';
+const EXPECTED_ENVIRONMENT = process.env.BUSAOGYN_EXPECTED_ENVIRONMENT ?? null;
 const STOP = '30402';
 const TARGET_ROUTE = '020';
 
@@ -13,6 +14,9 @@ async function get(path) {
 
 const health = await get('/v1/health');
 if (health.json.status !== 'ok') throw new Error('health is not ok');
+if (EXPECTED_ENVIRONMENT && health.json.environment !== EXPECTED_ENVIRONMENT) {
+  throw new Error(`unexpected environment: expected=${EXPECTED_ENVIRONMENT} actual=${health.json.environment}`);
+}
 
 const arrivals = await get(`/v1/stops/${STOP}/arrivals`);
 if (!Array.isArray(arrivals.json.data) || arrivals.json.data.length === 0) {
