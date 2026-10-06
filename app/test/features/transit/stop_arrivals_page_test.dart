@@ -58,7 +58,10 @@ class _FakeTransitRepository implements TransitRepository {
 void main() {
   testWidgets('searches a stop and tracks a realtime vehicle', (tester) async {
     await tester.pumpWidget(
-      BusaoGynApp(repository: _FakeTransitRepository()),
+      BusaoGynApp(
+        repository: _FakeTransitRepository(),
+        trackingRefreshInterval: null,
+      ),
     );
 
     await tester.enterText(
