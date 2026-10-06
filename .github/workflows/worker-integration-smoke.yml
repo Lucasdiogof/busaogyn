@@ -1,0 +1,41 @@
+name: Worker Integration Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'feat/rmtc-tracking'
+    paths:
+      - 'worker/scripts/smoke-local-api.mjs'
+      - '.github/workflows/worker-integration-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Start Worker locally
+        run: |
+          npx wrangler dev --local --port 8787 > /tmp/busaogyn-wrangler.log 2>&1 &
+          echo $! > /tmp/busaogyn-wrangler.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/v1/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/busaogyn-wrangler.log
+          exit 1
+      - name: Validate ETA to vehicle tracking flow
+        run: node scripts/smoke-local-api.mjs
+      - name: Show Worker log on failure
+        if: failure()
+        run: cat /tmp/busaogyn-wrangler.log || true
