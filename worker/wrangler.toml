@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-10-06"
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 API_VERSION = "1"
 RMTC_VEHICLES_TIMEOUT_MS = "5000"
 RMTC_ARRIVALS_TIMEOUT_MS = "6000"
