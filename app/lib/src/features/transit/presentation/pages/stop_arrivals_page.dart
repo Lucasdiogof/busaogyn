@@ -171,6 +171,7 @@ class _LoadedState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final arrivals = state.arrivals.data;
+    final trackedVehicle = state.trackedVehicle?.data;
 
     return RefreshIndicator(
       onRefresh: () => context.read<StopArrivalsCubit>().load(state.stopId),
@@ -201,10 +202,12 @@ class _LoadedState extends StatelessWidget {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
-          if (state.trackedVehicle?.data != null) ...[
+          const SizedBox(height: 12),
+          _TransitMapPanel(vehicle: trackedVehicle),
+          if (trackedVehicle != null) ...[
             const SizedBox(height: 12),
             _TrackedVehicleCard(
-              vehicle: state.trackedVehicle!.data!,
+              vehicle: trackedVehicle,
               stale: state.trackedVehicle!.stale,
             ),
           ],
@@ -380,6 +383,45 @@ class _ArrivalRow extends StatelessWidget {
   }
 }
 
+class _TransitMapPanel extends StatelessWidget {
+  const _TransitMapPanel({required this.vehicle});
+
+  final TrackedVehicle? vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final trackedVehicle = vehicle;
+    if (trackedVehicle?.position != null) {
+      return TrackedVehicleMap(vehicle: trackedVehicle!);
+    }
+
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 220,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.map_outlined, size: 42),
+            SizedBox(height: 12),
+            Text(
+              'Acompanhe um ônibus em tempo real para ver sua posição no mapa.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TrackedVehicleCard extends StatelessWidget {
   const _TrackedVehicleCard({
     required this.vehicle,
@@ -430,8 +472,6 @@ class _TrackedVehicleCard extends StatelessWidget {
                       : 'Acessibilidade desconhecida',
             ),
             if (vehicle.position != null) ...[
-              const SizedBox(height: 12),
-              TrackedVehicleMap(vehicle: vehicle),
               const SizedBox(height: 8),
               Text(
                 'Posição: '
