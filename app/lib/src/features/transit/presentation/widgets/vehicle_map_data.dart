@@ -2,17 +2,21 @@ import '../../domain/entities/tracked_vehicle.dart';
 
 const vehicleSourceId = 'tracked-vehicle-source';
 const vehicleLayerId = 'tracked-vehicle-layer';
+const vehicleHaloLayerId = 'tracked-vehicle-halo';
 const vehicleImageId = 'tracked-vehicle-icon';
 
 /// GeoJSON com o único ônibus acompanhado; vazio quando não há posição.
-Map<String, dynamic> vehicleFeatureCollection(GeoPosition? position) {
+Map<String, dynamic> vehicleFeatureCollection(
+  GeoPosition? position, {
+  bool stale = false,
+}) {
   return {
     'type': 'FeatureCollection',
     'features': [
       if (position != null)
         {
           'type': 'Feature',
-          'properties': <String, dynamic>{},
+          'properties': <String, dynamic>{'stale': stale},
           'geometry': {
             'type': 'Point',
             // GeoJSON usa [longitude, latitude].

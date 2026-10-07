@@ -5,24 +5,34 @@ import 'package:flutter/material.dart';
 
 const _markerPixels = 128.0;
 
-/// Desenha o marcador (círculo com ícone de ônibus) como PNG para o estilo.
+/// Desenha o marcador do ônibus como PNG para o estilo do mapa: disco com
+/// anel claro e ícone de ônibus. Sem seta: a fonte não informa direção.
 Future<Uint8List> renderVehicleMarker({
   required Color background,
   required Color foreground,
+  required Color plate,
 }) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   const center = Offset(_markerPixels / 2, _markerPixels / 2);
+  const radius = _markerPixels / 2 - 10;
 
-  canvas.drawCircle(center, _markerPixels / 2, Paint()..color = foreground);
-  canvas.drawCircle(center, _markerPixels / 2 - 8, Paint()..color = background);
+  canvas.drawCircle(
+    center.translate(0, 3),
+    radius + 4,
+    Paint()
+      ..color = plate.withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+  );
+  canvas.drawCircle(center, radius + 5, Paint()..color = foreground);
+  canvas.drawCircle(center, radius, Paint()..color = background);
 
-  const icon = Icons.directions_bus_rounded;
+  const icon = Icons.directions_bus_filled_rounded;
   final painter = TextPainter(
     text: TextSpan(
       text: String.fromCharCode(icon.codePoint),
       style: TextStyle(
-        fontSize: 68,
+        fontSize: 60,
         fontFamily: icon.fontFamily,
         package: icon.fontPackage,
         color: foreground,

@@ -161,4 +161,173 @@ void main() {
 
     await timedCubit.close();
   });
+
+  group('fases e refresh', () {
+    late _FlexibleRepository flex;
+    late StopArrivalsCubit flexCubit;
+
+    StopArrivalsLoaded flexLoaded() => flexCubit.state as StopArrivalsLoaded;
+
+    Future<void> loadStop(String stopId) async {
+      final loading = flexCubit.load(stopId);
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+    }
+
+    setUp(() {
+      flex = _FlexibleRepository();
+      flexCubit = StopArrivalsCubit(flex, trackingRefreshInterval: null);
+    });
+
+    tearDown(() => flexCubit.close());
+
+    test('tracking sem posição sai de buscando para indisponível', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      expect(flexLoaded().trackingPhase, TrackingPhase.searching);
+
+      flex.positionRequests.single.reply.complete(null);
+      await tracking;
+
+      expect(flexLoaded().trackingPhase, TrackingPhase.unavailable);
+      expect(flexLoaded().trackingVehicleNumber, '20529');
+      expect(flexLoaded().trackedVehicle, isNull);
+    });
+
+    test('falha inicial sem posição não deixa a fase em buscando', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.completeError(_transientError);
+      await tracking;
+
+      expect(flexLoaded().trackingPhase, TrackingPhase.failing);
+      // Mensagem técnica da API nunca vai direto para a tela.
+      expect(
+        flexLoaded().trackingError,
+        'O serviço está instável agora. Tente novamente em instantes.',
+      );
+    });
+
+    test('refresh das chegadas preserva o tracking', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      final refresh = flexCubit.refresh();
+      expect(flexLoaded().refreshing, isTrue);
+      flex.arrivalRequests.last.reply.complete(_groups('020', '003'));
+      await refresh;
+
+      expect(flexLoaded().refreshing, isFalse);
+      expect(flexLoaded().arrivals.data, hasLength(2));
+      expect(flexLoaded().trackingVehicleNumber, '20529');
+      expect(flexLoaded().trackingPhase, TrackingPhase.active);
+    });
+
+    test('buscar o mesmo ponto equivale a refresh', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      final again = flexCubit.load('30402');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await again;
+
+      expect(flexLoaded().trackingVehicleNumber, '20529');
+    });
+
+    test('falha no refresh mantém chegadas anteriores', () async {
+      await loadStop('30402');
+      final refresh = flexCubit.refresh();
+      flex.arrivalRequests.last.reply.completeError(_transientError);
+      await refresh;
+
+      expect(flexLoaded().arrivals.data, hasLength(1));
+      expect(flexLoaded().refreshError, isNotNull);
+    });
+
+    test('buscar outro ponto encerra o tracking', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      await loadStop('10001');
+
+      expect(flexLoaded().stopId, '10001');
+      expect(flexLoaded().tracking, isNull);
+    });
+
+    test('resposta atrasada de um ponto anterior é descartada', () async {
+      final first = flexCubit.load('30402');
+      final second = flexCubit.load('10001');
+
+      flex.arrivalRequests.last.reply.complete(_groups('003'));
+      await second;
+      flex.arrivalRequests.first.reply.complete(_groups('020'));
+      await first;
+
+      expect(flexLoaded().stopId, '10001');
+      expect(flexLoaded().arrivals.data.single.routeId, '003');
+    });
+
+    test('parar de acompanhar limpa o tracking', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      flexCubit.stopTracking();
+
+      expect(flexLoaded().tracking, isNull);
+    });
+  });
+}
+
+TransitSnapshot<List<ArrivalGroup>> _groups(String first, [String? second]) {
+  ArrivalGroup group(String routeId) => ArrivalGroup(
+    routeId: routeId,
+    destination: null,
+    next: const Arrival(
+      vehicleId: 'rmtc:20529',
+      vehicleNumber: '20529',
+      minutes: 3,
+      plannedArrival: null,
+      predictedArrival: null,
+      realtime: true,
+      quality: ArrivalQuality.realtime,
+    ),
+    following: null,
+  );
+  return _snapshot([group(first), if (second != null) group(second)]);
+}
+
+/// Chegadas e posições pendentes até o teste completá-las; posição pode ser
+/// `null` (fonte sem posição).
+class _FlexibleRepository implements TransitRepository {
+  final arrivalRequests =
+      <
+        ({String stopId, Completer<TransitSnapshot<List<ArrivalGroup>>> reply})
+      >[];
+  final positionRequests =
+      <({String vehicleNumber, Completer<TrackedVehicle?> reply})>[];
+
+  @override
+  Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(String stopId) {
+    final reply = Completer<TransitSnapshot<List<ArrivalGroup>>>();
+    arrivalRequests.add((stopId: stopId, reply: reply));
+    return reply.future;
+  }
+
+  @override
+  Future<TransitSnapshot<TrackedVehicle?>> getVehiclePosition({
+    required String vehicleNumber,
+    required String stopId,
+  }) async {
+    final reply = Completer<TrackedVehicle?>();
+    positionRequests.add((vehicleNumber: vehicleNumber, reply: reply));
+    return _snapshot(await reply.future);
+  }
 }

@@ -31,6 +31,15 @@
 
   <title>BusãoGyn</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Layout de celular (< 720 px, mesmo breakpoint do app): o painel cobre
+       a parte de baixo do mapa e o plugin web não aceita margens para o
+       controle nativo de atribuição, que ficaria sobre o painel. O app
+       mostra a atribuição OpenFreeMap/OpenMapTiles/OSM acima do painel. */
+    @media (max-width: 719.98px) {
+      .maplibregl-ctrl-attrib { display: none !important; }
+    }
+  </style>
 </head>
 <body>
   <!--
