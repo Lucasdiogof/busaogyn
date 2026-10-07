@@ -7,13 +7,16 @@ import '../cubit/stop_arrivals_cubit.dart';
 import '../widgets/tracked_vehicle_map.dart';
 
 class StopArrivalsPage extends StatefulWidget {
-  const StopArrivalsPage({super.key});
+  const StopArrivalsPage({this.mapBuilder, super.key});
+
+  final VehicleMapBuilder? mapBuilder;
 
   @override
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
 }
 
-class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBindingObserver {
+class _StopArrivalsPageState extends State<StopArrivalsPage>
+    with WidgetsBindingObserver {
   final _stopController = TextEditingController();
 
   @override
@@ -83,10 +86,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBinding
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _search,
-                    child: const Text('Buscar'),
-                  ),
+                  FilledButton(onPressed: _search, child: const Text('Buscar')),
                 ],
               ),
             ),
@@ -96,13 +96,16 @@ class _StopArrivalsPageState extends State<StopArrivalsPage> with WidgetsBinding
                   return switch (state) {
                     StopArrivalsInitial() => const _EmptyState(),
                     StopArrivalsLoading() => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: CircularProgressIndicator(),
+                    ),
                     StopArrivalsFailure(:final message) => _FailureState(
-                        message: message,
-                        onRetry: _search,
-                      ),
-                    StopArrivalsLoaded() => _LoadedState(state: state),
+                      message: message,
+                      onRetry: _search,
+                    ),
+                    StopArrivalsLoaded() => _LoadedState(
+                      state: state,
+                      mapBuilder: widget.mapBuilder,
+                    ),
                   };
                 },
               ),
@@ -132,10 +135,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _FailureState extends StatelessWidget {
-  const _FailureState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _FailureState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -164,9 +164,10 @@ class _FailureState extends StatelessWidget {
 }
 
 class _LoadedState extends StatelessWidget {
-  const _LoadedState({required this.state});
+  const _LoadedState({required this.state, this.mapBuilder});
 
   final StopArrivalsLoaded state;
+  final VehicleMapBuilder? mapBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -181,9 +182,9 @@ class _LoadedState extends StatelessWidget {
         children: [
           Text(
             'Ponto ${state.stopId}',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
@@ -203,7 +204,7 @@ class _LoadedState extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          _TransitMapPanel(vehicle: trackedVehicle),
+          _TransitMapPanel(vehicle: trackedVehicle, mapBuilder: mapBuilder),
           if (trackedVehicle != null) ...[
             const SizedBox(height: 12),
             _TrackedVehicleCard(
@@ -249,7 +250,9 @@ class _StaleBanner extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Expanded(
-              child: Text('A fonte está instável. Mostrando o último dado válido.'),
+              child: Text(
+                'A fonte está instável. Mostrando o último dado válido.',
+              ),
             ),
           ],
         ),
@@ -280,8 +283,8 @@ class _ArrivalGroupCard extends StatelessWidget {
                 Text(
                   group.routeId,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -304,7 +307,8 @@ class _ArrivalGroupCard extends StatelessWidget {
               _ArrivalRow(
                 label: 'Seguinte',
                 arrival: group.following!,
-                tracking: trackingVehicleNumber == group.following!.vehicleNumber,
+                tracking:
+                    trackingVehicleNumber == group.following!.vehicleNumber,
               ),
             ],
           ],
@@ -346,9 +350,9 @@ class _ArrivalRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 _minutes,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 3),
               Text(
@@ -367,9 +371,9 @@ class _ArrivalRow extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: tracking
                 ? null
-                : () => context
-                    .read<StopArrivalsCubit>()
-                    .track(arrival.vehicleNumber!),
+                : () => context.read<StopArrivalsCubit>().track(
+                    arrival.vehicleNumber!,
+                  ),
             icon: tracking
                 ? const SizedBox.square(
                     dimension: 14,
@@ -384,15 +388,19 @@ class _ArrivalRow extends StatelessWidget {
 }
 
 class _TransitMapPanel extends StatelessWidget {
-  const _TransitMapPanel({required this.vehicle});
+  const _TransitMapPanel({required this.vehicle, this.mapBuilder});
 
   final TrackedVehicle? vehicle;
+  final VehicleMapBuilder? mapBuilder;
 
   @override
   Widget build(BuildContext context) {
     final trackedVehicle = vehicle;
     if (trackedVehicle?.position != null) {
-      return TrackedVehicleMap(vehicle: trackedVehicle!);
+      return TrackedVehicleMap(
+        vehicle: trackedVehicle!,
+        mapBuilder: mapBuilder,
+      );
     }
 
     final scheme = Theme.of(context).colorScheme;
@@ -423,10 +431,7 @@ class _TransitMapPanel extends StatelessWidget {
 }
 
 class _TrackedVehicleCard extends StatelessWidget {
-  const _TrackedVehicleCard({
-    required this.vehicle,
-    required this.stale,
-  });
+  const _TrackedVehicleCard({required this.vehicle, required this.stale});
 
   final TrackedVehicle vehicle;
   final bool stale;
@@ -451,9 +456,9 @@ class _TrackedVehicleCard extends StatelessWidget {
           children: [
             Text(
               'Ônibus ${vehicle.vehicleNumber}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 4),
             Text(
@@ -468,8 +473,8 @@ class _TrackedVehicleCard extends StatelessWidget {
               vehicle.accessible == true
                   ? 'Acessível'
                   : vehicle.accessible == false
-                      ? 'Acessibilidade não indicada'
-                      : 'Acessibilidade desconhecida',
+                  ? 'Acessibilidade não indicada'
+                  : 'Acessibilidade desconhecida',
             ),
             if (vehicle.position != null) ...[
               const SizedBox(height: 8),

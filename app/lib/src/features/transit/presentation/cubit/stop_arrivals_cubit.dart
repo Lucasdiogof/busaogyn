@@ -72,9 +72,17 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     } on ApiException catch (error) {
       emit(StopArrivalsFailure(error.message));
     } on FormatException {
-      emit(const StopArrivalsFailure('A API retornou dados em formato inesperado.'));
+      emit(
+        const StopArrivalsFailure(
+          'A API retornou dados em formato inesperado.',
+        ),
+      );
     } catch (_) {
-      emit(const StopArrivalsFailure('Não foi possível consultar este ponto agora.'));
+      emit(
+        const StopArrivalsFailure(
+          'Não foi possível consultar este ponto agora.',
+        ),
+      );
     }
   }
 
@@ -120,19 +128,15 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     });
   }
 
-  Future<void> _refreshTrackedVehicle({
-    required bool showInitialError,
-  }) async {
+  Future<void> _refreshTrackedVehicle({required bool showInitialError}) async {
     if (_positionRequestInFlight) return;
 
     final vehicleNumber = _trackedVehicleNumber;
     final stopId = _trackedStopId;
     final current = state;
-    if (
-      vehicleNumber == null ||
-      stopId == null ||
-      current is! StopArrivalsLoaded
-    ) {
+    if (vehicleNumber == null ||
+        stopId == null ||
+        current is! StopArrivalsLoaded) {
       return;
     }
 
@@ -144,11 +148,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       );
 
       final latest = state;
-      if (
-        latest is StopArrivalsLoaded &&
-        _trackedVehicleNumber == vehicleNumber &&
-        _trackedStopId == stopId
-      ) {
+      if (latest is StopArrivalsLoaded &&
+          _trackedVehicleNumber == vehicleNumber &&
+          _trackedStopId == stopId) {
         emit(
           StopArrivalsLoaded(
             stopId: latest.stopId,
@@ -159,7 +161,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       }
     } on ApiException catch (error) {
       _emitTrackingFailure(
-        showInitialError ? error.message : 'Posição temporariamente indisponível.',
+        showInitialError
+            ? error.message
+            : 'Posição temporariamente indisponível.',
       );
     } catch (_) {
       _emitTrackingFailure(

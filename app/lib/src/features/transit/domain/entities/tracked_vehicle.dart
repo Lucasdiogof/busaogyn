@@ -15,10 +15,7 @@ enum VehiclePunctuality {
 }
 
 class GeoPosition {
-  const GeoPosition({
-    required this.latitude,
-    required this.longitude,
-  });
+  const GeoPosition({required this.latitude, required this.longitude});
 
   factory GeoPosition.fromJson(Map<String, dynamic> json) {
     return GeoPosition(
