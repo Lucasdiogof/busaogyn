@@ -13,6 +13,7 @@ TransitSnapshot<TrackedVehicle?> _snapshot(
   double lon = -49.25,
   bool stale = false,
   bool withPosition = true,
+  int ageSeconds = 4,
 }) {
   return TransitSnapshot(
     data: TrackedVehicle(
@@ -29,7 +30,7 @@ TransitSnapshot<TrackedVehicle?> _snapshot(
     ),
     fetchedAt: DateTime(2026, 10, 7, 12),
     stale: stale,
-    ageSeconds: 4,
+    ageSeconds: ageSeconds,
   );
 }
 
@@ -293,6 +294,27 @@ void main() {
 
     // Passada a janela, a posição velha some em vez de parecer atual.
     now = now.add(const Duration(seconds: 120));
+    await cubit.refreshNow();
+    expect(cubit.state.secondaries, isEmpty);
+  });
+
+  test('idade do Worker conta para o limite de posição antiga', () async {
+    // Chega com 80 s de idade; o limite é 90 s no total, não 90 s locais.
+    repository.instant['20051'] = _snapshot('20051', ageSeconds: 80);
+    cubit.sync(stopId: 'A', groups: [_group('003', _arrival('20051'))]);
+    await _settle();
+    expect(cubit.state.byNumber('20051')!.ageSeconds, 80);
+
+    repository.instant.remove('20051');
+    repository.failing.add('20051');
+
+    // 80 s do Worker + 5 s locais = 85 s: ainda visível.
+    now = now.add(const Duration(seconds: 5));
+    await cubit.refreshNow();
+    expect(cubit.state.byNumber('20051')!.ageSeconds, 85);
+
+    // 80 + 11 = 91 s > 90 s: some, mesmo com só 11 s locais.
+    now = now.add(const Duration(seconds: 6));
     await cubit.refreshNow();
     expect(cubit.state.secondaries, isEmpty);
   });

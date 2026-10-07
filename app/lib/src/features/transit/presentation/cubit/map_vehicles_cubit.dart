@@ -282,8 +282,12 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
       final position = entry?.position;
       final receivedAt = entry?.receivedAt;
       if (entry == null || position == null || receivedAt == null) continue;
-      final since = now.difference(receivedAt);
-      if (since > maxStaleAge) {
+      // Idade real da posição: o que ela já tinha no Worker ao chegar mais o
+      // tempo local desde então. Um snapshot que chega velho não ganha uma
+      // janela nova inteira.
+      final totalAgeSeconds =
+          entry.ageAtReceipt + now.difference(receivedAt).inSeconds;
+      if (totalAgeSeconds > maxStaleAge.inSeconds) {
         // Posição velha demais para ser mostrada como se fosse atual.
         entry
           ..position = null
@@ -298,7 +302,7 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
           position: position,
           isTracked: false,
           stale: entry.failing || entry.snapshotStale,
-          ageSeconds: entry.ageAtReceipt + since.inSeconds,
+          ageSeconds: totalAgeSeconds,
         ),
       );
     }
