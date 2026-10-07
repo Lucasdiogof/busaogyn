@@ -8,13 +8,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/config/map_config.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
+import '../cubit/map_vehicles_cubit.dart';
 import '../cubit/stop_arrivals_cubit.dart';
 import '../formatters/transit_labels.dart';
 import '../widgets/arrivals_panel.dart';
 import '../widgets/home_chrome.dart';
 import '../widgets/map_follow_controller.dart';
 import '../widgets/search_header.dart';
+import '../widgets/secondary_vehicle_callout.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/tracked_vehicle_map.dart';
 import '../widgets/tracking_card.dart';
@@ -93,6 +96,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   HomeTab _tab = HomeTab.stop;
 
+  /// Ônibus secundário tocado no mapa (mostra o callout).
+  String? _selectedSecondary;
+
   /// Campo de busca aberto por cima de um ponto já exibido.
   bool _searching = false;
 
@@ -108,16 +114,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
     final cubit = context.read<StopArrivalsCubit>();
+    final vehicles = context.read<MapVehiclesCubit>();
 
     switch (state) {
       case AppLifecycleState.resumed:
         cubit.resumeTracking();
+        vehicles.resume();
         return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         cubit.pauseTracking();
+        vehicles.pause();
         return;
     }
   }
@@ -167,6 +176,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     _select(HomeTab.tracking);
   }
 
+  void _trackSecondary(String vehicleNumber) {
+    setState(() => _selectedSecondary = null);
+    _track(vehicleNumber);
+  }
+
   void _stopTracking() {
     context.read<StopArrivalsCubit>().stopTracking();
     _select(HomeTab.stop);
@@ -189,7 +203,37 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     );
   }
 
+  /// Entrega ao coordenador de ônibus do mapa o que as chegadas já sabem.
+  void _syncMapVehicles(StopArrivalsState state) {
+    final vehicles = context.read<MapVehiclesCubit>();
+    switch (state) {
+      case StopArrivalsLoaded():
+        final tracking = state.tracking;
+        final snapshot = tracking?.vehicle;
+        vehicles.sync(
+          stopId: state.stopId,
+          groups: state.arrivals.data,
+          trackedVehicleNumber: tracking?.vehicleNumber,
+          trackedVehicle: snapshot?.data,
+          trackedAgeSeconds: snapshot?.ageSeconds ?? 0,
+          trackedStale:
+              (snapshot?.stale ?? false) ||
+              (tracking != null && tracking.phase != TrackingPhase.active),
+        );
+      case StopArrivalsLoading(:final stopId):
+        vehicles.sync(stopId: stopId, groups: const []);
+      case StopArrivalsInitial() || StopArrivalsFailure():
+        vehicles.sync(stopId: null, groups: const []);
+    }
+  }
+
   void _onStateChanged(BuildContext context, StopArrivalsState state) {
+    _syncMapVehicles(state);
+    if (_selectedSecondary != null &&
+        (state is! StopArrivalsLoaded ||
+            state.tracking?.vehicleNumber == _selectedSecondary)) {
+      setState(() => _selectedSecondary = null);
+    }
     // Resultado novo de ponto: mostra as chegadas.
     if (state is StopArrivalsLoaded &&
         state.tracking == null &&
@@ -223,6 +267,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   fallbackStyleString: styles.fallback,
                   followController: _follow,
                   layout: _mapLayout(geometry),
+                  onSecondaryTap: (number) =>
+                      setState(() => _selectedSecondary = number),
+                  onMapTap: () {
+                    if (_selectedSecondary != null) {
+                      setState(() => _selectedSecondary = null);
+                    }
+                  },
                 ),
               ),
             ),
@@ -285,6 +336,26 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               width: geometry.width,
               top: geometry.headerTop,
               child: _header(),
+            ),
+            Positioned(
+              key: const ValueKey('secondary-callout'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.headerBottom + Space.xs,
+              child: BlocBuilder<MapVehiclesCubit, MapVehiclesState>(
+                builder: (context, state) {
+                  final number = _selectedSecondary;
+                  final vehicle = number == null
+                      ? null
+                      : state.byNumber(number);
+                  if (vehicle == null) return const SizedBox.shrink();
+                  return SecondaryVehicleCallout(
+                    vehicle: vehicle,
+                    onTrack: () => _trackSecondary(vehicle.vehicleNumber),
+                    onClose: () => setState(() => _selectedSecondary = null),
+                  );
+                },
+              ),
             ),
             Positioned(
               key: const ValueKey('dock'),
@@ -620,8 +691,12 @@ class _MapBinding extends StatelessWidget {
     required this.fallbackStyleString,
     required this.followController,
     required this.layout,
+    required this.onSecondaryTap,
+    required this.onMapTap,
   });
 
+  final ValueChanged<String> onSecondaryTap;
+  final VoidCallback onMapTap;
   final VehicleMapBuilder? mapBuilder;
   final String styleString;
   final String fallbackStyleString;
@@ -646,19 +721,26 @@ class _MapBinding extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocSelector<StopArrivalsCubit, StopArrivalsState, _MapData>(
       selector: _select,
-      builder: (context, data) => TransitMap(
-        vehicleNumber: data.vehicleNumber,
-        position: data.position,
-        stale: data.stale,
-        styleString: styleString,
-        fallbackStyleString: fallbackStyleString,
-        followController: followController,
-        cameraPadding: layout.cameraPadding,
-        controlsPadding: layout.controlsPadding,
-        attributionBottom: layout.attributionBottom,
-        showControls: layout.showControls,
-        mapBuilder: mapBuilder,
-      ),
+      builder: (context, data) =>
+          BlocSelector<MapVehiclesCubit, MapVehiclesState, List<MapVehicle>>(
+            selector: (state) => state.secondaries,
+            builder: (context, secondaries) => TransitMap(
+              secondaryVehicles: secondaries,
+              onSecondaryTap: onSecondaryTap,
+              onMapTap: onMapTap,
+              vehicleNumber: data.vehicleNumber,
+              position: data.position,
+              stale: data.stale,
+              styleString: styleString,
+              fallbackStyleString: fallbackStyleString,
+              followController: followController,
+              cameraPadding: layout.cameraPadding,
+              controlsPadding: layout.controlsPadding,
+              attributionBottom: layout.attributionBottom,
+              showControls: layout.showControls,
+              mapBuilder: mapBuilder,
+            ),
+          ),
     );
   }
 }

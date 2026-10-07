@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'dart:math' show Point;
+import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/platform/map_attribution_offset.dart';
 import '../../../../core/theme/busao_tokens.dart';
+import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import 'camera_follow.dart';
 import 'map_follow_controller.dart';
 import 'vehicle_map_data.dart';
 import 'vehicle_marker_image.dart';
+import 'vehicle_motion.dart';
 
 /// Parâmetros que a superfície nativa do mapa precisa receber.
 class MapSurfaceParams {
@@ -49,6 +53,9 @@ class TransitMap extends StatefulWidget {
     this.controlsPadding = EdgeInsets.zero,
     this.attributionBottom = 0,
     this.showControls = true,
+    this.secondaryVehicles = const [],
+    this.onSecondaryTap,
+    this.onMapTap,
     this.mapBuilder,
     super.key,
   });
@@ -86,6 +93,16 @@ class TransitMap extends StatefulWidget {
 
   /// Falso quando não há espaço de mapa visível para os controles.
   final bool showControls;
+
+  /// Outros ônibus em tempo real do ponto, com posição real. Nunca movem a
+  /// câmera nem roubam o foco do ônibus acompanhado.
+  final List<MapVehicle> secondaryVehicles;
+
+  /// Toque num ônibus secundário (recebe o número do veículo).
+  final ValueChanged<String>? onSecondaryTap;
+
+  /// Toque no mapa fora de qualquer ônibus.
+  final VoidCallback? onMapTap;
   final VehicleMapBuilder? mapBuilder;
 
   /// Contexto inicial: centro de Goiânia. Não representa ponto nem ônibus.
@@ -100,11 +117,23 @@ class TransitMap extends StatefulWidget {
   State<TransitMap> createState() => _TransitMapState();
 }
 
-class _TransitMapState extends State<TransitMap> {
+class _TransitMapState extends State<TransitMap>
+    with SingleTickerProviderStateMixin {
   static const _cameraDuration = Duration(milliseconds: 700);
   static const _insetsDebounce = Duration(milliseconds: 150);
 
+  /// Ônibus acompanhado maior que os demais; frente fixa para cima.
+  static const _trackedIconSize = 0.30;
+  static const _secondaryIconSize = 0.20;
+
+  /// Intervalo mínimo entre envios ao mapa durante a transição (~28 fps).
+  static const _pushInterval = Duration(milliseconds: 36);
+
   final _follow = CameraFollow();
+  final _motion = VehicleMotion();
+  final _clock = Stopwatch()..start();
+  late final Ticker _ticker;
+  Duration _lastPush = Duration.zero;
   MapLibreMapController? _controller;
   bool _styleReady = false;
   bool _wasCameraMoving = false;
@@ -158,7 +187,8 @@ class _TransitMapState extends State<TransitMap> {
     );
     if (positionChanged ||
         widget.stale != oldWidget.stale ||
-        widget.vehicleNumber != oldWidget.vehicleNumber) {
+        widget.vehicleNumber != oldWidget.vehicleNumber ||
+        !identical(widget.secondaryVehicles, oldWidget.secondaryVehicles)) {
       unawaited(_syncVehicle(follow: positionChanged && _follow.following));
       _report();
     }
@@ -177,6 +207,7 @@ class _TransitMapState extends State<TransitMap> {
   @override
   void initState() {
     super.initState();
+    _ticker = createTicker(_onTick);
     _attributionBottom = widget.attributionBottom;
     setWebMapAttributionOffset(_attributionBottom);
     widget.followController?.attach(_recenter);
@@ -211,6 +242,8 @@ class _TransitMapState extends State<TransitMap> {
 
   @override
   void dispose() {
+    _ticker.dispose();
+    _controller?.onFeatureTapped.remove(_onFeatureTapped);
     _insetsTimer?.cancel();
     _styleWatchdog?.cancel();
     widget.followController?.attach(null);
@@ -221,7 +254,9 @@ class _TransitMapState extends State<TransitMap> {
   void _onMapCreated(MapLibreMapController controller) {
     // Controller novo (mapa recriado): nada do estilo anterior existe nele.
     _controller?.removeListener(_onControllerChanged);
+    _controller?.onFeatureTapped.remove(_onFeatureTapped);
     _controller = controller;
+    controller.onFeatureTapped.add(_onFeatureTapped);
     _styleReady = false;
     _wasCameraMoving = false;
     controller.addListener(_onControllerChanged);
@@ -252,8 +287,8 @@ class _TransitMapState extends State<TransitMap> {
     _report();
   }
 
-  /// Chamado a cada carga de estilo, inclusive após troca/recarga: imagem,
-  /// source e layers pertencem ao estilo e precisam ser recriados aqui.
+  /// Chamado a cada carga de estilo, inclusive após troca/recarga: imagens,
+  /// sources e layers pertencem ao estilo e precisam ser recriados aqui.
   Future<void> _onStyleLoaded() async {
     _styleWatchdog?.cancel();
     final controller = _controller;
@@ -261,49 +296,84 @@ class _TransitMapState extends State<TransitMap> {
     _styleReady = false;
 
     final tokens = context.tokens;
-    final marker = await renderVehicleMarker(
-      background: tokens.accent,
-      foreground: tokens.onAccent,
-      ring: Colors.white,
-      shadow: Colors.black.withValues(alpha: 0.45),
-    );
+    final brightness = Theme.of(context).brightness;
+    final images = <String, Uint8List>{};
+    for (final variant in MarkerVariant.values) {
+      images[busImageIds[variant]!] = await renderBusMarker(
+        busMarkerStyle(variant, tokens: tokens, brightness: brightness),
+      );
+    }
     if (!mounted || !identical(controller, _controller)) return;
 
-    await controller.addImage(vehicleImageId, marker);
+    for (final entry in images.entries) {
+      await controller.addImage(entry.key, entry.value);
+    }
+
+    // Secundários por baixo; o acompanhado (halo + ônibus) sempre por cima.
+    await controller.addGeoJsonSource(
+      secondarySourceId,
+      secondaryFeatureCollection(
+        widget.secondaryVehicles,
+        (number) => _motion.shown(_secondaryKey(number)),
+      ),
+      promoteId: 'vehicleNumber',
+    );
+    await controller.addSymbolLayer(
+      secondarySourceId,
+      secondaryLayerId,
+      SymbolLayerProperties(
+        iconImage: _variantImageExpression,
+        iconSize: _secondaryIconSize,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconOpacity: const [
+          'case',
+          ['get', 'stale'],
+          0.7,
+          0.92,
+        ],
+      ),
+    );
+
     await controller.addGeoJsonSource(
       vehicleSourceId,
-      vehicleFeatureCollection(widget.position, stale: widget.stale),
+      vehicleFeatureCollection(_motion.shown(_trackedKey), stale: widget.stale),
     );
     await controller.addCircleLayer(
       vehicleSourceId,
       vehicleHaloLayerId,
       CircleLayerProperties(
-        circleRadius: 26,
+        circleRadius: 34,
         circleColor: _hex(tokens.accent),
         circleOpacity: const [
           'case',
           ['get', 'stale'],
-          0.06,
+          0.05,
           0.16,
         ],
         circleStrokeColor: _hex(tokens.accent),
         circleStrokeWidth: 1.5,
-        circleStrokeOpacity: 0.55,
+        circleStrokeOpacity: const [
+          'case',
+          ['get', 'stale'],
+          0.25,
+          0.55,
+        ],
       ),
       enableInteraction: false,
     );
     await controller.addSymbolLayer(
       vehicleSourceId,
       vehicleLayerId,
-      const SymbolLayerProperties(
-        iconImage: vehicleImageId,
-        iconSize: 0.46,
+      SymbolLayerProperties(
+        iconImage: _variantImageExpression,
+        iconSize: _trackedIconSize,
         iconAllowOverlap: true,
         iconIgnorePlacement: true,
-        iconOpacity: [
+        iconOpacity: const [
           'case',
           ['get', 'stale'],
-          0.55,
+          0.75,
           1.0,
         ],
       ),
@@ -311,9 +381,23 @@ class _TransitMapState extends State<TransitMap> {
     );
     _styleReady = true;
     await _applyInsets();
-    // A posição pode ter mudado enquanto o estilo carregava.
+    // As posições podem ter mudado enquanto o estilo carregava.
     await _syncVehicle(follow: _follow.following);
   }
+
+  static final _variantImageExpression = [
+    'match',
+    ['get', 'variant'],
+    MarkerVariant.stale.name,
+    busImageIds[MarkerVariant.stale]!,
+    MarkerVariant.tracked.name,
+    busImageIds[MarkerVariant.tracked]!,
+    busImageIds[MarkerVariant.secondary]!,
+  ];
+
+  String? get _trackedNumber => widget.vehicleNumber;
+  String get _trackedKey => 'T:${widget.vehicleNumber}';
+  static String _secondaryKey(String number) => 'S:$number';
 
   Future<void> _applyInsets() async {
     final controller = _controller;
@@ -322,16 +406,89 @@ class _TransitMapState extends State<TransitMap> {
     await controller.updateContentInsets(widget.cameraPadding);
   }
 
+  /// Registra as últimas posições reais; a transição A → B é visual e só
+  /// acontece entre duas coordenadas recebidas.
+  void _applyTargets() {
+    final now = _clock.elapsed;
+    _motion.retainOnly({
+      if (_trackedNumber != null) _trackedKey,
+      for (final vehicle in widget.secondaryVehicles)
+        _secondaryKey(vehicle.vehicleNumber),
+    });
+    if (_trackedNumber != null) {
+      _motion.setTarget(_trackedKey, widget.position, now);
+    }
+    for (final vehicle in widget.secondaryVehicles) {
+      _motion.setTarget(
+        _secondaryKey(vehicle.vehicleNumber),
+        vehicle.position,
+        now,
+      );
+    }
+    if (_motion.animating && !_ticker.isActive) _ticker.start();
+  }
+
   Future<void> _syncVehicle({required bool follow}) async {
     final controller = _controller;
     if (controller == null || !_styleReady) return;
 
+    _applyTargets();
     // Sem posição o source fica vazio: nenhum marcador fictício.
-    await controller.setGeoJsonSource(
-      vehicleSourceId,
-      vehicleFeatureCollection(widget.position, stale: widget.stale),
-    );
+    await _pushVehicles(tracked: true, secondary: true);
     if (follow) await _centerOnVehicle();
+  }
+
+  Future<void> _pushVehicles({
+    required bool tracked,
+    required bool secondary,
+  }) async {
+    final controller = _controller;
+    if (controller == null || !_styleReady) return;
+    _lastPush = _clock.elapsed;
+    if (tracked) {
+      await controller.setGeoJsonSource(
+        vehicleSourceId,
+        vehicleFeatureCollection(
+          _motion.shown(_trackedKey),
+          stale: widget.stale,
+        ),
+      );
+    }
+    if (secondary) {
+      await controller.setGeoJsonSource(
+        secondarySourceId,
+        secondaryFeatureCollection(
+          widget.secondaryVehicles,
+          (number) => _motion.shown(_secondaryKey(number)),
+        ),
+      );
+    }
+  }
+
+  void _onTick(Duration _) {
+    final now = _clock.elapsed;
+    final animatingBefore = _motion.animatingIds.toList();
+    final stillAnimating = _motion.tick(now);
+    if (!stillAnimating) _ticker.stop();
+    // Durante a transição limita o ritmo; o quadro final (exatamente em B)
+    // sempre é enviado.
+    if (stillAnimating && now - _lastPush < _pushInterval) return;
+    unawaited(
+      _pushVehicles(
+        tracked: animatingBefore.contains(_trackedKey),
+        secondary: animatingBefore.any((id) => id.startsWith('S:')),
+      ),
+    );
+  }
+
+  void _onFeatureTapped(
+    Point<double> point,
+    LatLng coordinates,
+    String id,
+    String layerId,
+    Annotation? annotation,
+  ) {
+    if (layerId == secondaryLayerId) widget.onSecondaryTap?.call(id);
   }
 
   Future<void> _centerOnVehicle() async {
@@ -383,6 +540,7 @@ class _TransitMapState extends State<TransitMap> {
       onStyleLoadedCallback: params.onStyleLoaded,
       onCameraMove: params.onCameraMove,
       onCameraIdle: params.onCameraIdle,
+      onMapClick: (_, _) => widget.onMapTap?.call(),
     );
   }
 
@@ -397,12 +555,17 @@ class _TransitMapState extends State<TransitMap> {
         'Mapa. Posição do ônibus $number ainda não disponível',
       _ => 'Mapa de Goiânia. Nenhum ônibus acompanhado',
     };
+    final others = widget.secondaryVehicles.length;
+    final fullLabel = others == 0
+        ? label
+        : '$label. ${others == 1 ? 'Mais 1 ônibus' : 'Mais $others ônibus'} '
+              'em tempo real a caminho do ponto';
 
     return Stack(
       fit: StackFit.expand,
       children: [
         Semantics(
-          label: label,
+          label: fullLabel,
           container: true,
           child: Listener(
             behavior: HitTestBehavior.translucent,
