@@ -86,7 +86,8 @@ void main() {
     expect(find.text('Ponto 00300'), findsOneWidget);
     expect(find.text('020'), findsOneWidget);
     expect(find.text('< 1 min'), findsOneWidget);
-    expect(find.text('● Tempo real'), findsOneWidget);
+    expect(find.text('Tempo real'), findsOneWidget);
+    expect(find.byIcon(Icons.sensors_rounded), findsOneWidget);
     expect(find.text('Ônibus 20529'), findsOneWidget);
     expect(
       find.text(
@@ -109,5 +110,16 @@ void main() {
     );
     expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
     expect(find.byKey(const Key('fake-map')), findsOneWidget);
+
+    // Com o mapa visível, a lista de chegadas fica abaixo da dobra.
+    await tester.scrollUntilVisible(
+      find.text('Acompanhando'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Acompanhando'), findsOneWidget);
   });
 }
