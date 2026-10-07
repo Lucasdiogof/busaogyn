@@ -319,6 +319,31 @@ void main() {
     expect(cubit.state.secondaries, isEmpty);
   });
 
+  test('retomar o app logo depois não gera rajada de consultas', () async {
+    repository.instant['20051'] = _snapshot('20051');
+    repository.instant['20064'] = _snapshot('20064');
+    cubit.sync(
+      stopId: 'A',
+      groups: [_group('003', _arrival('20051'), _arrival('20064'))],
+    );
+    await _settle();
+    expect(repository.calls, hasLength(2));
+
+    // Vários ciclos de foco em poucos segundos: nenhuma consulta nova.
+    for (var i = 0; i < 5; i++) {
+      cubit.pause();
+      now = now.add(const Duration(seconds: 1));
+      await cubit.resume();
+    }
+    expect(repository.calls, hasLength(2));
+
+    // Depois do intervalo mínimo, retomar volta a consultar.
+    cubit.pause();
+    now = now.add(const Duration(seconds: 10));
+    await cubit.resume();
+    expect(repository.calls, hasLength(4));
+  });
+
   test('snapshot marcado como antigo pela API aparece como antigo', () async {
     repository.instant['20051'] = _snapshot('20051', stale: true);
     cubit.sync(stopId: 'A', groups: [_group('003', _arrival('20051'))]);

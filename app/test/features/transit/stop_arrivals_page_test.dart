@@ -539,4 +539,50 @@ void main() {
       expect(find.byType(SearchErrorNote), findsNothing);
     });
   });
+
+  testWidgets('callout de outro ônibus não divide o canto com o Centralizar', (
+    tester,
+  ) async {
+    const twoRealtime = [
+      ArrivalGroup(
+        routeId: '020',
+        destination: 'T. BIBLIA',
+        next: Arrival(
+          vehicleId: 'rmtc:20529',
+          vehicleNumber: '20529',
+          minutes: 2,
+          plannedArrival: null,
+          predictedArrival: null,
+          realtime: true,
+          quality: ArrivalQuality.realtime,
+        ),
+        following: Arrival(
+          vehicleId: 'rmtc:20777',
+          vehicleNumber: '20777',
+          minutes: 9,
+          plannedArrival: null,
+          predictedArrival: null,
+          realtime: true,
+          quality: ArrivalQuality.realtime,
+        ),
+      ),
+    ];
+    await _pumpApp(tester, _FakeTransitRepository(groups: twoRealtime));
+    await _search(tester, '30402');
+    await _track(tester, '20529');
+    expect(_map(tester).showControls, isTrue);
+    expect(_map(tester).secondaryVehicles.map((v) => v.vehicleNumber), [
+      '20777',
+    ]);
+
+    _map(tester).onSecondaryTap!('20777');
+    await tester.pumpAndSettle();
+    expect(find.text('Acompanhar este ônibus'), findsOneWidget);
+    expect(_map(tester).showControls, isFalse);
+
+    await tester.tap(find.byTooltip('Fechar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Acompanhar este ônibus'), findsNothing);
+    expect(_map(tester).showControls, isTrue);
+  });
 }

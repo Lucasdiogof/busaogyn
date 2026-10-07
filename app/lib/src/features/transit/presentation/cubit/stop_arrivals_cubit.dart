@@ -128,18 +128,23 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   StopArrivalsCubit(
     this._repository, {
     this.trackingRefreshInterval = const Duration(seconds: 15),
+    this.resumeRefreshAfter = const Duration(seconds: 10),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(const StopArrivalsInitial());
 
   final TransitRepository _repository;
   final Duration? trackingRefreshInterval;
+
+  /// Intervalo mínimo para uma consulta imediata ao retomar o app.
+  final Duration resumeRefreshAfter;
   final DateTime Function() _clock;
 
   Timer? _trackingTimer;
   String? _trackedVehicleNumber;
   String? _trackedStopId;
   bool _positionRequestInFlight = false;
+  DateTime? _lastPositionAttemptAt;
 
   /// Incrementado a cada novo tracking; respostas de gerações anteriores são
   /// descartadas.
@@ -308,9 +313,14 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     _trackingTimer = null;
   }
 
+  /// Ao voltar ao app: consulta na hora só se a última tentativa já tem
+  /// [resumeRefreshAfter]; alternar janelas rapidamente não gera rajada.
   Future<void> resumeTracking() async {
     if (_trackedVehicleNumber == null || _trackedStopId == null) return;
-    await _refreshTrackedVehicle(showInitialError: false);
+    final last = _lastPositionAttemptAt;
+    if (last == null || _clock().difference(last) >= resumeRefreshAfter) {
+      await _refreshTrackedVehicle(showInitialError: false);
+    }
     _startTrackingTimer();
   }
 
@@ -337,6 +347,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
 
     final generation = _trackingGeneration;
     _positionRequestInFlight = true;
+    _lastPositionAttemptAt = _clock();
     try {
       final snapshot = await _repository.getVehiclePosition(
         vehicleNumber: vehicleNumber,

@@ -421,8 +421,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           : EdgeInsets.only(top: mapTop + Space.sm, right: Chrome.gutter),
       // Em telas largas o canto inferior direito do mapa fica livre.
       attributionBottom: g.wide ? 0 : coveredBottom,
-      // Sem faixa de mapa suficiente o botão cobriria a atribuição.
-      showControls: g.wide || visible >= 48 + Space.sm + _Geometry.mapBand,
+      // Sem faixa de mapa suficiente o botão cobriria a atribuição. No
+      // celular o callout de outro ônibus ocupa o mesmo canto (o cartão de
+      // acompanhamento mantém o próprio "Centralizar").
+      showControls:
+          g.wide ||
+          (visible >= 48 + Space.sm + _Geometry.mapBand &&
+              _selectedSecondary == null),
     );
   }
 

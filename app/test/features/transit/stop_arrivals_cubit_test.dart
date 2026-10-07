@@ -61,7 +61,12 @@ void main() {
 
   setUp(() async {
     repository = _ControlledRepository();
-    cubit = StopArrivalsCubit(repository, trackingRefreshInterval: null);
+    // Sem intervalo mínimo: aqui resumeTracking serve de gatilho de consulta.
+    cubit = StopArrivalsCubit(
+      repository,
+      trackingRefreshInterval: null,
+      resumeRefreshAfter: Duration.zero,
+    );
     await cubit.load('30402');
   });
 
@@ -271,6 +276,34 @@ void main() {
 
       expect(flexLoaded().stopId, '10001');
       expect(flexLoaded().arrivals.data.single.routeId, '003');
+    });
+
+    test('retomar logo depois não reconsulta a posição', () async {
+      var clockNow = DateTime(2026, 10, 7, 12);
+      final timed = StopArrivalsCubit(
+        flex,
+        trackingRefreshInterval: null,
+        clock: () => clockNow,
+      );
+      addTearDown(timed.close);
+      final loading = timed.load('30402');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+      final tracking = timed.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      clockNow = clockNow.add(const Duration(seconds: 3));
+      timed.pauseTracking();
+      await timed.resumeTracking();
+      expect(flex.positionRequests, hasLength(1));
+
+      clockNow = clockNow.add(const Duration(seconds: 10));
+      timed.pauseTracking();
+      final resumed = timed.resumeTracking();
+      expect(flex.positionRequests, hasLength(2));
+      flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
+      await resumed;
     });
 
     test('parar de acompanhar limpa o tracking', () async {

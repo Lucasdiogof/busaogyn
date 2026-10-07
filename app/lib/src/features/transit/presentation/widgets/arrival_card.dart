@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
@@ -138,12 +139,10 @@ class ArrivalCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        DestinationText(
                           group.destination == null
                               ? 'Destino não informado'
                               : destinationLabel(group.destination!),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontSize: 14,
                             height: 1.25,
@@ -454,5 +453,185 @@ class VehicleTrackBox extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Destino em até duas linhas sem partir palavra no meio: se a maior
+/// palavra não cabe na largura, a fonte reduz (até [minFontSize]) em vez de
+/// virar "MARANAT / A". É um RenderBox próprio porque o cartão mede a altura
+/// com `IntrinsicHeight`, que não aceita `LayoutBuilder`.
+class DestinationText extends LeafRenderObjectWidget {
+  const DestinationText(
+    this.text, {
+    required this.style,
+    this.minFontSize = 11,
+    super.key,
+  });
+
+  final String text;
+  final TextStyle? style;
+  final double minFontSize;
+
+  TextStyle _resolve(BuildContext context) =>
+      DefaultTextStyle.of(context).style.merge(style);
+
+  @override
+  RenderDestinationText createRenderObject(BuildContext context) {
+    return RenderDestinationText(
+      text: text,
+      style: _resolve(context),
+      minFontSize: minFontSize,
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderDestinationText renderObject,
+  ) {
+    renderObject
+      ..text = text
+      ..style = _resolve(context)
+      ..minFontSize = minFontSize
+      ..textScaler = MediaQuery.textScalerOf(context);
+  }
+}
+
+class RenderDestinationText extends RenderBox {
+  RenderDestinationText({
+    required String text,
+    required TextStyle style,
+    required double minFontSize,
+    required TextScaler textScaler,
+  }) : _text = text,
+       _style = style,
+       _minFontSize = minFontSize,
+       _textScaler = textScaler;
+
+  String _text;
+  TextStyle _style;
+  double _minFontSize;
+  TextScaler _textScaler;
+  final _painter = TextPainter(
+    textDirection: TextDirection.ltr,
+    maxLines: 2,
+    ellipsis: '…',
+  );
+
+  /// Tamanho de fonte usado no último layout (exposto para testes).
+  double get fontSize => _fontSize;
+  double _fontSize = 14;
+
+  set text(String value) {
+    if (value == _text) return;
+    _text = value;
+    markNeedsLayout();
+    markNeedsSemanticsUpdate();
+  }
+
+  set style(TextStyle value) {
+    if (value == _style) return;
+    _style = value;
+    markNeedsLayout();
+  }
+
+  set minFontSize(double value) {
+    if (value == _minFontSize) return;
+    _minFontSize = value;
+    markNeedsLayout();
+  }
+
+  set textScaler(TextScaler value) {
+    if (value == _textScaler) return;
+    _textScaler = value;
+    markNeedsLayout();
+  }
+
+  double get _baseSize => _style.fontSize ?? 14;
+
+  double _widestWord(double size) {
+    var widest = 0.0;
+    for (final word in _text.split(RegExp(r'\s+'))) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: word,
+          style: _style.copyWith(fontSize: size),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: _textScaler,
+        maxLines: 1,
+      )..layout();
+      if (painter.width > widest) widest = painter.width;
+      painter.dispose();
+    }
+    return widest;
+  }
+
+  /// Menor redução que faz a maior palavra caber em [maxWidth].
+  double _fittingSize(double maxWidth) {
+    final base = _baseSize;
+    if (!maxWidth.isFinite) return base;
+    final widest = _widestWord(base);
+    if (widest <= maxWidth) return base;
+    return (base * maxWidth / widest).clamp(_minFontSize, base).floorToDouble();
+  }
+
+  Size _layoutText(double maxWidth) {
+    _fontSize = _fittingSize(maxWidth);
+    _painter
+      ..text = TextSpan(
+        text: _text,
+        style: _style.copyWith(fontSize: _fontSize),
+      )
+      ..textScaler = _textScaler
+      ..layout(maxWidth: maxWidth.isFinite ? maxWidth : double.infinity);
+    return _painter.size;
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _widestWordAtMin();
+
+  double _widestWordAtMin() => _widestWord(_minFontSize);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    _layoutText(double.infinity);
+    return _painter.maxIntrinsicWidth;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _layoutText(width).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _layoutText(width).height;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.constrain(_layoutText(constraints.maxWidth));
+
+  @override
+  void performLayout() {
+    size = constraints.constrain(_layoutText(constraints.maxWidth));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    _painter.paint(context.canvas, offset);
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    config
+      ..isSemanticBoundary = true
+      ..label = _text
+      ..textDirection = TextDirection.ltr;
+  }
+
+  @override
+  void dispose() {
+    _painter.dispose();
+    super.dispose();
   }
 }

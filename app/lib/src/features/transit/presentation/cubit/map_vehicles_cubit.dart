@@ -149,11 +149,19 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
     _timer = null;
   }
 
+  /// Retoma o timer e consulta na hora só quem não foi tentado nos últimos
+  /// [retryAfter]: alternar janelas rapidamente não vira rajada.
   Future<void> resume() async {
     if (!_paused) return;
     _paused = false;
     _armTimer();
-    await _fetch(_candidates);
+    final now = _clock();
+    await _fetch([
+      for (final candidate in _candidates)
+        if (_entries[candidate.vehicleNumber]?.lastAttemptAt case final last
+            when last == null || now.difference(last) >= retryAfter)
+          candidate,
+    ]);
   }
 
   void _syncTracked(

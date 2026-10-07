@@ -136,6 +136,10 @@ class _TransitMapState extends State<TransitMap>
   Duration _lastPush = Duration.zero;
   MapLibreMapController? _controller;
   bool _styleReady = false;
+
+  /// Incrementado a cada carga de estilo; uma carga anterior que ainda
+  /// estava esperando não adiciona sources/layers duplicados no estilo novo.
+  int _styleLoad = 0;
   bool _wasCameraMoving = false;
   bool _following = true;
   Timer? _insetsTimer;
@@ -294,6 +298,9 @@ class _TransitMapState extends State<TransitMap>
     final controller = _controller;
     if (controller == null) return;
     _styleReady = false;
+    final load = ++_styleLoad;
+    bool superseded() =>
+        !mounted || !identical(controller, _controller) || load != _styleLoad;
 
     final tokens = context.tokens;
     final brightness = Theme.of(context).brightness;
@@ -303,11 +310,12 @@ class _TransitMapState extends State<TransitMap>
         busMarkerStyle(variant, tokens: tokens, brightness: brightness),
       );
     }
-    if (!mounted || !identical(controller, _controller)) return;
+    if (superseded()) return;
 
     for (final entry in images.entries) {
       await controller.addImage(entry.key, entry.value);
     }
+    if (superseded()) return;
 
     // Secundários por baixo; o acompanhado (halo + ônibus) sempre por cima.
     await controller.addGeoJsonSource(
@@ -379,6 +387,7 @@ class _TransitMapState extends State<TransitMap>
       ),
       enableInteraction: false,
     );
+    if (superseded()) return;
     _styleReady = true;
     await _applyInsets();
     // As posições podem ter mudado enquanto o estilo carregava.
