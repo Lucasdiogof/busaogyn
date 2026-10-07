@@ -5,11 +5,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
-import '../../../../core/config/map_config.dart';
 import '../../../../core/platform/map_attribution_offset.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import 'camera_follow.dart';
+import 'map_follow_controller.dart';
 import 'vehicle_map_data.dart';
 import 'vehicle_marker_image.dart';
 
@@ -41,6 +41,10 @@ class TransitMap extends StatefulWidget {
     required this.vehicleNumber,
     required this.position,
     required this.stale,
+    required this.styleString,
+    required this.fallbackStyleString,
+    this.followController,
+    this.styleLoadTimeout = const Duration(seconds: 12),
     this.cameraPadding = EdgeInsets.zero,
     this.controlsPadding = EdgeInsets.zero,
     this.attributionBottom = 0,
@@ -57,6 +61,18 @@ class TransitMap extends StatefulWidget {
 
   /// Posição antiga ou com falha recente: o marcador fica esmaecido.
   final bool stale;
+
+  /// Estilo do tema atual (URL ou asset). Trocar recarrega o estilo; o
+  /// marcador é recriado em `onStyleLoaded`.
+  final String styleString;
+
+  /// Usado quando [styleString] não termina de carregar em
+  /// [styleLoadTimeout] (por exemplo, o Liberty noturno empacotado).
+  final String fallbackStyleString;
+  final Duration styleLoadTimeout;
+
+  /// Expõe o follow para o botão "Centralizar" do painel.
+  final MapFollowController? followController;
 
   /// Área coberta por painéis; a câmera centraliza no espaço visível.
   final EdgeInsets cameraPadding;
@@ -96,6 +112,14 @@ class _TransitMapState extends State<TransitMap> {
   Timer? _insetsTimer;
   double _attributionBottom = 0;
 
+  /// Estilos que não carregaram nesta sessão; caem no [fallbackStyleString].
+  final _failedStyles = <String>{};
+  Timer? _styleWatchdog;
+
+  String get _activeStyle => _failedStyles.contains(widget.styleString)
+      ? widget.fallbackStyleString
+      : widget.styleString;
+
   /// O próximo centralizar deve aproximar (primeira posição de um ônibus).
   bool _zoomOnNextCenter = true;
 
@@ -108,6 +132,19 @@ class _TransitMapState extends State<TransitMap> {
   @override
   void didUpdateWidget(covariant TransitMap oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    if (widget.followController != oldWidget.followController) {
+      oldWidget.followController?.attach(null);
+      widget.followController?.attach(_recenter);
+      _report();
+    }
+
+    if (widget.styleString != oldWidget.styleString) {
+      // O estilo novo apaga imagem, source e layers do ônibus; nada é
+      // sincronizado até o próximo onStyleLoaded.
+      _styleReady = false;
+      _armStyleWatchdog();
+    }
 
     if (widget.vehicleNumber != oldWidget.vehicleNumber) {
       _follow.resume();
@@ -123,6 +160,7 @@ class _TransitMapState extends State<TransitMap> {
         widget.stale != oldWidget.stale ||
         widget.vehicleNumber != oldWidget.vehicleNumber) {
       unawaited(_syncVehicle(follow: positionChanged && _follow.following));
+      _report();
     }
 
     if (widget.cameraPadding != oldWidget.cameraPadding ||
@@ -141,6 +179,28 @@ class _TransitMapState extends State<TransitMap> {
     super.initState();
     _attributionBottom = widget.attributionBottom;
     setWebMapAttributionOffset(_attributionBottom);
+    widget.followController?.attach(_recenter);
+    _armStyleWatchdog();
+  }
+
+  /// Só o mapa real carrega estilo; a superfície de teste não.
+  void _armStyleWatchdog() {
+    _styleWatchdog?.cancel();
+    if (widget.mapBuilder != null) return;
+    final style = _activeStyle;
+    if (style == widget.fallbackStyleString) return;
+    _styleWatchdog = Timer(widget.styleLoadTimeout, () {
+      if (!mounted || _activeStyle != style) return;
+      debugPrint('BusãoGyn: estilo "$style" não carregou; usando o padrão.');
+      setState(() => _failedStyles.add(style));
+    });
+  }
+
+  void _report() {
+    widget.followController?.report(
+      following: _following,
+      hasVehicle: _vehicleCenter != null,
+    );
   }
 
   void _applyAttribution() {
@@ -152,6 +212,8 @@ class _TransitMapState extends State<TransitMap> {
   @override
   void dispose() {
     _insetsTimer?.cancel();
+    _styleWatchdog?.cancel();
+    widget.followController?.attach(null);
     _controller?.removeListener(_onControllerChanged);
     super.dispose();
   }
@@ -187,21 +249,23 @@ class _TransitMapState extends State<TransitMap> {
   void _setFollowing(bool value) {
     if (_following == value || !mounted) return;
     setState(() => _following = value);
+    _report();
   }
 
   /// Chamado a cada carga de estilo, inclusive após troca/recarga: imagem,
   /// source e layers pertencem ao estilo e precisam ser recriados aqui.
   Future<void> _onStyleLoaded() async {
+    _styleWatchdog?.cancel();
     final controller = _controller;
     if (controller == null) return;
     _styleReady = false;
 
-    final scheme = Theme.of(context).colorScheme;
     final tokens = context.tokens;
     final marker = await renderVehicleMarker(
-      background: scheme.primary,
-      foreground: Colors.white,
-      plate: tokens.plate,
+      background: tokens.accent,
+      foreground: tokens.onAccent,
+      ring: Colors.white,
+      shadow: Colors.black.withValues(alpha: 0.45),
     );
     if (!mounted || !identical(controller, _controller)) return;
 
@@ -214,17 +278,17 @@ class _TransitMapState extends State<TransitMap> {
       vehicleSourceId,
       vehicleHaloLayerId,
       CircleLayerProperties(
-        circleRadius: 22,
-        circleColor: _hex(scheme.primary),
+        circleRadius: 26,
+        circleColor: _hex(tokens.accent),
         circleOpacity: const [
           'case',
           ['get', 'stale'],
-          0.08,
-          0.18,
+          0.06,
+          0.16,
         ],
-        circleStrokeColor: _hex(scheme.primary),
-        circleStrokeWidth: 1,
-        circleStrokeOpacity: 0.35,
+        circleStrokeColor: _hex(tokens.accent),
+        circleStrokeWidth: 1.5,
+        circleStrokeOpacity: 0.55,
       ),
       enableInteraction: false,
     );
@@ -233,7 +297,7 @@ class _TransitMapState extends State<TransitMap> {
       vehicleLayerId,
       const SymbolLayerProperties(
         iconImage: vehicleImageId,
-        iconSize: 0.5,
+        iconSize: 0.46,
         iconAllowOverlap: true,
         iconIgnorePlacement: true,
         iconOpacity: [
@@ -305,7 +369,7 @@ class _TransitMapState extends State<TransitMap> {
     if (builder != null) return builder(context, params);
 
     return MapLibreMap(
-      styleString: MapConfig.styleUrl,
+      styleString: _activeStyle,
       initialCameraPosition: params.initialCameraPosition,
       minMaxZoomPreference: const MinMaxZoomPreference(9, 19),
       compassEnabled: false,
@@ -368,52 +432,74 @@ class _RecenterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final tokens = context.tokens;
+    // Seguindo: discreto. Pausado: âmbar e com rótulo, para o usuário saber
+    // como voltar.
+    final background = following ? tokens.glass : tokens.accent;
+    final foreground = following ? tokens.accentText : tokens.onAccent;
 
     return Tooltip(
       message: 'Centralizar ônibus',
+      excludeFromSemantics: true,
       child: Semantics(
         button: true,
         label: following
             ? 'Centralizar ônibus. Seguindo o ônibus'
             : 'Centralizar ônibus. Seguimento pausado',
         excludeSemantics: true,
-        child: Material(
-          color: following ? tokens.floatingSurface : scheme.primary,
-          elevation: 3,
-          shadowColor: tokens.shadow,
-          shape: const StadiumBorder(),
-          child: InkWell(
-            customBorder: const StadiumBorder(),
-            onTap: onPressed,
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: following ? Space.sm : Space.md,
-                  vertical: Space.sm,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      following
-                          ? Icons.gps_fixed_rounded
-                          : Icons.center_focus_strong_rounded,
-                      size: 20,
-                      color: following ? scheme.primary : scheme.onPrimary,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(Radii.field),
+            border: Border.all(
+              color: following ? tokens.glassBorder : tokens.accent,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: tokens.shadow,
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(Radii.field),
+              onTap: onPressed,
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: SizedBox(
+                  height: 48,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: following ? Space.sm : Space.md,
                     ),
-                    if (!following) ...[
-                      const SizedBox(width: Space.xs),
-                      Text(
-                        'Centralizar ônibus',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: scheme.onPrimary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.my_location_rounded,
+                          size: 22,
+                          color: foreground,
                         ),
-                      ),
-                    ],
-                  ],
+                        if (!following) ...[
+                          const SizedBox(width: Space.xs),
+                          Text(
+                            'Centralizar',
+                            style: TextStyle(
+                              color: foreground,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

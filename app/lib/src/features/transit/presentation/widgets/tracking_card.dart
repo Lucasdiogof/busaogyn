@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/busao_tokens.dart';
@@ -8,221 +6,162 @@ import '../../domain/entities/arrival.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../cubit/stop_arrivals_cubit.dart';
 import '../formatters/transit_labels.dart';
+import 'arrival_card.dart';
+import 'map_follow_controller.dart';
 
-/// Reconstrói [builder] periodicamente para textos de idade ("há 25 s").
-class PeriodicRebuild extends StatefulWidget {
-  const PeriodicRebuild({
-    required this.builder,
-    this.interval = const Duration(seconds: 5),
-    super.key,
-  });
-
-  final WidgetBuilder builder;
-  final Duration interval;
-
-  @override
-  State<PeriodicRebuild> createState() => _PeriodicRebuildState();
-}
-
-class _PeriodicRebuildState extends State<PeriodicRebuild> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(widget.interval, (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.builder(context);
-}
-
+/// Conteúdo da aba Acompanhando quando há um ônibus acompanhado.
 class TrackingCard extends StatelessWidget {
   const TrackingCard({
+    required this.state,
     required this.tracking,
-    required this.arrivals,
     required this.onStop,
     required this.clock,
+    this.followController,
     super.key,
   });
 
+  /// Ponto consultado; dá a previsão de chegada do ônibus acompanhado.
+  final StopArrivalsLoaded state;
   final TrackingInfo tracking;
-  final List<ArrivalGroup> arrivals;
   final VoidCallback onStop;
   final DateTime Function() clock;
-
-  /// Linha/destino do grupo de chegada, quando a posição ainda não trouxe.
-  ArrivalGroup? get _group {
-    for (final group in arrivals) {
-      if (group.next.vehicleNumber == tracking.vehicleNumber ||
-          group.following?.vehicleNumber == tracking.vehicleNumber) {
-        return group;
-      }
-    }
-    return null;
-  }
+  final MapFollowController? followController;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
     final vehicle = tracking.vehicle?.data;
-    final group = _group;
-    final routeId = vehicle?.routeId ?? group?.routeId;
-    final destination = vehicle?.destination ?? group?.destination;
+    final match = trackedArrival(state.arrivals.data, tracking.vehicleNumber);
+    final routeId = vehicle?.routeId ?? match?.group.routeId;
 
-    final (
-      IconData icon,
-      String label,
-      PillTone tone,
-    ) = switch (tracking.phase) {
+    final (IconData icon, String label, Color color) = switch (tracking.phase) {
       TrackingPhase.searching => (
         Icons.radar_rounded,
         'Buscando posição',
-        PillTone.accent,
+        tokens.softText,
       ),
       TrackingPhase.active => (
-        Icons.check_circle_rounded,
+        Icons.check_circle_outline_rounded,
         'Acompanhando',
-        PillTone.positive,
+        tokens.accentText,
       ),
       TrackingPhase.unavailable => (
         Icons.location_disabled_rounded,
         'Posição indisponível',
-        PillTone.caution,
+        tokens.unconfirmed,
       ),
       TrackingPhase.failing => (
         Icons.sync_problem_rounded,
         'Conexão instável',
-        PillTone.caution,
+        tokens.unconfirmed,
       ),
     };
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.35),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        Space.md,
-        Space.sm,
-        Space.xs,
-        Space.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+          child: Row(
             children: [
+              Icon(icon, size: 17, color: color),
+              const SizedBox(width: Space.xs),
               Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Semantics(
-                    liveRegion: true,
-                    child: StatusPill(icon: icon, label: label, tone: tone),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                      color: tokens.softText,
+                    ),
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: onStop,
-                tooltip: 'Parar de acompanhar',
-                icon: const Icon(Icons.close_rounded),
+              PeriodicRebuild(
+                builder: (context) {
+                  final age = positionAgeLabel(tracking, clock());
+                  if (age == null) return const SizedBox.shrink();
+                  return Text(
+                    age,
+                    style: monoStyle(
+                      TextStyle(fontSize: 11.5, color: tokens.mutedText),
+                    ),
+                  );
+                },
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: Space.xs),
-            child: Row(
-              children: [
-                if (routeId != null) ...[
-                  RoutePlate(routeId, dense: true),
-                  const SizedBox(width: Space.sm),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ônibus ${tracking.vehicleNumber}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (destination != null)
-                        Text(
-                          destination,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: tokens.mutedText,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(height: Space.sm),
+        _Eta(state: state, match: match, clock: clock),
+        if (vehicle != null) ...[
+          const SizedBox(height: Space.sm),
+          Wrap(
+            spacing: Space.xs,
+            runSpacing: Space.xs,
+            children: [
+              _punctualityPill(vehicle.punctuality),
+              StatusPill(
+                icon: vehicle.accessible == true
+                    ? Icons.accessible_rounded
+                    : Icons.accessibility_new_rounded,
+                label: accessibilityLabel(vehicle.accessible),
+              ),
+              if (routeId != null)
+                StatusPill(icon: Icons.route_rounded, label: 'Linha $routeId'),
+            ],
           ),
-          if (vehicle != null) ...[
-            const SizedBox(height: Space.sm),
-            Wrap(
-              spacing: Space.xs,
-              runSpacing: Space.xs,
-              children: [
-                _punctualityPill(vehicle.punctuality),
-                StatusPill(
-                  icon: vehicle.accessible == true
-                      ? Icons.accessible_rounded
-                      : Icons.accessibility_new_rounded,
-                  label: accessibilityLabel(vehicle.accessible),
-                  tone: vehicle.accessible == true
-                      ? PillTone.accent
-                      : PillTone.neutral,
-                ),
-              ],
-            ),
-          ],
-          // Sem nenhuma posição o pill do topo já diz o estado.
-          if (tracking.vehicle != null) ...[
-            const SizedBox(height: Space.sm),
-            PeriodicRebuild(
-              builder: (context) {
-                final freshness = positionFreshness(tracking, clock());
-                return _FreshnessLine(freshness);
-              },
-            ),
-          ],
-          if (tracking.phase == TrackingPhase.unavailable ||
-              tracking.phase == TrackingPhase.failing) ...[
-            const SizedBox(height: Space.xxs),
-            Padding(
-              padding: const EdgeInsets.only(right: Space.xs),
-              child: Text(
-                [
-                  ?tracking.message,
-                  if (tracking.vehicle != null)
-                    'O mapa mostra a última posição válida.',
-                  'Nova tentativa automática a cada 15 s.',
-                ].join(' '),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: tokens.mutedText,
-                ),
+        ],
+        // Sem nenhuma posição o título já diz o estado.
+        if (tracking.vehicle != null) ...[
+          const SizedBox(height: Space.sm),
+          PeriodicRebuild(
+            builder: (context) =>
+                _FreshnessLine(positionFreshness(tracking, clock())),
+          ),
+        ],
+        if (tracking.phase == TrackingPhase.unavailable ||
+            tracking.phase == TrackingPhase.failing) ...[
+          const SizedBox(height: Space.xxs),
+          Text(
+            [
+              ?tracking.message,
+              if (tracking.vehicle != null)
+                'O mapa mostra a última posição válida.',
+              'Nova tentativa automática a cada 15 s.',
+            ].join(' '),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
+          ),
+        ],
+        const SizedBox(height: Space.sm),
+        Row(
+          children: [
+            Expanded(child: _CenterButton(controller: followController)),
+            const SizedBox(width: Space.xs),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onStop,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                label: const Text('Parar'),
               ),
             ),
           ],
-        ],
-      ),
+        ),
+        const SizedBox(height: Space.sm),
+        const FootNote(
+          child: Text(
+            'Posição informada pela RMTC, consultada a cada 15 s. Sem seta '
+            'de direção: a fonte não informa.',
+          ),
+        ),
+      ],
     );
   }
 
@@ -230,7 +169,10 @@ class TrackingCard extends StatelessWidget {
     final (icon, tone) = switch (punctuality) {
       VehiclePunctuality.onTime => (Icons.timer_outlined, PillTone.positive),
       VehiclePunctuality.delayed => (Icons.more_time_rounded, PillTone.caution),
-      VehiclePunctuality.early => (Icons.fast_forward_rounded, PillTone.accent),
+      VehiclePunctuality.early => (
+        Icons.fast_forward_rounded,
+        PillTone.neutral,
+      ),
       VehiclePunctuality.unknown => (
         Icons.timer_off_outlined,
         PillTone.neutral,
@@ -240,6 +182,108 @@ class TrackingCard extends StatelessWidget {
       icon: icon,
       label: punctualityLabel(punctuality),
       tone: tone,
+    );
+  }
+}
+
+/// Previsão de chegada ao ponto, vinda da última consulta de chegadas (que
+/// não é atualizada sozinha; por isso a idade aparece quando envelhece).
+class _Eta extends StatelessWidget {
+  const _Eta({required this.state, required this.match, required this.clock});
+
+  final StopArrivalsLoaded state;
+  final ({ArrivalGroup group, Arrival arrival})? match;
+  final DateTime Function() clock;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final match = this.match;
+    if (match == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+        child: Text(
+          'Previsão para o ponto ${state.stopId} indisponível.',
+          style: TextStyle(fontSize: 14, color: tokens.softText),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              MinutesText(match.arrival.minutes, size: 30, unit: ''),
+              const SizedBox(width: Space.xs),
+              Expanded(
+                child: Text(
+                  match.arrival.minutes == null
+                      ? 'previsão até o ponto ${state.stopId}'
+                      : 'min até o ponto ${state.stopId}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14, color: tokens.softText),
+                ),
+              ),
+            ],
+          ),
+          PeriodicRebuild(
+            builder: (context) {
+              final freshness = arrivalsFreshness(state, clock());
+              if (freshness.tone == FreshnessTone.fresh) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Previsão da consulta do ponto · '
+                  '${freshness.text.toLowerCase()}',
+                  style: monoStyle(
+                    TextStyle(
+                      fontSize: 11,
+                      color: freshness.tone == FreshnessTone.stale
+                          ? tokens.unconfirmed
+                          : tokens.mutedText,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CenterButton extends StatelessWidget {
+  const _CenterButton({required this.controller});
+
+  final MapFollowController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final enabled = controller.hasVehicle;
+        final following = controller.following;
+        return OutlinedButton.icon(
+          onPressed: enabled ? controller.recenter : null,
+          icon: Icon(
+            following ? Icons.gps_fixed_rounded : Icons.my_location_rounded,
+            size: 18,
+          ),
+          label: Text(following && enabled ? 'Seguindo' : 'Centralizar'),
+        );
+      },
     );
   }
 }
@@ -261,20 +305,23 @@ class _FreshnessLine extends StatelessWidget {
         tokens.unconfirmed,
       ),
     };
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: Space.xxs),
-        Expanded(
-          child: Text(
-            freshness.text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: Space.xxs),
+          Expanded(
+            child: Text(
+              freshness.text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

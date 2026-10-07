@@ -7,7 +7,7 @@ import '../cubit/stop_arrivals_cubit.dart';
 import '../formatters/transit_labels.dart';
 
 class QualityBadge extends StatelessWidget {
-  const QualityBadge(this.quality, {this.dense = false, super.key});
+  const QualityBadge(this.quality, {this.dense = true, super.key});
 
   final ArrivalQuality quality;
   final bool dense;
@@ -19,15 +19,78 @@ class QualityBadge extends StatelessWidget {
       ArrivalQuality.scheduled => (Icons.schedule_rounded, PillTone.neutral),
       ArrivalQuality.unknown => (Icons.help_outline_rounded, PillTone.caution),
     };
-    return StatusPill(
-      icon: icon,
+    return Semantics(
       label: qualityLabel(quality),
-      tone: tone,
-      dense: dense,
+      excludeSemantics: true,
+      child: StatusPill(
+        icon: icon,
+        label: dense ? qualityShortLabel(quality) : qualityLabel(quality),
+        tone: tone,
+        dense: dense,
+      ),
     );
   }
 }
 
+/// Minutos em Geist Mono: número grande, unidade pequena.
+class MinutesText extends StatelessWidget {
+  const MinutesText(
+    this.minutes, {
+    this.size = 20,
+    this.color,
+    this.unit = 'min',
+    super.key,
+  });
+
+  final int? minutes;
+  final double size;
+  final Color? color;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final value = switch (minutes) {
+      null => '—',
+      <= 0 => '< 1',
+      final m => '$m',
+    };
+    final color = this.color ?? tokens.strongText;
+    return Semantics(
+      label: minutesSemantics(minutes),
+      excludeSemantics: true,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: value),
+            if (minutes != null && unit.isNotEmpty)
+              TextSpan(
+                text: ' $unit',
+                style: TextStyle(
+                  fontSize: size * 0.6,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0,
+                ),
+              ),
+          ],
+        ),
+        maxLines: 1,
+        style: monoStyle(
+          TextStyle(
+            fontSize: size,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.6,
+            height: 1,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Uma linha do ponto: placa, destino, próxima chegada e o ônibus que pode
+/// ser acompanhado. A chegada seguinte aparece numa faixa abaixo.
 class ArrivalCard extends StatelessWidget {
   const ArrivalCard({
     required this.group,
@@ -42,46 +105,108 @@ class ArrivalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final tokens = context.tokens;
+    final next = group.next;
     final following = group.following;
+    final nextQuality = displayQuality(next);
+    final tracked = _isTracked(next) || _isTracked(following);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.md, Space.md, Space.md, 14),
+    return Semantics(
+      container: true,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(Radii.card),
+          border: Border.all(
+            color: tracked ? tokens.accent : tokens.hairline,
+            width: tracked ? 1.5 : 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                RoutePlate(group.routeId),
-                const SizedBox(width: Space.sm),
-                Expanded(
-                  child: Text(
-                    group.destination ?? 'Destino não informado',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(child: RoutePlate(group.routeId)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.destination == null
+                              ? 'Destino não informado'
+                              : destinationLabel(group.destination!),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontSize: 14,
+                            height: 1.25,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          following == null
+                              ? 'sem seguinte'
+                              : 'depois ${minutesLabel(following.minutes)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: monoStyle(
+                            TextStyle(fontSize: 11.5, color: tokens.mutedText),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Space.sm),
-            _ArrivalSlot(
-              label: 'Próximo',
-              arrival: group.next,
-              emphasized: true,
-              tracking: tracking,
-              onTrack: onTrack,
-            ),
-            if (following != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Divider(height: 1, color: tokens.hairline),
+                  const SizedBox(width: Space.xs),
+                  Semantics(
+                    container: true,
+                    label:
+                        'Próximo: ${minutesSemantics(next.minutes)}, '
+                        '${qualityLabel(nextQuality)}',
+                    excludeSemantics: true,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        MinutesText(
+                          next.minutes,
+                          color: nextQuality == ArrivalQuality.scheduled
+                              ? tokens.softText
+                              : tokens.strongText,
+                        ),
+                        const SizedBox(height: 6),
+                        // Fontes maiores (acessibilidade) reduzem o selo em vez
+                        // de empurrar a linha para fora da tela.
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 90),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: QualityBadge(nextQuality),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: Space.xs),
+                  VehicleTrackBox(
+                    arrival: next,
+                    tracking: tracking,
+                    onTrack: onTrack,
+                  ),
+                ],
               ),
-              _ArrivalSlot(
-                label: 'Seguinte',
+            ),
+            if (following != null && canTrack(following)) ...[
+              const SizedBox(height: Space.xs),
+              _FollowingStrip(
                 arrival: following,
-                emphasized: false,
                 tracking: tracking,
                 onTrack: onTrack,
               ),
@@ -91,140 +216,240 @@ class ArrivalCard extends StatelessWidget {
       ),
     );
   }
+
+  bool _isTracked(Arrival? arrival) {
+    final number = arrival?.vehicleNumber;
+    return number != null && tracking?.vehicleNumber == number;
+  }
 }
 
-class _ArrivalSlot extends StatelessWidget {
-  const _ArrivalSlot({
-    required this.label,
+/// Chegada seguinte com GPS: também pode ser acompanhada.
+class _FollowingStrip extends StatelessWidget {
+  const _FollowingStrip({
     required this.arrival,
-    required this.emphasized,
     required this.tracking,
     required this.onTrack,
   });
 
-  final String label;
   final Arrival arrival;
-  final bool emphasized;
   final TrackingInfo? tracking;
   final ValueChanged<String> onTrack;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
-    final quality = displayQuality(arrival);
-    final vehicleNumber = arrival.vehicleNumber;
-    final showVehicle =
-        quality == ArrivalQuality.realtime && vehicleNumber != null;
-    final isTracked =
-        vehicleNumber != null && tracking?.vehicleNumber == vehicleNumber;
-
-    final minutesStyle =
-        (emphasized
-                ? theme.textTheme.headlineSmall
-                : theme.textTheme.titleLarge)
-            ?.copyWith(fontWeight: FontWeight.w800);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Semantics(
-            label:
-                '$label: ${minutesSemantics(arrival.minutes)}, '
-                '${qualityLabel(quality)}'
-                '${showVehicle ? ', ônibus $vehicleNumber' : ''}',
-            excludeSemantics: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: tokens.mutedText,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
+      decoration: BoxDecoration(
+        color: tokens.raised.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(Radii.plate),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              container: true,
+              label:
+                  'Seguinte: ${minutesSemantics(arrival.minutes)}, '
+                  '${qualityLabel(displayQuality(arrival))}, '
+                  'ônibus ${arrival.vehicleNumber}',
+              excludeSemantics: true,
+              child: Row(
+                children: [
+                  Text(
+                    'SEGUINTE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: tokens.mutedText,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(minutesLabel(arrival.minutes), style: minutesStyle),
-                const SizedBox(height: Space.xxs),
-                Wrap(
-                  spacing: Space.xs,
-                  runSpacing: Space.xxs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    QualityBadge(quality, dense: true),
-                    if (showVehicle)
-                      Text(
-                        'Ônibus $vehicleNumber',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.mutedText,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+                  const SizedBox(width: Space.xs),
+                  MinutesText(arrival.minutes, size: 15),
+                  const SizedBox(width: Space.xs),
+                  Flexible(child: QualityBadge(displayQuality(arrival))),
+                ],
+              ),
             ),
           ),
-        ),
-        if (canTrack(arrival)) ...[
-          const SizedBox(width: Space.xs),
-          TrackButton(
-            phase: isTracked ? tracking!.phase : null,
-            onPressed: () => onTrack(vehicleNumber!),
+          SizedBox(
+            height: 44,
+            child: VehicleTrackBox(
+              arrival: arrival,
+              tracking: tracking,
+              onTrack: onTrack,
+              horizontal: true,
+            ),
           ),
         ],
-      ],
+      ),
     );
   }
 }
 
-/// Botão de acompanhar com fase explícita; só gira enquanto a primeira
-/// posição está realmente pendente.
-class TrackButton extends StatelessWidget {
-  const TrackButton({required this.phase, required this.onPressed, super.key});
+/// Caixa com o número do ônibus que inicia o acompanhamento. Desabilitada
+/// (com "—") quando a chegada não tem GPS nem identidade de veículo.
+class VehicleTrackBox extends StatelessWidget {
+  const VehicleTrackBox({
+    required this.arrival,
+    required this.tracking,
+    required this.onTrack,
+    this.horizontal = false,
+    super.key,
+  });
 
-  /// `null` quando este ônibus não é o acompanhado.
-  final TrackingPhase? phase;
-  final VoidCallback onPressed;
+  final Arrival arrival;
+  final TrackingInfo? tracking;
+  final ValueChanged<String> onTrack;
+  final bool horizontal;
 
   @override
   Widget build(BuildContext context) {
-    final phase = this.phase;
-    if (phase == null) {
-      return OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.gps_fixed_rounded, size: 18),
-        label: const Text('Acompanhar'),
+    final tokens = context.tokens;
+    final number = arrival.vehicleNumber;
+    final trackable = canTrack(arrival);
+    final phase = trackable && tracking?.vehicleNumber == number
+        ? tracking!.phase
+        : null;
+
+    if (!trackable) {
+      return Semantics(
+        container: true,
+        label: 'Acompanhamento indisponível: chegada sem GPS da fonte',
+        excludeSemantics: true,
+        child: Opacity(
+          opacity: 0.45,
+          child: _frame(
+            tokens,
+            selected: false,
+            children: [
+              Text('—', style: _numberStyle(tokens)),
+              Icon(
+                Icons.my_location_rounded,
+                size: 16,
+                color: tokens.mutedText,
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    final (Widget icon, String label) = switch (phase) {
-      TrackingPhase.searching => (
-        const SizedBox.square(
-          dimension: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
+    final Widget icon = switch (phase) {
+      null => Icon(
+        Icons.my_location_rounded,
+        size: 16,
+        color: tokens.accentText,
+      ),
+      TrackingPhase.searching => SizedBox.square(
+        dimension: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: tokens.accentText,
         ),
-        'Buscando…',
       ),
-      TrackingPhase.active => (
-        const Icon(Icons.check_circle_rounded, size: 18),
-        'Acompanhando',
+      TrackingPhase.active => Icon(
+        Icons.directions_bus_rounded,
+        size: 16,
+        color: tokens.accentText,
       ),
-      TrackingPhase.unavailable => (
-        const Icon(Icons.location_disabled_rounded, size: 18),
-        'Sem posição',
+      TrackingPhase.unavailable => Icon(
+        Icons.location_disabled_rounded,
+        size: 16,
+        color: tokens.unconfirmed,
       ),
-      TrackingPhase.failing => (
-        const Icon(Icons.sync_problem_rounded, size: 18),
-        'Reconectando',
+      TrackingPhase.failing => Icon(
+        Icons.sync_problem_rounded,
+        size: 16,
+        color: tokens.unconfirmed,
       ),
     };
-    // Já acompanhado: tocar de novo força uma nova consulta (sem trocar de
-    // ônibus), útil depois de uma falha.
-    return FilledButton.tonalIcon(
-      onPressed: phase == TrackingPhase.searching ? null : onPressed,
-      icon: icon,
-      label: Text(label),
+    final label = switch (phase) {
+      null => 'Acompanhar ônibus $number',
+      TrackingPhase.searching => 'Buscando posição do ônibus $number',
+      TrackingPhase.active => 'Acompanhando ônibus $number',
+      TrackingPhase.unavailable => 'Ônibus $number sem posição',
+      TrackingPhase.failing => 'Reconectando ao ônibus $number',
+    };
+
+    return Tooltip(
+      message: label,
+      // O rótulo já está no nó do botão; sem isto o tooltip vaza para o nó
+      // do cartão.
+      excludeFromSemantics: true,
+      child: Semantics(
+        container: true,
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: _frame(
+          tokens,
+          selected: phase != null,
+          // Já acompanhado: tocar de novo força uma nova consulta (sem trocar
+          // de ônibus), útil depois de uma falha.
+          onTap: phase == TrackingPhase.searching
+              ? null
+              : () => onTrack(number!),
+          children: [
+            Text(number!, style: _numberStyle(tokens)),
+            icon,
+          ],
+        ),
+      ),
+    );
+  }
+
+  TextStyle _numberStyle(BusaoTokens tokens) => monoStyle(
+    TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      color: tokens.strongText,
+      height: 1,
+    ),
+  );
+
+  Widget _frame(
+    BusaoTokens tokens, {
+    required bool selected,
+    required List<Widget> children,
+    VoidCallback? onTap,
+  }) {
+    final content = horizontal
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [children[1], const SizedBox(width: 6), children[0]],
+          )
+        : Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [children[0], const SizedBox(height: 5), children[1]],
+          );
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: horizontal ? null : 54,
+      constraints: const BoxConstraints(minHeight: 48),
+      decoration: BoxDecoration(
+        color: selected ? tokens.accentSoft : tokens.background,
+        borderRadius: BorderRadius.circular(Radii.plate),
+        border: Border.all(
+          color: selected ? tokens.accent : tokens.hairline,
+          width: selected ? 1.5 : 1,
+        ),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.plate),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontal ? Space.sm : 4,
+              vertical: 6,
+            ),
+            child: Center(widthFactor: 1, child: content),
+          ),
+        ),
+      ),
     );
   }
 }

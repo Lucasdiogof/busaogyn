@@ -21,6 +21,15 @@ String qualityLabel(ArrivalQuality quality) {
   };
 }
 
+/// Rótulo curto para os selos compactos das chegadas.
+String qualityShortLabel(ArrivalQuality quality) {
+  return switch (quality) {
+    ArrivalQuality.realtime => 'Tempo real',
+    ArrivalQuality.scheduled => 'Programado',
+    ArrivalQuality.unknown => 'Não confirmado',
+  };
+}
+
 /// Acompanhar só faz sentido com GPS e identidade de veículo da fonte.
 bool canTrack(Arrival arrival) {
   return displayQuality(arrival) == ArrivalQuality.realtime &&
@@ -139,4 +148,142 @@ Freshness arrivalsFreshness(StopArrivalsLoaded state, DateTime now) {
     return const Freshness('Atualizado agora', FreshnessTone.fresh);
   }
   return Freshness('Atualizado há ${ageLabel(age)}', FreshnessTone.aging);
+}
+
+/// Tom do indicador de status no topo do mapa.
+enum LiveTone {
+  /// Dado com GPS da fonte, consultado há pouco: único caso "Ao vivo".
+  live,
+
+  /// Só horário de tabela (ou nenhuma previsão): nada é "ao vivo".
+  scheduled,
+
+  /// Havia tempo real, mas a última consulta já envelheceu.
+  aging,
+
+  /// Fonte instável, dado desatualizado ou posição indisponível.
+  stale,
+}
+
+class LiveStatus {
+  const LiveStatus(this.label, this.detail, this.tone, {this.receivedAt});
+
+  final String label;
+  final String detail;
+  final LiveTone tone;
+
+  /// Quando o dado exibido chegou; muda a cada resposta nova.
+  final DateTime? receivedAt;
+
+  String get semantics => '$label, $detail';
+}
+
+bool hasRealtimeArrival(List<ArrivalGroup> groups) {
+  for (final group in groups) {
+    if (displayQuality(group.next) == ArrivalQuality.realtime) return true;
+    final following = group.following;
+    if (following != null &&
+        displayQuality(following) == ArrivalQuality.realtime) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// Status resumido do que está na tela. Responder não basta para ser "Ao
+/// vivo": é preciso dado em tempo real (GPS da fonte), não marcado como stale
+/// e consultado dentro de [recentThresholdSeconds]. `null` quando não há o
+/// que qualificar (antes da primeira consulta, carregando ou com erro).
+LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
+  if (state is! StopArrivalsLoaded) return null;
+
+  final tracking = state.tracking;
+  if (tracking != null) {
+    final snapshot = tracking.vehicle;
+    if (snapshot?.data?.position == null) {
+      return tracking.phase == TrackingPhase.searching
+          ? const LiveStatus('Buscando', 'posição', LiveTone.scheduled)
+          : const LiveStatus('Sem posição', 'do ônibus', LiveTone.stale);
+    }
+    final age = snapshotAgeSeconds(
+      apiAgeSeconds: snapshot!.ageSeconds,
+      receivedAt: tracking.receivedAt,
+      now: now,
+    );
+    if (snapshot.stale || tracking.phase != TrackingPhase.active) {
+      return LiveStatus('Desatualizado', 'há ${ageLabel(age)}', LiveTone.stale);
+    }
+    if (age <= recentThresholdSeconds) {
+      return LiveStatus(
+        'Ao vivo',
+        'posição há ${ageLabel(age)}',
+        LiveTone.live,
+        receivedAt: tracking.receivedAt,
+      );
+    }
+    return LiveStatus('Posição', 'há ${ageLabel(age)}', LiveTone.aging);
+  }
+
+  final age = snapshotAgeSeconds(
+    apiAgeSeconds: state.arrivals.ageSeconds,
+    receivedAt: state.arrivalsReceivedAt,
+    now: now,
+  );
+  if (state.arrivals.stale || state.refreshError != null) {
+    return LiveStatus('Desatualizado', 'há ${ageLabel(age)}', LiveTone.stale);
+  }
+  final groups = state.arrivals.data;
+  if (groups.isEmpty) {
+    return const LiveStatus('Sem previsão', 'agora', LiveTone.scheduled);
+  }
+  if (!hasRealtimeArrival(groups)) {
+    return const LiveStatus('Programado', 'sem GPS', LiveTone.scheduled);
+  }
+  if (age <= recentThresholdSeconds) {
+    return LiveStatus(
+      'Ao vivo',
+      age <= 5 ? 'agora' : 'há ${ageLabel(age)}',
+      LiveTone.live,
+      receivedAt: state.arrivalsReceivedAt,
+    );
+  }
+  return LiveStatus('Previsão', 'há ${ageLabel(age)}', LiveTone.aging);
+}
+
+/// "posição há 8 s" para o cabeçalho do acompanhamento.
+String? positionAgeLabel(TrackingInfo tracking, DateTime now) {
+  final snapshot = tracking.vehicle;
+  if (snapshot?.data?.position == null) return null;
+  final age = snapshotAgeSeconds(
+    apiAgeSeconds: snapshot!.ageSeconds,
+    receivedAt: tracking.receivedAt,
+    now: now,
+  );
+  return 'posição há ${ageLabel(age)}';
+}
+
+/// Chegada do ônibus acompanhado entre as chegadas do ponto consultado.
+({ArrivalGroup group, Arrival arrival})? trackedArrival(
+  List<ArrivalGroup> groups,
+  String vehicleNumber,
+) {
+  for (final group in groups) {
+    if (group.next.vehicleNumber == vehicleNumber) {
+      return (group: group, arrival: group.next);
+    }
+    final following = group.following;
+    if (following?.vehicleNumber == vehicleNumber) {
+      return (group: group, arrival: following!);
+    }
+  }
+  return null;
+}
+
+/// Mantém o prefixo curto do destino ("T", "PQ") colado à palavra seguinte,
+/// para "T MARANATA" não quebrar como "T" / "MARANATA".
+String destinationLabel(String destination) {
+  return destination.trim().replaceFirstMapped(
+    RegExp(r'^([A-Za-zÀ-ÿ]{1,2}\.?)\s+(?=\S)'),
+    (match) => '${match[1]} ',
+  );
 }

@@ -3,38 +3,34 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../cubit/stop_arrivals_cubit.dart';
-import '../formatters/transit_labels.dart';
 import 'arrival_card.dart';
-import 'tracking_card.dart';
 
-/// Conteúdo rolável do painel (bottom sheet no celular, lateral em telas
-/// largas). [header] fica no topo da lista (alça do sheet, por exemplo).
+/// Exemplo da intro; é um ponto real da RMTC, não um favorito.
+const exampleStopId = '30402';
+
+/// Conteúdo da aba Ponto: intro, carregamento, erro ou chegadas do ponto.
 class ArrivalsPanel extends StatelessWidget {
   const ArrivalsPanel({
     required this.state,
-    required this.scrollController,
     required this.onRetry,
     required this.onRefresh,
     required this.onTrack,
-    required this.onStopTracking,
-    required this.clock,
-    this.header,
+    required this.onOpenTracking,
+    required this.onExample,
     super.key,
   });
 
   final StopArrivalsState state;
-  final ScrollController? scrollController;
   final ValueChanged<String?> onRetry;
   final VoidCallback onRefresh;
   final ValueChanged<String> onTrack;
-  final VoidCallback onStopTracking;
-  final DateTime Function() clock;
-  final Widget? header;
+  final VoidCallback onOpenTracking;
+  final ValueChanged<String> onExample;
 
   @override
   Widget build(BuildContext context) {
     final children = switch (state) {
-      StopArrivalsInitial() => const [_Intro()],
+      StopArrivalsInitial() => [_Intro(onExample: onExample)],
       StopArrivalsLoading(:final stopId) => [_LoadingView(stopId: stopId)],
       StopArrivalsFailure(:final message, :final stopId) => [
         MessageView(
@@ -54,33 +50,53 @@ class ArrivalsPanel extends StatelessWidget {
       final StopArrivalsLoaded loaded => _loaded(context, loaded),
     };
 
-    return ListView(
-      controller: scrollController,
-      padding: EdgeInsets.zero,
-      children: [
-        ?header,
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Space.md,
-            Space.xxs,
-            Space.md,
-            Space.xl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
-        ),
-      ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
     );
   }
 
   List<Widget> _loaded(BuildContext context, StopArrivalsLoaded state) {
+    final tokens = context.tokens;
     final arrivals = state.arrivals.data;
     final tracking = state.tracking;
 
     return [
-      _StopHeader(state: state, onRefresh: onRefresh, clock: clock),
+      if (tracking != null) ...[
+        _TrackingBanner(tracking: tracking, onOpen: onOpenTracking),
+        const SizedBox(height: Space.sm),
+      ],
+      SectionLabel(
+        icon: Icons.schedule_rounded,
+        label: 'Próximos ônibus',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              arrivals.length == 1 ? '1 linha' : '${arrivals.length} linhas',
+              style: monoStyle(
+                TextStyle(fontSize: 12, color: tokens.mutedText),
+              ),
+            ),
+            const SizedBox(width: Space.xxs),
+            SizedBox.square(
+              dimension: 36,
+              child: IconButton(
+                onPressed: state.refreshing ? null : onRefresh,
+                tooltip: 'Atualizar chegadas',
+                padding: EdgeInsets.zero,
+                iconSize: 20,
+                icon: state.refreshing
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+              ),
+            ),
+          ],
+        ),
+      ),
       if (state.refreshError != null) ...[
         const SizedBox(height: Space.xs),
         _InlineNotice(
@@ -97,16 +113,7 @@ class ArrivalsPanel extends StatelessWidget {
           text: 'A fonte está instável. Mostrando o último dado válido.',
         ),
       ],
-      if (tracking != null) ...[
-        const SizedBox(height: Space.sm),
-        TrackingCard(
-          tracking: tracking,
-          arrivals: arrivals,
-          onStop: onStopTracking,
-          clock: clock,
-        ),
-      ],
-      const SizedBox(height: Space.md),
+      const SizedBox(height: Space.xs),
       if (arrivals.isEmpty)
         MessageView(
           icon: Icons.departure_board_rounded,
@@ -120,75 +127,102 @@ class ArrivalsPanel extends StatelessWidget {
             label: const Text('Atualizar'),
           ),
         )
-      else ...[
-        Text(
-          arrivals.length == 1
-              ? 'Próxima chegada · 1 linha'
-              : 'Próximas chegadas · ${arrivals.length} linhas',
-          style: Theme.of(
-            context,
-          ).textTheme.labelLarge?.copyWith(color: context.tokens.mutedText),
-        ),
-        const SizedBox(height: Space.xs),
+      else
         for (final group in arrivals) ...[
           ArrivalCard(group: group, tracking: tracking, onTrack: onTrack),
-          const SizedBox(height: Space.sm),
+          const SizedBox(height: Space.xs),
         ],
-      ],
+      const SizedBox(height: Space.xxs),
+      const FootNote(
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'Tempo real',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              TextSpan(
+                text: ': posição informada pela RMTC, pode ser acompanhada. ',
+              ),
+              TextSpan(
+                text: 'Programado',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              TextSpan(text: ': horário de tabela, sem GPS.'),
+            ],
+          ),
+        ),
+      ),
     ];
   }
 }
 
-class _StopHeader extends StatelessWidget {
-  const _StopHeader({
-    required this.state,
-    required this.onRefresh,
-    required this.clock,
-  });
+/// Lembra que há um ônibus acompanhado e leva à aba Acompanhando.
+class _TrackingBanner extends StatelessWidget {
+  const _TrackingBanner({required this.tracking, required this.onOpen});
 
-  final StopArrivalsLoaded state;
-  final VoidCallback onRefresh;
-  final DateTime Function() clock;
+  final TrackingInfo tracking;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
-
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ponto ${state.stopId}', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 2),
-              PeriodicRebuild(
-                builder: (context) {
-                  final freshness = arrivalsFreshness(state, clock());
-                  final color = freshness.tone == FreshnessTone.stale
-                      ? tokens.unconfirmed
-                      : tokens.mutedText;
-                  return Text(
-                    state.refreshing ? 'Atualizando…' : freshness.text,
-                    style: theme.textTheme.bodySmall?.copyWith(color: color),
-                  );
-                },
-              ),
-            ],
+    return Semantics(
+      container: true,
+      child: Material(
+        color: tokens.accentSoft,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.card),
+          side: BorderSide(color: tokens.accent),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(Space.sm, 10, Space.xs, 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.directions_bus_rounded,
+                  size: 20,
+                  color: tokens.accentText,
+                ),
+                const SizedBox(width: Space.xs),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(text: 'Acompanhando o ônibus '),
+                        TextSpan(
+                          text: tracking.vehicleNumber,
+                          style: monoStyle(
+                            const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      color: tokens.strongText,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Ver',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: tokens.strongText,
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: tokens.strongText),
+              ],
+            ),
           ),
         ),
-        IconButton.filledTonal(
-          onPressed: state.refreshing ? null : onRefresh,
-          tooltip: 'Atualizar chegadas',
-          icon: state.refreshing
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.refresh_rounded),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -206,7 +240,7 @@ class _InlineNotice extends StatelessWidget {
       padding: const EdgeInsets.all(Space.sm),
       decoration: BoxDecoration(
         color: tokens.unconfirmedContainer,
-        borderRadius: BorderRadius.circular(Radii.card - 4),
+        borderRadius: BorderRadius.circular(Radii.plate),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,72 +263,55 @@ class _InlineNotice extends StatelessWidget {
 }
 
 class _Intro extends StatelessWidget {
-  const _Intro();
+  const _Intro({required this.onExample});
+
+  final ValueChanged<String> onExample;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
-
-    Widget step(IconData icon, String title, String body) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: Space.sm),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(Radii.chip + 2),
-              ),
-              child: Icon(icon, size: 20, color: theme.colorScheme.primary),
-            ),
-            const SizedBox(width: Space.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: theme.textTheme.titleSmall),
-                  Text(
-                    body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: tokens.mutedText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Onde está o seu ônibus?', style: theme.textTheme.titleLarge),
-        const SizedBox(height: Space.xxs),
-        Text(
-          'Consulte um ponto pelo código RMTC, por exemplo 30402.',
-          style: theme.textTheme.bodyMedium?.copyWith(color: tokens.mutedText),
+        MessageView(
+          icon: Icons.location_on_outlined,
+          title: 'Digite o código do ponto',
+          body:
+              'Você vê as próximas chegadas de cada linha e acompanha o '
+              'ônibus no mapa.',
+          action: Semantics(
+            button: true,
+            label: 'Consultar o ponto de exemplo $exampleStopId',
+            excludeSemantics: true,
+            child: ActionChip(
+              onPressed: () => onExample(exampleStopId),
+              avatar: Icon(
+                Icons.north_east_rounded,
+                size: 16,
+                color: tokens.accentText,
+              ),
+              label: Text(
+                'Exemplo: $exampleStopId',
+                style: monoStyle(
+                  TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: tokens.strongText,
+                  ),
+                ),
+              ),
+              backgroundColor: tokens.card,
+              side: BorderSide(color: tokens.hairline),
+              shape: const StadiumBorder(),
+            ),
+          ),
         ),
-        const SizedBox(height: Space.md),
-        step(
-          Icons.signpost_outlined,
-          'Digite o código do ponto',
-          'Veja as próximas chegadas de cada linha.',
-        ),
-        step(
-          Icons.sensors_rounded,
-          'Escolha uma chegada em tempo real',
-          'Só ônibus com GPS informado pela fonte podem ser acompanhados.',
-        ),
-        step(
-          Icons.map_outlined,
-          'Acompanhe no mapa',
-          'A posição informada pela RMTC é consultada a cada 15 s.',
+        const SizedBox(height: Space.sm),
+        const FootNote(
+          child: Text(
+            'O código fica na placa do ponto. Só ônibus com GPS informado '
+            'pela fonte podem ser acompanhados; a posição é consultada a '
+            'cada 15 s.',
+          ),
         ),
       ],
     );
@@ -308,25 +325,31 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget card() => const Card(
-      child: Padding(
-        padding: EdgeInsets.all(Space.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    final tokens = context.tokens;
+    Widget row() => Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(Radii.card),
+        border: Border.all(color: tokens.hairline),
+      ),
+      child: const Row(
+        children: [
+          SkeletonBlock(height: 44, width: 52, radius: Radii.plate),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBlock(height: 30, width: 58),
-                SizedBox(width: Space.sm),
-                Expanded(child: SkeletonBlock(height: 16)),
+                SkeletonBlock(height: 14),
+                SizedBox(height: 6),
+                SkeletonBlock(height: 10, width: 80),
               ],
             ),
-            SizedBox(height: Space.md),
-            SkeletonBlock(height: 26, width: 96),
-            SizedBox(height: Space.xs),
-            SkeletonBlock(height: 18, width: 140),
-          ],
-        ),
+          ),
+          SizedBox(width: Space.sm),
+          SkeletonBlock(height: 48, width: 58, radius: Radii.plate),
+        ],
       ),
     );
 
@@ -336,21 +359,18 @@ class _LoadingView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            stopId == null ? 'Consultando…' : 'Ponto $stopId',
-            style: Theme.of(context).textTheme.titleLarge,
+          SectionLabel(
+            icon: Icons.schedule_rounded,
+            label: stopId == null
+                ? 'Consultando…'
+                : 'Consultando o ponto $stopId',
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Consultando chegadas…',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: context.tokens.mutedText),
-          ),
-          const SizedBox(height: Space.md),
-          card(),
           const SizedBox(height: Space.sm),
-          card(),
+          row(),
+          const SizedBox(height: Space.xs),
+          row(),
+          const SizedBox(height: Space.xs),
+          row(),
         ],
       ),
     );

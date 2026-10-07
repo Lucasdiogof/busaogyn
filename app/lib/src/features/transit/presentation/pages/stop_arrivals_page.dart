@@ -1,18 +1,28 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/config/map_config.dart';
 import '../../../../core/theme/busao_tokens.dart';
+import '../../../../core/ui/busao_components.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../cubit/stop_arrivals_cubit.dart';
+import '../formatters/transit_labels.dart';
 import '../widgets/arrivals_panel.dart';
+import '../widgets/home_chrome.dart';
+import '../widgets/map_follow_controller.dart';
 import '../widgets/search_header.dart';
+import '../widgets/settings_panel.dart';
 import '../widgets/tracked_vehicle_map.dart';
+import '../widgets/tracking_card.dart';
 
-/// Home map-first: o mapa ocupa a tela; busca no topo; chegadas e
-/// acompanhamento num bottom sheet (celular) ou painel lateral (telas largas).
+/// Home map-first: o mapa ocupa a tela inteira e tudo flutua sobre ele —
+/// marca e status no topo, cartão de contexto, painel (bottom sheet no
+/// celular, coluna central em telas largas) e o dock com Ponto,
+/// Acompanhando e Ajustes.
 class StopArrivalsPage extends StatefulWidget {
   const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
 
@@ -23,23 +33,68 @@ class StopArrivalsPage extends StatefulWidget {
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
 }
 
+/// Posições dos elementos flutuantes para um tamanho de tela.
+class _Geometry {
+  _Geometry(MediaQueryData media)
+    : size = media.size,
+      safe = media.padding,
+      wide = media.size.width >= Breakpoints.panel {
+    final columnWidth = wide
+        ? math.min(Chrome.column, size.width - Chrome.gutter * 2)
+        : size.width - Chrome.gutter * 2;
+    left = wide ? (size.width - columnWidth) / 2 : Chrome.gutter;
+    width = columnWidth;
+    top = safe.top + Space.sm;
+    headerTop = top + Chrome.pill + 10;
+    headerBottom = headerTop + Chrome.header;
+    dockBottom = math.max(safe.bottom, Space.xs) + Space.xs;
+    dockTop = size.height - dockBottom - Chrome.dock;
+    panelBottom = size.height - dockTop + Space.xs;
+  }
+
+  /// Faixa de mapa que sempre sobra sob o cabeçalho com o painel aberto.
+  static const mapBand = 56.0;
+
+  final Size size;
+  final EdgeInsets safe;
+  final bool wide;
+  late final double left;
+  late final double width;
+  late final double top;
+  late final double headerTop;
+  late final double headerBottom;
+  late final double dockBottom;
+  late final double dockTop;
+
+  /// Distância da base da tela até a base do painel (acima do dock).
+  late final double panelBottom;
+
+  /// Topo máximo do painel.
+  double get panelTop => headerBottom + mapBand;
+
+  /// Altura disponível para o painel.
+  double get panelArea => size.height - panelBottom - panelTop;
+}
+
 class _StopArrivalsPageState extends State<StopArrivalsPage>
     with WidgetsBindingObserver {
-  static const _sheetMin = 0.22;
-  static const _sheetMid = 0.48;
-  static const _sheetMax = 0.92;
-
-  /// Faixa de mapa que sempre sobra entre o cabeçalho e o sheet expandido,
-  /// onde fica o controle nativo de atribuição.
-  static const _mapBand = 56.0;
-  static const _sideWidth = 400.0;
-
-  /// Altura aproximada do cabeçalho flutuante (marca + campo de busca).
-  static const _headerHeight = 112.0;
+  static const _sheetMid = 0.56;
+  static const _sheetMax = 1.0;
+  static const _sheetMinPixels = 132.0;
 
   final _stopController = TextEditingController();
+  final _searchFocus = FocusNode();
   final _sheetController = DraggableScrollableController();
   final _sheetExtent = ValueNotifier<double>(_sheetMid);
+
+  /// Altura real do painel em telas largas (para a câmera e a atribuição).
+  final _panelHeight = ValueNotifier<double>(0);
+  final _follow = MapFollowController();
+
+  HomeTab _tab = HomeTab.stop;
+
+  /// Campo de busca aberto por cima de um ponto já exibido.
+  bool _searching = false;
 
   DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
@@ -71,14 +126,23 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopController.dispose();
+    _searchFocus.dispose();
     _sheetController.dispose();
     _sheetExtent.dispose();
+    _panelHeight.dispose();
+    _follow.dispose();
     super.dispose();
   }
 
   void _search() {
     FocusScope.of(context).unfocus();
+    setState(() => _searching = false);
     context.read<StopArrivalsCubit>().load(_stopController.text);
+  }
+
+  void _searchExample(String stopId) {
+    _stopController.text = stopId;
+    _search();
   }
 
   void _retry(String? stopId) {
@@ -87,10 +151,31 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     context.read<StopArrivalsCubit>().load(stopId);
   }
 
+  void _openSearch() {
+    _stopController.clear();
+    setState(() => _searching = true);
+    _searchFocus.requestFocus();
+  }
+
+  void _cancelSearch() {
+    FocusScope.of(context).unfocus();
+    setState(() => _searching = false);
+  }
+
   void _track(String vehicleNumber) {
     context.read<StopArrivalsCubit>().track(vehicleNumber);
-    // Abre espaço para o mapa sem esconder o cartão do acompanhamento.
-    _animateSheet(0.36);
+    _select(HomeTab.tracking);
+  }
+
+  void _stopTracking() {
+    context.read<StopArrivalsCubit>().stopTracking();
+    _select(HomeTab.stop);
+  }
+
+  void _select(HomeTab tab) {
+    if (tab != HomeTab.stop) FocusScope.of(context).unfocus();
+    if (_tab != tab) setState(() => _tab = tab);
+    if (_sheetExtent.value < _sheetMid - 0.01) _animateSheet(_sheetMid);
   }
 
   void _animateSheet(double size) {
@@ -106,34 +191,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _onStateChanged(BuildContext context, StopArrivalsState state) {
     // Resultado novo de ponto: mostra as chegadas.
-    if (state is StopArrivalsLoaded && state.tracking == null) {
-      if (_sheetExtent.value < _sheetMid - 0.01) _animateSheet(_sheetMid);
+    if (state is StopArrivalsLoaded &&
+        state.tracking == null &&
+        _tab == HomeTab.stop &&
+        _sheetExtent.value < _sheetMid - 0.01) {
+      _animateSheet(_sheetMid);
     }
-  }
-
-  ArrivalsPanel _panel(
-    StopArrivalsState state, {
-    ScrollController? scroll,
-    Widget? header,
-  }) {
-    final cubit = context.read<StopArrivalsCubit>();
-    return ArrivalsPanel(
-      state: state,
-      scrollController: scroll,
-      header: header,
-      onRetry: _retry,
-      onRefresh: cubit.refresh,
-      onTrack: _track,
-      onStopTracking: cubit.stopTracking,
-      clock: _clock,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final wide = media.size.width >= Breakpoints.panel;
-    final safe = media.padding;
+    final geometry = _Geometry(MediaQuery.of(context));
+    final styles = MapConfig.styles;
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -142,105 +212,401 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         child: Stack(
           children: [
             // Índice 0 fixo em ambos os layouts: o mapa nunca é recriado por
-            // estado do Cubit, por arrastar o sheet ou por redimensionar.
+            // estado do Cubit, por aba, por arrastar o sheet, por tema ou por
+            // redimensionar.
             Positioned.fill(
-              child: ValueListenableBuilder<double>(
-                valueListenable: _sheetExtent,
-                builder: (context, extent, _) {
-                  final cameraPadding = wide
-                      ? EdgeInsets.only(left: _sideWidth + Space.md * 2)
-                      : EdgeInsets.only(
-                          top: safe.top + _headerHeight,
-                          bottom: media.size.height * extent.clamp(0, 0.6),
-                        );
-                  final controlsPadding = wide
-                      ? EdgeInsets.only(
-                          top: safe.top + Space.md,
-                          right: Space.md,
-                        )
-                      : EdgeInsets.only(
-                          top: safe.top + _headerHeight + Space.md + Space.xs,
-                          right: Space.md,
-                        );
-                  // Com o sheet quase todo aberto não sobra mapa para o botão
-                  // de centralizar sem cobrir a atribuição.
-                  final mapTop = safe.top + _headerHeight + Space.md;
-                  final sheetTop = media.size.height * (1 - extent);
-                  final showControls =
-                      wide || sheetTop - mapTop >= 48 + _mapBand + Space.md;
-                  return _MapBinding(
-                    mapBuilder: widget.mapBuilder,
-                    cameraPadding: cameraPadding,
-                    controlsPadding: controlsPadding,
-                    showControls: showControls,
-                    attributionBottom: wide ? 0 : media.size.height * extent,
-                  );
-                },
+              child: ListenableBuilder(
+                listenable: Listenable.merge([_sheetExtent, _panelHeight]),
+                builder: (context, _) => _MapBinding(
+                  mapBuilder: widget.mapBuilder,
+                  styleString: styles.forBrightness(brightness),
+                  fallbackStyleString: styles.fallback,
+                  followController: _follow,
+                  layout: _mapLayout(geometry),
+                ),
               ),
             ),
-            if (wide)
-              _SidePanel(
-                key: const ValueKey('side-panel'),
-                width: _sideWidth,
-                search: _searchHeader(floating: false),
-                panelBuilder: (state) => _panel(state),
+            if (geometry.wide)
+              Positioned(
+                key: const ValueKey('column-panel'),
+                left: geometry.left,
+                width: geometry.width,
+                bottom: geometry.panelBottom,
+                top: geometry.panelTop,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _SizeReporter(
+                    onHeight: (height) => _panelHeight.value = height,
+                    child: _ColumnPanel(child: _panelContent()),
+                  ),
+                ),
               )
-            else ...[
-              NotificationListener<DraggableScrollableNotification>(
+            else
+              Positioned(
                 key: const ValueKey('sheet'),
-                onNotification: (notification) {
-                  _sheetExtent.value = notification.extent;
-                  return false;
-                },
-                child: DraggableScrollableSheet(
-                  controller: _sheetController,
-                  initialChildSize: _sheetMid,
-                  minChildSize: _sheetMin,
-                  maxChildSize: _sheetMaxFor(media),
-                  snap: true,
-                  snapSizes: const [_sheetMid],
-                  builder: (context, scroll) => _SheetSurface(
-                    child: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
-                      builder: (context, state) => _panel(
-                        state,
-                        scroll: scroll,
-                        header: const _SheetHandle(),
-                      ),
+                left: geometry.left,
+                width: geometry.width,
+                top: geometry.panelTop,
+                bottom: geometry.panelBottom,
+                child: NotificationListener<DraggableScrollableNotification>(
+                  onNotification: (notification) {
+                    _sheetExtent.value = notification.extent;
+                    return false;
+                  },
+                  child: DraggableScrollableSheet(
+                    controller: _sheetController,
+                    initialChildSize: _sheetMid,
+                    minChildSize: _sheetMinFor(geometry),
+                    maxChildSize: _sheetMax,
+                    snap: true,
+                    snapSizes: const [_sheetMid],
+                    builder: (context, scroll) => _SheetSurface(
+                      scrollController: scroll,
+                      child: _panelContent(),
                     ),
                   ),
                 ),
               ),
-              Positioned(
-                key: const ValueKey('header'),
-                top: safe.top + Space.sm,
-                left: Space.sm,
-                right: Space.sm,
-                child: _searchHeader(floating: true),
+            Positioned(
+              key: const ValueKey('top-bar'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.top,
+              child: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+                builder: (context, state) => PeriodicRebuild(
+                  builder: (context) =>
+                      TopBar(status: liveStatus(state, _clock())),
+                ),
               ),
-            ],
+            ),
+            Positioned(
+              key: const ValueKey('header'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.headerTop,
+              child: _header(),
+            ),
+            Positioned(
+              key: const ValueKey('dock'),
+              left: geometry.left,
+              width: geometry.width,
+              bottom: geometry.dockBottom,
+              child: BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
+                selector: (state) =>
+                    state is StopArrivalsLoaded && state.tracking != null,
+                builder: (context, trackingActive) => AppDock(
+                  selected: _tab,
+                  onSelected: _select,
+                  trackingActive: trackingActive,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  /// O sheet expandido para abaixo do cabeçalho + [_mapBand].
-  double _sheetMaxFor(MediaQueryData media) {
-    final reserved = media.padding.top + Space.sm + _headerHeight + _mapBand;
-    return (1 - reserved / media.size.height).clamp(_sheetMid + 0.1, _sheetMax);
+  double _sheetMinFor(_Geometry geometry) =>
+      (_sheetMinPixels / geometry.panelArea).clamp(0.12, _sheetMid - 0.1);
+
+  _MapLayout _mapLayout(_Geometry g) {
+    final double coveredBottom;
+    if (g.wide) {
+      coveredBottom = g.panelBottom + _panelHeight.value;
+    } else {
+      final sheetTop =
+          g.size.height - g.panelBottom - g.panelArea * _sheetExtent.value;
+      coveredBottom = g.size.height - sheetTop;
+    }
+    final mapTop = g.headerBottom;
+    final visible = g.size.height - coveredBottom - mapTop;
+
+    return _MapLayout(
+      cameraPadding: EdgeInsets.only(
+        top: mapTop,
+        bottom: math.min(coveredBottom, g.size.height * 0.75),
+      ),
+      // Celular: à direita, sob o cabeçalho. Largo: à esquerda da coluna,
+      // na altura do cabeçalho; cresce para a esquerda quando pausado.
+      controlsPadding: g.wide
+          ? EdgeInsets.only(
+              top: g.headerTop + (Chrome.header - 48) / 2,
+              right: g.size.width - g.left + Space.sm,
+            )
+          : EdgeInsets.only(top: mapTop + Space.sm, right: Chrome.gutter),
+      // Em telas largas o canto inferior direito do mapa fica livre.
+      attributionBottom: g.wide ? 0 : coveredBottom,
+      // Sem faixa de mapa suficiente o botão cobriria a atribuição.
+      showControls: g.wide || visible >= 48 + Space.sm + _Geometry.mapBand,
+    );
   }
 
-  Widget _searchHeader({required bool floating}) {
-    return BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
-      selector: (state) => state is StopArrivalsLoading,
-      builder: (context, loading) => SearchHeader(
-        controller: _stopController,
-        loading: loading,
-        onSearch: _search,
-        floating: floating,
+  Widget _header() {
+    return BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+      builder: (context, state) {
+        final (Key key, Widget child) = switch (_tab) {
+          HomeTab.stop => _stopHeader(state),
+          HomeTab.tracking => _trackingHeader(state),
+          HomeTab.settings => (
+            const ValueKey('header-settings'),
+            ContextHeader(
+              leading: const HeaderTile(Icons.tune_rounded),
+              title: 'Ajustes',
+              subtitle: const Text('Aparência e sobre'),
+              action: IconButton(
+                tooltip: 'Fechar ajustes',
+                onPressed: () => _select(HomeTab.stop),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+          ),
+        };
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.topCenter,
+            children: [...previous, ?current],
+          ),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, -0.08),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: KeyedSubtree(key: key, child: child),
+        );
+      },
+    );
+  }
+
+  (Key, Widget) _stopHeader(StopArrivalsState state) {
+    final stopId = switch (state) {
+      StopArrivalsLoaded(:final stopId) => stopId,
+      StopArrivalsLoading(:final stopId) => stopId,
+      _ => null,
+    };
+    final showSearch =
+        _searching ||
+        stopId == null ||
+        state is StopArrivalsFailure ||
+        state is StopArrivalsInitial;
+
+    if (showSearch) {
+      return (
+        const ValueKey('header-search'),
+        SearchHeader(
+          controller: _stopController,
+          focusNode: _searchFocus,
+          loading: state is StopArrivalsLoading,
+          onSearch: _search,
+          onCancel: _searching && state is StopArrivalsLoaded
+              ? _cancelSearch
+              : null,
+        ),
+      );
+    }
+
+    return (
+      ValueKey('header-stop-$stopId'),
+      ContextHeader(
+        leading: const HeaderTile(Icons.location_on_outlined),
+        title: 'Ponto $stopId',
+        subtitle: state is StopArrivalsLoaded
+            ? PeriodicRebuild(
+                builder: (context) {
+                  final freshness = arrivalsFreshness(state, _clock());
+                  final lines = state.arrivals.data.length;
+                  return Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: lines == 1 ? '1 linha' : '$lines linhas',
+                          style: TextStyle(color: context.tokens.accentText),
+                        ),
+                        TextSpan(
+                          text:
+                              ' · ${state.refreshing ? 'atualizando…' : freshness.text.toLowerCase()}',
+                          style: freshness.tone == FreshnessTone.stale
+                              ? TextStyle(color: context.tokens.unconfirmed)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : const Text('consultando chegadas…'),
+        action: IconButton(
+          tooltip: 'Buscar outro ponto',
+          onPressed: _openSearch,
+          icon: const Icon(Icons.search_rounded),
+        ),
       ),
     );
   }
+
+  (Key, Widget) _trackingHeader(StopArrivalsState state) {
+    final tracking = state is StopArrivalsLoaded ? state.tracking : null;
+    if (state is! StopArrivalsLoaded || tracking == null) {
+      return (
+        const ValueKey('header-tracking-empty'),
+        const ContextHeader(
+          leading: HeaderTile(Icons.directions_bus_outlined, filled: false),
+          title: 'Acompanhando',
+          subtitle: Text('nenhum ônibus agora'),
+        ),
+      );
+    }
+
+    final vehicle = tracking.vehicle?.data;
+    final match = trackedArrival(state.arrivals.data, tracking.vehicleNumber);
+    final routeId = vehicle?.routeId ?? match?.group.routeId;
+    final destination = vehicle?.destination ?? match?.group.destination;
+    final tokens = context.tokens;
+
+    return (
+      ValueKey('header-tracking-${tracking.vehicleNumber}'),
+      ContextHeader(
+        leading: routeId != null
+            ? RoutePlate(routeId, filled: true)
+            : const HeaderTile(Icons.directions_bus_rounded),
+        title: 'Ônibus ${tracking.vehicleNumber}',
+        semanticsLabel:
+            'Ônibus ${tracking.vehicleNumber}'
+            '${destination != null ? ', destino $destination' : ''}'
+            ', ponto ${state.stopId}',
+        subtitle: Text.rich(
+          TextSpan(
+            children: [
+              if (destination != null)
+                TextSpan(
+                  text: '${destinationLabel(destination).toUpperCase()} · ',
+                  style: TextStyle(color: tokens.accentText),
+                ),
+              TextSpan(text: 'ponto ${state.stopId}'),
+            ],
+          ),
+        ),
+        action: IconButton(
+          tooltip: 'Parar de acompanhar',
+          onPressed: _stopTracking,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ),
+    );
+  }
+
+  Widget _panelContent() {
+    return BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+      builder: (context, state) {
+        final cubit = context.read<StopArrivalsCubit>();
+        final Widget child = switch (_tab) {
+          HomeTab.stop => ArrivalsPanel(
+            state: state,
+            onRetry: _retry,
+            onRefresh: cubit.refresh,
+            onTrack: _track,
+            onOpenTracking: () => _select(HomeTab.tracking),
+            onExample: _searchExample,
+          ),
+          HomeTab.tracking => switch (state) {
+            StopArrivalsLoaded(:final tracking?) => TrackingCard(
+              state: state,
+              tracking: tracking,
+              onStop: _stopTracking,
+              clock: _clock,
+              followController: _follow,
+            ),
+            _ => _TrackingEmpty(
+              hasStop: state is StopArrivalsLoaded,
+              onOpenStop: () => _select(HomeTab.stop),
+            ),
+          },
+          HomeTab.settings => const SettingsPanel(),
+        };
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.topCenter,
+            children: [...previous, ?current],
+          ),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: KeyedSubtree(key: ValueKey(_tab), child: child),
+        );
+      },
+    );
+  }
+}
+
+class _TrackingEmpty extends StatelessWidget {
+  const _TrackingEmpty({required this.hasStop, required this.onOpenStop});
+
+  final bool hasStop;
+  final VoidCallback onOpenStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MessageView(
+          icon: Icons.directions_bus_outlined,
+          title: 'Nenhum ônibus acompanhado',
+          body: hasStop
+              ? 'Nas chegadas do ponto, toque no número de um ônibus em '
+                    'tempo real para acompanhá-lo no mapa.'
+              : 'Consulte um ponto e toque no número de um ônibus em tempo '
+                    'real para acompanhá-lo no mapa.',
+          action: FilledButton.icon(
+            onPressed: onOpenStop,
+            icon: const Icon(Icons.location_on_outlined, size: 20),
+            label: Text(hasStop ? 'Ver chegadas' : 'Buscar um ponto'),
+          ),
+        ),
+        const SizedBox(height: Space.sm),
+        const FootNote(
+          child: Text(
+            'Só ônibus com GPS informado pela RMTC podem ser acompanhados. '
+            'Horários programados não têm posição.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Medidas que o mapa recebe do layout.
+@immutable
+class _MapLayout {
+  const _MapLayout({
+    required this.cameraPadding,
+    required this.controlsPadding,
+    required this.attributionBottom,
+    required this.showControls,
+  });
+
+  final EdgeInsets cameraPadding;
+  final EdgeInsets controlsPadding;
+  final double attributionBottom;
+  final bool showControls;
 }
 
 typedef _MapData = ({String? vehicleNumber, GeoPosition? position, bool stale});
@@ -250,17 +616,17 @@ typedef _MapData = ({String? vehicleNumber, GeoPosition? position, bool stale});
 class _MapBinding extends StatelessWidget {
   const _MapBinding({
     required this.mapBuilder,
-    required this.cameraPadding,
-    required this.controlsPadding,
-    required this.attributionBottom,
-    required this.showControls,
+    required this.styleString,
+    required this.fallbackStyleString,
+    required this.followController,
+    required this.layout,
   });
 
   final VehicleMapBuilder? mapBuilder;
-  final bool showControls;
-  final EdgeInsets cameraPadding;
-  final EdgeInsets controlsPadding;
-  final double attributionBottom;
+  final String styleString;
+  final String fallbackStyleString;
+  final MapFollowController followController;
+  final _MapLayout layout;
 
   static _MapData _select(StopArrivalsState state) {
     if (state is! StopArrivalsLoaded || state.tracking == null) {
@@ -284,32 +650,32 @@ class _MapBinding extends StatelessWidget {
         vehicleNumber: data.vehicleNumber,
         position: data.position,
         stale: data.stale,
-        cameraPadding: cameraPadding,
-        controlsPadding: controlsPadding,
-        attributionBottom: attributionBottom,
-        showControls: showControls,
+        styleString: styleString,
+        fallbackStyleString: fallbackStyleString,
+        followController: followController,
+        cameraPadding: layout.cameraPadding,
+        controlsPadding: layout.controlsPadding,
+        attributionBottom: layout.attributionBottom,
+        showControls: layout.showControls,
         mapBuilder: mapBuilder,
       ),
     );
   }
 }
 
+/// Bottom sheet flutuante (celular): vidro com cantos arredondados, alça e
+/// lista rolável ligada ao [DraggableScrollableSheet].
 class _SheetSurface extends StatelessWidget {
-  const _SheetSurface({required this.child});
+  const _SheetSurface({required this.scrollController, required this.child});
 
+  final ScrollController scrollController;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      elevation: 12,
-      shadowColor: tokens.shadow,
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(Radii.panel),
-      ),
-      clipBehavior: Clip.antiAlias,
+    return GlassSurface(
+      radius: Radii.panel,
+      solid: true,
       // No Web o padrão não arrasta com mouse; sem isso o sheet não abre
       // nem recolhe num navegador de desktop estreito.
       child: ScrollConfiguration(
@@ -321,7 +687,11 @@ class _SheetSurface extends StatelessWidget {
             PointerDeviceKind.stylus,
           },
         ),
-        child: SafeArea(top: false, child: child),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, Space.md),
+          children: [const _SheetHandle(), child],
+        ),
       ),
     );
   }
@@ -333,14 +703,14 @@ class _SheetHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Painel de chegadas. Arraste para expandir ou recolher',
+      label: 'Painel. Arraste para expandir ou recolher',
       child: Center(
         child: Container(
-          margin: const EdgeInsets.only(top: Space.xs, bottom: Space.sm),
+          margin: const EdgeInsets.only(top: 10, bottom: Space.sm),
           width: 40,
-          height: 5,
+          height: 4,
           decoration: BoxDecoration(
-            color: context.tokens.hairline,
+            color: context.tokens.strongText.withValues(alpha: 0.28),
             borderRadius: BorderRadius.circular(Radii.pill),
           ),
         ),
@@ -349,46 +719,62 @@ class _SheetHandle extends StatelessWidget {
   }
 }
 
-class _SidePanel extends StatelessWidget {
-  const _SidePanel({
-    required this.width,
-    required this.search,
-    required this.panelBuilder,
-    super.key,
-  });
+/// Painel da coluna central (tablet/desktop): cresce com o conteúdo até o
+/// espaço disponível e então rola.
+class _ColumnPanel extends StatelessWidget {
+  const _ColumnPanel({required this.child});
 
-  final double width;
-  final Widget search;
-  final Widget Function(StopArrivalsState state) panelBuilder;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final safe = MediaQuery.of(context).padding;
-    return Positioned(
-      left: Space.md + safe.left,
-      top: Space.md + safe.top,
-      bottom: Space.md + safe.bottom,
-      width: width,
-      child: Material(
-        color: Theme.of(context).colorScheme.surface,
-        elevation: 8,
-        shadowColor: tokens.shadow,
-        borderRadius: BorderRadius.circular(Radii.panel),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            search,
-            Divider(height: 1, color: tokens.hairline),
-            const SizedBox(height: Space.sm),
-            Expanded(
-              child: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
-                builder: (context, state) => panelBuilder(state),
-              ),
-            ),
-          ],
+    return GlassSurface(
+      radius: Radii.panel,
+      solid: true,
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, Space.md),
+        children: [child],
+      ),
+    );
+  }
+}
+
+/// Informa a altura do filho após cada layout.
+class _SizeReporter extends StatefulWidget {
+  const _SizeReporter({required this.onHeight, required this.child});
+
+  final ValueChanged<double> onHeight;
+  final Widget child;
+
+  @override
+  State<_SizeReporter> createState() => _SizeReporterState();
+}
+
+class _SizeReporterState extends State<_SizeReporter> {
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<SizeChangedLayoutNotification>(
+      onNotification: (_) {
+        _report();
+        return true;
+      },
+      child: SizeChangedLayoutNotifier(
+        child: Builder(
+          builder: (context) {
+            _report();
+            return widget.child;
+          },
         ),
       ),
     );
+  }
+
+  void _report() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject();
+      if (box is RenderBox && box.hasSize) widget.onHeight(box.size.height);
+    });
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'core/settings/theme_mode_cubit.dart';
 import 'core/theme/app_theme.dart';
 import 'features/transit/domain/repositories/transit_repository.dart';
 import 'features/transit/presentation/cubit/stop_arrivals_cubit.dart';
@@ -13,7 +14,7 @@ class BusaoGynApp extends StatelessWidget {
     this.trackingRefreshInterval = const Duration(seconds: 15),
     this.mapBuilder,
     this.clock,
-    this.themeMode = ThemeMode.system,
+    this.themeStore,
     super.key,
   });
 
@@ -21,25 +22,37 @@ class BusaoGynApp extends StatelessWidget {
   final Duration? trackingRefreshInterval;
   final VehicleMapBuilder? mapBuilder;
   final DateTime Function()? clock;
-  final ThemeMode themeMode;
+
+  /// Sem store, o tema começa em "Sistema" e não é persistido.
+  final ThemePreferenceStore? themeStore;
 
   @override
   Widget build(BuildContext context) {
     return RepositoryProvider<TransitRepository>.value(
       value: repository,
-      child: MaterialApp(
-        title: 'BusãoGyn',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: themeMode,
-        home: BlocProvider(
-          create: (_) => StopArrivalsCubit(
-            repository,
-            trackingRefreshInterval: trackingRefreshInterval,
-            clock: clock,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) =>
+                ThemeModeCubit(themeStore ?? MemoryThemePreferenceStore()),
           ),
-          child: StopArrivalsPage(mapBuilder: mapBuilder, clock: clock),
+          BlocProvider(
+            create: (_) => StopArrivalsCubit(
+              repository,
+              trackingRefreshInterval: trackingRefreshInterval,
+              clock: clock,
+            ),
+          ),
+        ],
+        child: BlocBuilder<ThemeModeCubit, ThemeMode>(
+          builder: (context, themeMode) => MaterialApp(
+            title: 'BusãoGyn',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeMode,
+            home: StopArrivalsPage(mapBuilder: mapBuilder, clock: clock),
+          ),
         ),
       ),
     );

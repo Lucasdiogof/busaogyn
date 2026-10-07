@@ -1,4 +1,6 @@
 import 'package:busaogyn/src/app.dart';
+import 'package:busaogyn/src/core/config/map_config.dart';
+import 'package:busaogyn/src/core/settings/theme_mode_cubit.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
 import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dart';
@@ -19,56 +21,81 @@ Widget _fakeMap(BuildContext context, MapSurfaceParams params) {
 
 final _now = DateTime(2026, 10, 6, 17);
 
-TransitSnapshot<T> _snapshot<T>(T data) =>
-    TransitSnapshot(data: data, fetchedAt: _now, stale: false, ageSeconds: 0);
+TransitSnapshot<T> _snapshot<T>(T data, {bool stale = false}) =>
+    TransitSnapshot(data: data, fetchedAt: _now, stale: stale, ageSeconds: 0);
+
+const _realtimeGroups = [
+  ArrivalGroup(
+    routeId: '020',
+    destination: 'T. BIBLIA',
+    next: Arrival(
+      vehicleId: 'rmtc:20529',
+      vehicleNumber: '20529',
+      minutes: 0,
+      plannedArrival: '14:02',
+      predictedArrival: '14:03',
+      realtime: true,
+      quality: ArrivalQuality.realtime,
+    ),
+    following: Arrival(
+      vehicleId: null,
+      vehicleNumber: null,
+      minutes: 17,
+      plannedArrival: '14:19',
+      predictedArrival: null,
+      realtime: false,
+      quality: ArrivalQuality.scheduled,
+    ),
+  ),
+  ArrivalGroup(
+    routeId: '003',
+    destination: 'T MARANATA',
+    next: Arrival(
+      vehicleId: 'rmtc:20648',
+      vehicleNumber: '20648',
+      minutes: 9,
+      plannedArrival: null,
+      predictedArrival: null,
+      realtime: true,
+      quality: ArrivalQuality.unknown,
+    ),
+    following: null,
+  ),
+];
+
+const _scheduledGroups = [
+  ArrivalGroup(
+    routeId: '950',
+    destination: 'GARAVELO',
+    next: Arrival(
+      vehicleId: null,
+      vehicleNumber: null,
+      minutes: 32,
+      plannedArrival: '14:30',
+      predictedArrival: null,
+      realtime: false,
+      quality: ArrivalQuality.scheduled,
+    ),
+    following: null,
+  ),
+];
 
 class _FakeTransitRepository implements TransitRepository {
-  _FakeTransitRepository({this.withPosition = true});
+  _FakeTransitRepository({
+    this.withPosition = true,
+    this.groups = _realtimeGroups,
+    this.staleArrivals = false,
+  });
 
   final bool withPosition;
+  final List<ArrivalGroup> groups;
+  final bool staleArrivals;
   final requestedStops = <String>[];
 
   @override
   Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(String stopId) async {
     requestedStops.add(stopId);
-    return _snapshot(const [
-      ArrivalGroup(
-        routeId: '020',
-        destination: 'T. BIBLIA',
-        next: Arrival(
-          vehicleId: 'rmtc:20529',
-          vehicleNumber: '20529',
-          minutes: 0,
-          plannedArrival: '14:02',
-          predictedArrival: '14:03',
-          realtime: true,
-          quality: ArrivalQuality.realtime,
-        ),
-        following: Arrival(
-          vehicleId: null,
-          vehicleNumber: null,
-          minutes: 17,
-          plannedArrival: '14:19',
-          predictedArrival: null,
-          realtime: false,
-          quality: ArrivalQuality.scheduled,
-        ),
-      ),
-      ArrivalGroup(
-        routeId: '003',
-        destination: 'T MARANATA',
-        next: Arrival(
-          vehicleId: 'rmtc:20648',
-          vehicleNumber: '20648',
-          minutes: 9,
-          plannedArrival: null,
-          predictedArrival: null,
-          realtime: true,
-          quality: ArrivalQuality.unknown,
-        ),
-        following: null,
-      ),
-    ]);
+    return _snapshot(groups, stale: staleArrivals);
   }
 
   @override
@@ -96,6 +123,7 @@ Future<void> _pumpApp(
   WidgetTester tester,
   _FakeTransitRepository repository, {
   Size size = const Size(390, 844),
+  ThemePreferenceStore? themeStore,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -107,33 +135,41 @@ Future<void> _pumpApp(
       trackingRefreshInterval: null,
       mapBuilder: _fakeMap,
       clock: () => _now,
+      themeStore: themeStore,
     ),
   );
 }
 
 Future<void> _search(WidgetTester tester, String code) async {
   await tester.enterText(find.byType(TextField), code);
-  await tester.tap(find.widgetWithText(FilledButton, 'Buscar'));
+  await tester.tap(find.byTooltip('Buscar'));
   await tester.pumpAndSettle();
 }
 
-Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
-  await tester.scrollUntilVisible(
-    finder,
-    200,
-    scrollable: find.byType(Scrollable).last,
-  );
+Future<void> _track(WidgetTester tester, String vehicle) async {
+  await tester.tap(find.byTooltip('Acompanhar ônibus $vehicle'));
+  await tester.pumpAndSettle();
 }
 
+TransitMap _map(WidgetTester tester) =>
+    tester.widget<TransitMap>(find.byType(TransitMap));
+
 void main() {
-  testWidgets('mapa aparece antes de qualquer busca, sem marcador', (
+  testWidgets('mapa aparece antes de qualquer busca, sem marcador nem status', (
     tester,
   ) async {
     await _pumpApp(tester, _FakeTransitRepository());
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('fake-map')), findsOneWidget);
-    expect(find.text('Digite o código do ponto'), findsWidgets);
+    expect(find.text('Digite o código do ponto'), findsOneWidget);
+    expect(find.byType(SearchHeader), findsOneWidget);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.text('Ao vivo'), findsNothing);
+    // Dock com os três destinos.
+    expect(find.text('Ponto'), findsOneWidget);
+    expect(find.text('Acompanhando'), findsOneWidget);
+    expect(find.text('Ajustes'), findsOneWidget);
   });
 
   testWidgets('aceita só dígitos e preserva zeros à esquerda', (tester) async {
@@ -152,97 +188,260 @@ void main() {
     await _pumpApp(tester, _FakeTransitRepository());
     await _search(tester, '30402');
 
-    expect(find.text('< 1 min'), findsOneWidget);
-    expect(find.text('Tempo real'), findsOneWidget);
-    expect(find.byIcon(Icons.sensors_rounded), findsWidgets);
-    expect(find.text('17 min'), findsOneWidget);
-    expect(find.text('Programado'), findsOneWidget);
-
-    await _scrollTo(tester, find.text('Informação não confirmada'));
-    expect(find.text('Informação não confirmada'), findsOneWidget);
-    // Qualidade desconhecida não vira tempo real nem oferece acompanhar.
-    expect(find.widgetWithText(OutlinedButton, 'Acompanhar'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Próximo: menos de 1 minuto, Tempo real'),
+      findsOneWidget,
+    );
+    expect(find.text('TEMPO REAL'), findsOneWidget);
+    expect(find.text('depois 17 min'), findsOneWidget);
+    expect(find.text('NÃO CONFIRMADO'), findsOneWidget);
+    expect(find.text('020'), findsOneWidget);
+    expect(find.text('003'), findsOneWidget);
+    // Só o ônibus com GPS confirmado pode ser acompanhado.
+    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
+    expect(find.byTooltip('Acompanhar ônibus 20648'), findsNothing);
   });
 
-  testWidgets('acompanha um ônibus em tempo real', (tester) async {
+  testWidgets('"Ao vivo" só com tempo real recente', (tester) async {
     await _pumpApp(tester, _FakeTransitRepository());
     await _search(tester, '30402');
+    expect(find.text('Ao vivo'), findsOneWidget);
+  });
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Acompanhar'));
-    await tester.pumpAndSettle();
+  testWidgets('só horário programado não aparece como ao vivo', (tester) async {
+    await _pumpApp(tester, _FakeTransitRepository(groups: _scheduledGroups));
+    await _search(tester, '30100');
 
-    // Pill do cartão + botão da chegada.
-    expect(find.text('Acompanhando'), findsNWidgets(2));
-    expect(find.text('Ônibus 20529'), findsWidgets);
+    expect(find.text('Ao vivo'), findsNothing);
+    expect(find.text('Programado'), findsOneWidget);
+    expect(find.text('PROGRAMADO'), findsOneWidget);
+    expect(find.byTooltip('Acompanhar ônibus 20529'), findsNothing);
+  });
+
+  testWidgets('dado stale aparece como desatualizado, não ao vivo', (
+    tester,
+  ) async {
+    await _pumpApp(tester, _FakeTransitRepository(staleArrivals: true));
+    await _search(tester, '30402');
+
+    expect(find.text('Ao vivo'), findsNothing);
+    expect(find.text('Desatualizado'), findsOneWidget);
+    expect(
+      find.text('A fonte está instável. Mostrando o último dado válido.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('acompanha um ônibus em tempo real na aba Acompanhando', (
+    tester,
+  ) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await _search(tester, '30402');
+    await _track(tester, '20529');
+
+    expect(find.text('Ônibus 20529'), findsOneWidget);
+    expect(find.text('ACOMPANHANDO'), findsOneWidget);
     expect(find.text('No horário'), findsOneWidget);
     expect(find.text('Acessível'), findsOneWidget);
+    expect(find.text('Linha 020'), findsOneWidget);
+    expect(find.text('min até o ponto 30402'), findsOneWidget);
     expect(find.text('Dados atualizados recentemente'), findsOneWidget);
+    // No painel e no status do topo.
+    expect(find.text('posição há 0 s'), findsNWidgets(2));
+    expect(find.text('Ao vivo'), findsOneWidget);
     // Coordenadas cruas não aparecem como informação de produto.
     expect(find.textContaining('-16.7'), findsNothing);
     expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
-    expect(find.byKey(const Key('fake-map')), findsOneWidget);
+    expect(_map(tester).vehicleNumber, '20529');
+    expect(_map(tester).position, isNotNull);
 
     await tester.tap(find.byTooltip('Parar de acompanhar'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
-    expect(find.widgetWithText(OutlinedButton, 'Acompanhar'), findsOneWidget);
+    expect(_map(tester).vehicleNumber, isNull);
+    // Volta às chegadas do mesmo ponto.
+    expect(find.text('Ponto 30402'), findsOneWidget);
+    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
   });
 
-  testWidgets('sem posição o botão não fica girando', (tester) async {
+  testWidgets('pausar o follow e centralizar de novo', (tester) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await _search(tester, '30402');
+    await _track(tester, '20529');
+
+    expect(find.text('Seguindo'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Centralizar ônibus. Seguindo o ônibus'),
+      findsOneWidget,
+    );
+
+    // Toque direto no mapa (área livre entre o cabeçalho e o painel).
+    await tester.tapAt(const Offset(120, 220));
+    await tester.pumpAndSettle();
+    expect(
+      find.bySemanticsLabel('Centralizar ônibus. Seguimento pausado'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Centralizar'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Centralizar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Seguindo'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Centralizar ônibus. Seguindo o ônibus'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('sem posição nada fica girando e o status não é ao vivo', (
+    tester,
+  ) async {
     await _pumpApp(tester, _FakeTransitRepository(withPosition: false));
     await _search(tester, '30402');
-
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Acompanhar'));
-    await tester.pumpAndSettle();
+    await _track(tester, '20529');
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('POSIÇÃO INDISPONÍVEL'), findsOneWidget);
     expect(find.text('Sem posição'), findsOneWidget);
-    expect(find.text('Posição indisponível'), findsWidgets);
+    expect(find.text('Ao vivo'), findsNothing);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Centralizar'), findsOneWidget);
+    final center = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Centralizar'),
+    );
+    expect(center.onPressed, isNull);
   });
 
-  for (final size in const [
-    Size(360, 740),
-    Size(390, 844),
-    Size(430, 932),
-    Size(768, 1024),
-    Size(1366, 768),
-  ]) {
-    testWidgets('layout sem overflow em ${size.width.toInt()} px', (
-      tester,
-    ) async {
-      await _pumpApp(tester, _FakeTransitRepository(), size: size);
-      await _search(tester, '30402');
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Acompanhar'));
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull);
-      expect(find.byKey(const Key('fake-map')), findsOneWidget);
-      expect(find.text('Acompanhando'), findsWidgets);
-    });
-  }
-
-  testWidgets('atribuição nativa fica acima do sheet no celular', (
+  testWidgets('aba Acompanhando sem tracking mostra estado vazio', (
     tester,
   ) async {
     await _pumpApp(tester, _FakeTransitRepository());
+    await tester.tap(find.text('Acompanhando'));
     await tester.pumpAndSettle();
 
-    final map = tester.widget<TransitMap>(find.byType(TransitMap));
-    expect(map.attributionBottom, greaterThan(0));
+    expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
+    expect(find.text('nenhum ônibus agora'), findsOneWidget);
+    expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+
+    await tester.tap(find.text('Buscar um ponto'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchHeader), findsOneWidget);
+  });
+
+  testWidgets('buscar outro ponto encerra o acompanhamento anterior', (
+    tester,
+  ) async {
+    final repository = _FakeTransitRepository();
+    await _pumpApp(tester, repository);
+    await _search(tester, '30402');
+    await _track(tester, '20529');
+
+    await tester.tap(find.text('Ponto'));
+    await tester.pumpAndSettle();
+    expect(find.text('Acompanhando o ônibus '), findsNothing);
+    expect(find.textContaining('Acompanhando o ônibus'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Buscar outro ponto'));
+    await tester.pumpAndSettle();
+    await _search(tester, '30100');
+
+    expect(repository.requestedStops, ['30402', '30100']);
+    expect(find.text('Ponto 30100'), findsOneWidget);
+    expect(_map(tester).vehicleNumber, isNull);
+  });
+
+  testWidgets('Ajustes troca o tema e o mapa acompanha', (tester) async {
+    final store = MemoryThemePreferenceStore();
+    await _pumpApp(tester, _FakeTransitRepository(), themeStore: store);
+    await tester.tap(find.text('Ajustes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tema'), findsOneWidget);
+    expect(
+      find.text('OpenFreeMap · © OpenMapTiles · dados © OpenStreetMap'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Noturno'));
+    await tester.pumpAndSettle();
+    expect(store.read(), ThemeMode.dark);
+    expect(
+      Theme.of(tester.element(find.byType(TransitMap))).brightness,
+      Brightness.dark,
+    );
+    expect(_map(tester).styleString, MapConfig.styles.dark);
+    expect(_map(tester).fallbackStyleString, MapConfig.styles.fallback);
+
+    await tester.tap(find.text('Claro'));
+    await tester.pumpAndSettle();
+    expect(store.read(), ThemeMode.light);
+    expect(_map(tester).styleString, MapConfig.styles.light);
+
+    await tester.tap(find.byTooltip('Fechar ajustes'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchHeader), findsOneWidget);
+  });
+
+  testWidgets('tema salvo é aplicado ao abrir', (tester) async {
+    await _pumpApp(
+      tester,
+      _FakeTransitRepository(),
+      themeStore: MemoryThemePreferenceStore(ThemeMode.dark),
+    );
+    await tester.pumpAndSettle();
+    expect(_map(tester).styleString, MapConfig.nightStyleAsset);
+  });
+
+  for (final mode in const [ThemeMode.light, ThemeMode.dark]) {
+    for (final size in const [
+      Size(360, 740),
+      Size(390, 844),
+      Size(430, 932),
+      Size(768, 1024),
+      Size(1366, 768),
+    ]) {
+      testWidgets(
+        'layout sem overflow em ${size.width.toInt()} px (${mode.name})',
+        (tester) async {
+          await _pumpApp(
+            tester,
+            _FakeTransitRepository(),
+            size: size,
+            themeStore: MemoryThemePreferenceStore(mode),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+
+          await _search(tester, '30402');
+          expect(tester.takeException(), isNull);
+
+          await _track(tester, '20529');
+          expect(tester.takeException(), isNull);
+          expect(find.text('ACOMPANHANDO'), findsOneWidget);
+
+          await tester.tap(find.text('Ajustes'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.byKey(const Key('fake-map')), findsOneWidget);
+        },
+      );
+    }
+  }
+
+  testWidgets('no celular a atribuição fica acima do sheet', (tester) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await tester.pumpAndSettle();
+
+    expect(_map(tester).attributionBottom, greaterThan(70));
 
     // Expandido ao máximo, o sheet ainda deixa uma faixa de mapa (com a
     // atribuição) abaixo do cabeçalho.
-    final sheet = tester.widget<DraggableScrollableSheet>(
-      find.byType(DraggableScrollableSheet),
-    );
+    final sheetTop = tester.getTopLeft(find.byType(DraggableScrollableSheet));
     final headerBottom = tester.getBottomLeft(find.byType(SearchHeader)).dy;
-    expect(844 * (1 - sheet.maxChildSize), greaterThan(headerBottom + 32));
+    expect(sheetTop.dy, greaterThan(headerBottom + 32));
   });
 
-  testWidgets('em tela larga a atribuição fica no canto do mapa', (
-    tester,
-  ) async {
+  testWidgets('em tela larga a coluna é central e sem sheet', (tester) async {
     await _pumpApp(
       tester,
       _FakeTransitRepository(),
@@ -250,9 +449,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      tester.widget<TransitMap>(find.byType(TransitMap)).attributionBottom,
-      0,
-    );
+    expect(_map(tester).attributionBottom, 0);
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+    final search = tester.getRect(find.byType(SearchHeader));
+    expect(search.left, closeTo(1366 - search.right, 1));
+    expect(search.width, lessThanOrEqualTo(460));
   });
 }
