@@ -1,24 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/config/map_config.dart';
 import '../../domain/entities/tracked_vehicle.dart';
+import 'vehicle_map_data.dart';
+import 'vehicle_marker_image.dart';
+
+/// Constrói a superfície do mapa nativo; substituível em testes.
+typedef VehicleMapBuilder =
+    Widget Function(
+      BuildContext context, {
+      required LatLng initialTarget,
+      required MapCreatedCallback onMapCreated,
+      required OnStyleLoadedCallback onStyleLoaded,
+    });
 
 class TrackedVehicleMap extends StatefulWidget {
-  const TrackedVehicleMap({
-    required this.vehicle,
-    super.key,
-  });
+  const TrackedVehicleMap({required this.vehicle, this.mapBuilder, super.key});
 
   final TrackedVehicle vehicle;
+  final VehicleMapBuilder? mapBuilder;
 
   @override
   State<TrackedVehicleMap> createState() => _TrackedVehicleMapState();
 }
 
 class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
-  final MapController _mapController = MapController();
+  static const _initialZoom = 16.0;
+  static const _cameraDuration = Duration(milliseconds: 800);
+
+  MapLibreMapController? _controller;
+  bool _styleReady = false;
 
   LatLng? get _vehicleCenter {
     final position = widget.vehicle.position;
@@ -30,36 +42,91 @@ class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
   void didUpdateWidget(covariant TrackedVehicleMap oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final previous = oldWidget.vehicle.position;
     final current = widget.vehicle.position;
-    if (current == null) return;
-
-    final positionChanged = previous == null ||
-        previous.latitude != current.latitude ||
-        previous.longitude != current.longitude;
-
-    if (positionChanged) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _centerOnVehicle();
-      });
+    if (current == null ||
+        !vehiclePositionChanged(oldWidget.vehicle.position, current)) {
+      return;
     }
+    _syncVehicle(follow: true);
   }
 
-  void _centerOnVehicle() {
-    final center = _vehicleCenter;
-    if (center == null) return;
+  Future<void> _onStyleLoaded() async {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _mapController.move(
-      center,
-      _mapController.camera.zoom,
+    final scheme = Theme.of(context).colorScheme;
+    final marker = await renderVehicleMarker(
+      background: scheme.primary,
+      foreground: scheme.onPrimary,
+    );
+    if (!mounted) return;
+
+    await controller.addImage(vehicleImageId, marker);
+    await controller.addGeoJsonSource(
+      vehicleSourceId,
+      vehicleFeatureCollection(widget.vehicle.position),
+    );
+    await controller.addSymbolLayer(
+      vehicleSourceId,
+      vehicleLayerId,
+      const SymbolLayerProperties(
+        iconImage: vehicleImageId,
+        iconSize: 0.5,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+      ),
+      enableInteraction: false,
+    );
+    _styleReady = true;
+    // A posição pode ter mudado enquanto o estilo carregava.
+    await _syncVehicle(follow: false);
+  }
+
+  Future<void> _syncVehicle({required bool follow}) async {
+    final controller = _controller;
+    if (controller == null || !_styleReady || _vehicleCenter == null) return;
+
+    await controller.setGeoJsonSource(
+      vehicleSourceId,
+      vehicleFeatureCollection(widget.vehicle.position),
+    );
+    if (follow) await _centerOnVehicle();
+  }
+
+  Future<void> _centerOnVehicle() async {
+    final controller = _controller;
+    final center = _vehicleCenter;
+    if (controller == null || center == null) return;
+
+    await controller.animateCamera(
+      CameraUpdate.newLatLng(center),
+      duration: _cameraDuration,
     );
   }
 
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
+  Widget _buildNativeMap(BuildContext context, LatLng center) {
+    final builder = widget.mapBuilder;
+    if (builder != null) {
+      return builder(
+        context,
+        initialTarget: center,
+        onMapCreated: (controller) => _controller = controller,
+        onStyleLoaded: _onStyleLoaded,
+      );
+    }
+
+    return MapLibreMap(
+      styleString: MapConfig.styleUrl,
+      initialCameraPosition: CameraPosition(target: center, zoom: _initialZoom),
+      minMaxZoomPreference: const MinMaxZoomPreference(3, 19),
+      compassEnabled: false,
+      rotateGesturesEnabled: false,
+      tiltGesturesEnabled: false,
+      logoViewPosition: LogoViewPosition.topLeft,
+      attributionButtonPosition: AttributionButtonPosition.bottomRight,
+      onMapCreated: (controller) => _controller = controller,
+      onStyleLoadedCallback: _onStyleLoaded,
+    );
   }
 
   @override
@@ -69,123 +136,26 @@ class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
       return const SizedBox.shrink();
     }
 
-    final scheme = Theme.of(context).colorScheme;
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
         height: 220,
-        child: Stack(
-          children: [
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: center,
-                initialZoom: 16,
-                minZoom: 3,
-                maxZoom: 19,
-              ),
-              children: [
-                if (MapConfig.hasTiles)
-                  TileLayer(
-                    urlTemplate: MapConfig.tileUrlTemplate,
-                    userAgentPackageName: MapConfig.userAgentPackageName,
-                  )
-                else
-                  ColoredBox(
-                    color: scheme.surfaceContainerHighest,
-                    child: const SizedBox.expand(),
-                  ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: center,
-                      width: 64,
-                      height: 64,
-                      alignment: Alignment.center,
-                      child: Semantics(
-                        label: 'Ônibus ${widget.vehicle.vehicleNumber}',
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: scheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: scheme.onPrimary,
-                              width: 3,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                blurRadius: 10,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.directions_bus_rounded,
-                            color: scheme.onPrimary,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: IconButton.filledTonal(
-                onPressed: _centerOnVehicle,
-                tooltip: 'Centralizar ônibus',
-                icon: const Icon(Icons.my_location_rounded),
-              ),
-            ),
-            if (!MapConfig.hasTiles)
+        child: Semantics(
+          label: 'Mapa com a posição do ônibus ${widget.vehicle.vehicleNumber}',
+          child: Stack(
+            children: [
+              _buildNativeMap(context, center),
               Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.surface.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    child: Text(
-                      'Mapa-base ainda não configurado. '
-                      'A posição do ônibus continua disponível.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                top: 10,
+                right: 10,
+                child: IconButton.filledTonal(
+                  onPressed: _centerOnVehicle,
+                  tooltip: 'Centralizar ônibus',
+                  icon: const Icon(Icons.my_location_rounded),
                 ),
               ),
-            if (MapConfig.hasTiles && MapConfig.attribution.isNotEmpty)
-              Positioned(
-                left: 8,
-                bottom: 6,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.surface.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    child: Text(
-                      MapConfig.attribution,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

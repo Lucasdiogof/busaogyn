@@ -51,3 +51,16 @@ flutter run --dart-define=BUSAOGYN_API_BASE_URL=http://127.0.0.1:8787
 ```
 
 O deploy do Worker executa um smoke de produção cobrindo health, ETA do ponto canário 30402, seleção de veículo realtime da linha 020, posição individual e cache.
+
+## App Flutter
+
+Identificador Android/iOS: `com.lucksrei.busaogyn`. Alvos: Android (minSdk 24), iOS (13+ exigido pelo MapLibre; projeto em 15.0) e Web.
+
+O mapa usa [MapLibre](https://maplibre.org) (`maplibre_gl`) com o estilo [OpenFreeMap Liberty](https://openfreemap.org), sem chave de API. Para trocar o estilo:
+
+```bash
+flutter run --dart-define=MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+```
+
+O build Android exige JDK 21.
+

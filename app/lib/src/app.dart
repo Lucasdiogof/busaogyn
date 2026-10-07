@@ -4,16 +4,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'features/transit/domain/repositories/transit_repository.dart';
 import 'features/transit/presentation/cubit/stop_arrivals_cubit.dart';
 import 'features/transit/presentation/pages/stop_arrivals_page.dart';
+import 'features/transit/presentation/widgets/tracked_vehicle_map.dart';
 
 class BusaoGynApp extends StatelessWidget {
   const BusaoGynApp({
     required this.repository,
     this.trackingRefreshInterval = const Duration(seconds: 15),
+    this.mapBuilder,
     super.key,
   });
 
   final TransitRepository repository;
   final Duration? trackingRefreshInterval;
+  final VehicleMapBuilder? mapBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +26,7 @@ class BusaoGynApp extends StatelessWidget {
         title: 'BusãoGyn',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF1565C0),
-          ),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
           useMaterial3: true,
         ),
         home: BlocProvider(
@@ -33,7 +34,7 @@ class BusaoGynApp extends StatelessWidget {
             repository,
             trackingRefreshInterval: trackingRefreshInterval,
           ),
-          child: const StopArrivalsPage(),
+          child: StopArrivalsPage(mapBuilder: mapBuilder),
         ),
       ),
     );

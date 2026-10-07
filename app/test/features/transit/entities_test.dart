@@ -34,15 +34,9 @@ void main() {
       'routeId': '008',
       'routeName': 'T. Veiga Jardim / Eixo 85 / T. Paulo Garcia',
       'destination': 'T VEIGA JARDIM',
-      'position': {
-        'latitude': -16.7071,
-        'longitude': -49.2640,
-      },
+      'position': {'latitude': -16.7071, 'longitude': -49.2640},
       'accessible': true,
-      'punctuality': {
-        'status': 'delayed',
-        'sourceStatus': 'Atrasado',
-      },
+      'punctuality': {'status': 'delayed', 'sourceStatus': 'Atrasado'},
     });
 
     expect(vehicle.id, 'rmtc:50614');

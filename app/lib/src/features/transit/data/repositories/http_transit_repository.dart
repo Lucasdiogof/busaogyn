@@ -9,12 +9,11 @@ class HttpTransitRepository implements TransitRepository {
 
   final ApiClient _apiClient;
 
-  TransitSnapshot<T> _snapshot<T>(
-    Map<String, dynamic> response,
-    T data,
-  ) {
+  TransitSnapshot<T> _snapshot<T>(Map<String, dynamic> response, T data) {
     final meta = response['meta'];
-    final metadata = meta is Map<String, dynamic> ? meta : const <String, dynamic>{};
+    final metadata = meta is Map<String, dynamic>
+        ? meta
+        : const <String, dynamic>{};
 
     return TransitSnapshot<T>(
       data: data,
@@ -56,9 +55,6 @@ class HttpTransitRepository implements TransitRepository {
     if (data is! Map<String, dynamic>) {
       throw const FormatException('Expected tracked vehicle object.');
     }
-    return _snapshot<TrackedVehicle?>(
-      response,
-      TrackedVehicle.fromJson(data),
-    );
+    return _snapshot<TrackedVehicle?>(response, TrackedVehicle.fromJson(data));
   }
 }

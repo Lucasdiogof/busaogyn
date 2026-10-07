@@ -4,7 +4,21 @@ import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.da
 import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dart';
 import 'package:busaogyn/src/features/transit/domain/repositories/transit_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+Widget _fakeMap(
+  BuildContext context, {
+  required LatLng initialTarget,
+  required MapCreatedCallback onMapCreated,
+  required OnStyleLoadedCallback onStyleLoaded,
+}) {
+  return const ColoredBox(
+    key: Key('fake-map'),
+    color: Colors.grey,
+    child: SizedBox.expand(),
+  );
+}
 
 class _FakeTransitRepository implements TransitRepository {
   @override
@@ -61,13 +75,11 @@ void main() {
       BusaoGynApp(
         repository: _FakeTransitRepository(),
         trackingRefreshInterval: null,
+        mapBuilder: _fakeMap,
       ),
     );
 
-    await tester.enterText(
-      find.byType(TextField),
-      '00300',
-    );
+    await tester.enterText(find.byType(TextField), '00300');
     await tester.tap(find.widgetWithText(FilledButton, 'Buscar'));
     await tester.pumpAndSettle();
 
@@ -96,12 +108,6 @@ void main() {
       findsNothing,
     );
     expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
-    expect(
-      find.text(
-        'Mapa-base ainda não configurado. '
-        'A posição do ônibus continua disponível.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('fake-map')), findsOneWidget);
   });
 }

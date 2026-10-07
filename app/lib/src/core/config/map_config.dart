@@ -1,18 +1,10 @@
 abstract final class MapConfig {
-  static const tileUrlTemplate = String.fromEnvironment(
-    'MAP_TILE_URL_TEMPLATE',
-    defaultValue: '',
-  );
+  static const defaultStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 
-  static const attribution = String.fromEnvironment(
-    'MAP_TILE_ATTRIBUTION',
-    defaultValue: '',
+  /// A atribuição OpenFreeMap/OpenMapTiles/OSM vem do próprio estilo e é
+  /// exibida pelo controle de atribuição nativo do MapLibre.
+  static const styleUrl = String.fromEnvironment(
+    'MAP_STYLE_URL',
+    defaultValue: defaultStyleUrl,
   );
-
-  static const userAgentPackageName = String.fromEnvironment(
-    'MAP_TILE_USER_AGENT_PACKAGE',
-    defaultValue: 'com.busaogyn.app',
-  );
-
-  static bool get hasTiles => tileUrlTemplate.trim().isNotEmpty;
 }
