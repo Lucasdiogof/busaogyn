@@ -149,17 +149,20 @@ class ArrivalCard extends StatelessWidget {
                             height: 1.25,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          following == null
-                              ? 'sem seguinte'
-                              : 'depois ${minutesLabel(following.minutes)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: monoStyle(
-                            TextStyle(fontSize: 11.5, color: tokens.mutedText),
+                        if (following == null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'sem seguinte',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: monoStyle(
+                              TextStyle(
+                                fontSize: 11.5,
+                                color: tokens.mutedText,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

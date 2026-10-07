@@ -216,7 +216,7 @@ LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
     if (age <= recentThresholdSeconds) {
       return LiveStatus(
         'Ao vivo',
-        'posição há ${ageLabel(age)}',
+        'há ${ageLabel(age)}',
         LiveTone.live,
         receivedAt: tracking.receivedAt,
       );

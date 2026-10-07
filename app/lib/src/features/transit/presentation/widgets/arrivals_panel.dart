@@ -309,8 +309,7 @@ class _Intro extends StatelessWidget {
         const FootNote(
           child: Text(
             'O código fica na placa do ponto. Só ônibus com GPS informado '
-            'pela fonte podem ser acompanhados; a posição é consultada a '
-            'cada 15 s.',
+            'pela fonte podem ser acompanhados.',
           ),
         ),
       ],

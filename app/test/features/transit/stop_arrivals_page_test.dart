@@ -193,7 +193,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('TEMPO REAL'), findsOneWidget);
-    expect(find.text('depois 17 min'), findsOneWidget);
+    expect(find.text('depois 17 min'), findsNothing);
     expect(find.text('NÃO CONFIRMADO'), findsOneWidget);
     expect(find.text('020'), findsOneWidget);
     expect(find.text('003'), findsOneWidget);
@@ -247,7 +247,8 @@ void main() {
     expect(find.text('min até o ponto 30402'), findsOneWidget);
     expect(find.text('Dados atualizados recentemente'), findsOneWidget);
     // No painel e no status do topo.
-    expect(find.text('posição há 0 s'), findsNWidgets(2));
+    expect(find.text('posição há 0 s'), findsOneWidget);
+    expect(find.text('há 0 s'), findsOneWidget);
     expect(find.text('Ao vivo'), findsOneWidget);
     // Coordenadas cruas não aparecem como informação de produto.
     expect(find.textContaining('-16.7'), findsNothing);
