@@ -9,7 +9,7 @@ import '../formatters/transit_labels.dart';
 import 'arrival_card.dart';
 import 'map_follow_controller.dart';
 
-/// Conteúdo da aba Acompanhando quando há um ônibus acompanhado.
+/// Conteúdo da aba Meu ônibus: onde está o ônibus escolhido.
 class TrackingCard extends StatelessWidget {
   const TrackingCard({
     required this.state,
@@ -33,6 +33,7 @@ class TrackingCard extends StatelessWidget {
     final vehicle = tracking.vehicle?.data;
     final match = trackedArrival(state.arrivals.data, tracking.vehicleNumber);
     final routeId = vehicle?.routeId ?? match?.group.routeId;
+    final destination = vehicle?.destination ?? match?.group.destination;
 
     final (IconData icon, String label, Color color) = switch (tracking.phase) {
       TrackingPhase.searching => (
@@ -98,6 +99,12 @@ class TrackingCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Space.sm),
+        _Identity(
+          vehicleNumber: tracking.vehicleNumber,
+          routeId: routeId,
+          destination: destination,
+        ),
+        const SizedBox(height: Space.sm),
         _Eta(state: state, match: match, clock: clock),
         if (vehicle != null) ...[
           const SizedBox(height: Space.sm),
@@ -112,8 +119,6 @@ class TrackingCard extends StatelessWidget {
                     : Icons.accessibility_new_rounded,
                 label: accessibilityLabel(vehicle.accessible),
               ),
-              if (routeId != null)
-                StatusPill(icon: Icons.route_rounded, label: 'Linha $routeId'),
             ],
           ),
         ],
@@ -157,8 +162,9 @@ class TrackingCard extends StatelessWidget {
         const SizedBox(height: Space.sm),
         const FootNote(
           child: Text(
-            'Posição informada pela RMTC, consultada a cada 15 s. Sem seta '
-            'de direção: a fonte não informa.',
+            'Posição informada pela RMTC, consultada a cada 15 s. Direção '
+            'baseada no deslocamento observado; o rastro mostra só posições '
+            'recebidas.',
           ),
         ),
       ],
@@ -182,6 +188,62 @@ class TrackingCard extends StatelessWidget {
       icon: icon,
       label: punctualityLabel(punctuality),
       tone: tone,
+    );
+  }
+}
+
+/// Quem é o ônibus: número, linha e para onde vai (só o que a fonte
+/// informa).
+class _Identity extends StatelessWidget {
+  const _Identity({
+    required this.vehicleNumber,
+    required this.routeId,
+    required this.destination,
+  });
+
+  final String vehicleNumber;
+  final String? routeId;
+  final String? destination;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Semantics(
+      container: true,
+      label:
+          'Ônibus $vehicleNumber'
+          '${routeId != null ? ', linha $routeId' : ''}'
+          ', ${headingToLabel(destination)}',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // O número do ônibus já está no cabeçalho logo acima.
+            Text(
+              routeId != null ? 'Linha $routeId' : 'Linha não informada',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: tokens.strongText,
+              ),
+            ),
+            Text(
+              headingToLabel(destination),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: destination == null
+                    ? tokens.mutedText
+                    : tokens.accentText,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

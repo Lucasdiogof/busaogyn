@@ -560,8 +560,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         const ValueKey('header-tracking-empty'),
         const ContextHeader(
           leading: HeaderTile(Icons.directions_bus_outlined, filled: false),
-          title: 'Acompanhando',
-          subtitle: Text('nenhum ônibus agora'),
+          title: 'Meu ônibus',
+          subtitle: Text('nenhum ônibus acompanhado'),
         ),
       );
     }
@@ -580,19 +580,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             : const HeaderTile(Icons.directions_bus_rounded),
         title: 'Ônibus ${tracking.vehicleNumber}',
         semanticsLabel:
-            'Ônibus ${tracking.vehicleNumber}'
-            '${destination != null ? ', destino $destination' : ''}'
-            ', ponto ${state.stopId}',
-        subtitle: Text.rich(
-          TextSpan(
-            children: [
-              if (destination != null)
-                TextSpan(
-                  text: '${destinationLabel(destination).toUpperCase()} · ',
-                  style: TextStyle(color: tokens.accentText),
-                ),
-              TextSpan(text: 'ponto ${state.stopId}'),
-            ],
+            'Meu ônibus: ônibus ${tracking.vehicleNumber}'
+            '${routeId != null ? ', linha $routeId' : ''}'
+            ', ${headingToLabel(destination)}',
+        subtitle: Text(
+          headingToLabel(destination),
+          style: TextStyle(
+            color: destination == null ? null : tokens.accentText,
           ),
         ),
         action: IconButton(
@@ -670,11 +664,7 @@ class _TrackingEmpty extends StatelessWidget {
         MessageView(
           icon: Icons.directions_bus_outlined,
           title: 'Nenhum ônibus acompanhado',
-          body: hasStop
-              ? 'Nas chegadas do ponto, toque no número de um ônibus em '
-                    'tempo real para acompanhá-lo no mapa.'
-              : 'Consulte um ponto e toque no número de um ônibus em tempo '
-                    'real para acompanhá-lo no mapa.',
+          body: 'Escolha um ônibus em tempo real nas chegadas de um ponto.',
           action: FilledButton.icon(
             onPressed: onOpenStop,
             icon: const Icon(Icons.location_on_outlined, size: 20),
@@ -709,7 +699,13 @@ class _MapLayout {
   final bool showControls;
 }
 
-typedef _MapData = ({String? vehicleNumber, GeoPosition? position, bool stale});
+typedef _MapData = ({
+  String? vehicleNumber,
+  GeoPosition? position,
+  bool stale,
+  double? heading,
+  List<GeoPosition> trail,
+});
 
 /// Liga o mapa ao Cubit expondo só o que o mapa precisa; o resto do estado
 /// não o reconstrói.
@@ -734,7 +730,13 @@ class _MapBinding extends StatelessWidget {
 
   static _MapData _select(StopArrivalsState state) {
     if (state is! StopArrivalsLoaded || state.tracking == null) {
-      return (vehicleNumber: null, position: null, stale: false);
+      return (
+        vehicleNumber: null,
+        position: null,
+        stale: false,
+        heading: null,
+        trail: const <GeoPosition>[],
+      );
     }
     final tracking = state.tracking!;
     final snapshot = tracking.vehicle;
@@ -743,6 +745,8 @@ class _MapBinding extends StatelessWidget {
       position: snapshot?.data?.position,
       stale:
           (snapshot?.stale ?? false) || tracking.phase != TrackingPhase.active,
+      heading: tracking.movement.observedHeading,
+      trail: tracking.movement.observedTrail,
     );
   }
 
@@ -760,6 +764,8 @@ class _MapBinding extends StatelessWidget {
               vehicleNumber: data.vehicleNumber,
               position: data.position,
               stale: data.stale,
+              observedHeading: data.heading,
+              observedTrail: data.trail,
               styleString: styleString,
               fallbackStyleString: fallbackStyleString,
               followController: followController,

@@ -4,7 +4,8 @@ import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../formatters/transit_labels.dart';
 
-/// Abas do dock. Só o que existe no app: ponto, acompanhamento e ajustes.
+/// Abas do dock: Chegadas (o que chega no ponto), Meu ônibus (onde está o
+/// ônibus escolhido) e Ajustes.
 enum HomeTab { stop, tracking, settings }
 
 /// Dock inferior flutuante com três destinos.
@@ -19,7 +20,7 @@ class AppDock extends StatelessWidget {
   final HomeTab selected;
   final ValueChanged<HomeTab> onSelected;
 
-  /// Marca a aba Acompanhando quando há um ônibus acompanhado.
+  /// Marca a aba Meu ônibus quando há um ônibus acompanhado.
   final bool trackingActive;
 
   @override
@@ -32,15 +33,15 @@ class AppDock extends StatelessWidget {
         child: Row(
           children: [
             _DockItem(
-              icon: Icons.location_on_outlined,
-              label: 'Ponto',
+              icon: Icons.departure_board_rounded,
+              label: 'Chegadas',
               selected: selected == HomeTab.stop,
               onTap: () => onSelected(HomeTab.stop),
             ),
             const SizedBox(width: 4),
             _DockItem(
               icon: Icons.directions_bus_outlined,
-              label: 'Acompanhando',
+              label: 'Meu ônibus',
               selected: selected == HomeTab.tracking,
               badge: trackingActive,
               onTap: () => onSelected(HomeTab.tracking),

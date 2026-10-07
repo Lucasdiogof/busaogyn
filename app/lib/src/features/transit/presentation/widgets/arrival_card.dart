@@ -552,7 +552,9 @@ class RenderDestinationText extends RenderBox {
 
   double _widestWord(double size) {
     var widest = 0.0;
-    for (final word in _text.split(RegExp(r'\s+'))) {
+    // Só espaços quebráveis separam palavras: o destino usa espaço não
+    // separável ("T MARANATA"), que o texto renderizado não quebra.
+    for (final word in _text.split(RegExp(r'[ \t\n]+'))) {
       final painter = TextPainter(
         text: TextSpan(
           text: word,

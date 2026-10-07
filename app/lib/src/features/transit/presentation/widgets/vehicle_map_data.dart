@@ -6,6 +6,11 @@ const vehicleSourceId = 'tracked-vehicle-source';
 const vehicleLayerId = 'tracked-vehicle-layer';
 const vehicleHaloLayerId = 'tracked-vehicle-halo';
 
+/// Rastro observado do ônibus acompanhado: posições reais recentes ligadas
+/// por uma linha discreta. Não é rota nem itinerário.
+const observedTrailSourceId = 'busao-observed-trail';
+const observedTrailLayerId = 'busao-observed-trail-line';
+
 /// Outros ônibus do ponto: uma única coleção GeoJSON atualizada no lugar,
 /// sem recriar layers a cada amostra de GPS.
 const secondarySourceId = 'busao-map-vehicles';
@@ -41,16 +46,39 @@ Map<String, dynamic> _point(
 }
 
 /// GeoJSON do ônibus acompanhado; vazio quando não há posição.
+///
+/// [heading] é a direção observada exibida (graus a partir do norte); sem
+/// ela o desenho fica com a frente para cima.
 Map<String, dynamic> vehicleFeatureCollection(
   GeoPosition? position, {
   bool stale = false,
+  double? heading,
 }) {
   return _collection([
     if (position != null)
       _point(position, {
         'stale': stale,
         'variant': (stale ? MarkerVariant.stale : MarkerVariant.tracked).name,
+        'heading': heading ?? 0,
       }),
+  ]);
+}
+
+/// GeoJSON do rastro observado; precisa de pelo menos duas posições reais.
+Map<String, dynamic> observedTrailFeatureCollection(List<GeoPosition> trail) {
+  return _collection([
+    if (trail.length >= 2)
+      {
+        'type': 'Feature',
+        'properties': <String, dynamic>{},
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': [
+            for (final position in trail)
+              [position.longitude, position.latitude],
+          ],
+        },
+      },
   ]);
 }
 

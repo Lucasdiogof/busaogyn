@@ -13,6 +13,7 @@ import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import 'camera_follow.dart';
 import 'map_follow_controller.dart';
+import '../../domain/models/observed_movement.dart';
 import 'vehicle_map_data.dart';
 import 'vehicle_marker_image.dart';
 import 'vehicle_motion.dart';
@@ -45,6 +46,8 @@ class TransitMap extends StatefulWidget {
     required this.vehicleNumber,
     required this.position,
     required this.stale,
+    this.observedHeading,
+    this.observedTrail = const [],
     required this.styleString,
     required this.fallbackStyleString,
     this.followController,
@@ -68,6 +71,13 @@ class TransitMap extends StatefulWidget {
 
   /// Posição antiga ou com falha recente: o marcador fica esmaecido.
   final bool stale;
+
+  /// Direção observada do último deslocamento real do acompanhado (graus a
+  /// partir do norte); `null` mantém o desenho com a frente para cima.
+  final double? observedHeading;
+
+  /// Posições reais recentes do acompanhado, desenhadas atrás dele.
+  final List<GeoPosition> observedTrail;
 
   /// Estilo do tema atual (URL ou asset). Trocar recarrega o estilo; o
   /// marcador é recriado em `onStyleLoaded`.
@@ -122,7 +132,8 @@ class _TransitMapState extends State<TransitMap>
   static const _cameraDuration = Duration(milliseconds: 700);
   static const _insetsDebounce = Duration(milliseconds: 150);
 
-  /// Ônibus acompanhado maior que os demais; frente fixa para cima.
+  /// Ônibus acompanhado maior que os demais; a frente gira conforme a
+  /// direção observada.
   static const _trackedIconSize = 0.30;
   static const _secondaryIconSize = 0.20;
 
@@ -136,6 +147,12 @@ class _TransitMapState extends State<TransitMap>
   Duration _lastPush = Duration.zero;
   MapLibreMapController? _controller;
   bool _styleReady = false;
+
+  /// Direção exibida do acompanhado e sua transição pelo menor arco.
+  double? _shownHeading;
+  double _headingFrom = 0;
+  double? _headingTarget;
+  Duration? _headingStart;
 
   /// Incrementado a cada carga de estilo; uma carga anterior que ainda
   /// estava esperando não adiciona sources/layers duplicados no estilo novo.
@@ -183,6 +200,18 @@ class _TransitMapState extends State<TransitMap>
       _follow.resume();
       _zoomOnNextCenter = true;
       _setFollowing(true);
+      // Outro ônibus: a direção do anterior não vale para ele.
+      _shownHeading = null;
+      _headingTarget = null;
+      _headingStart = null;
+    }
+
+    if (widget.observedHeading != oldWidget.observedHeading ||
+        widget.vehicleNumber != oldWidget.vehicleNumber) {
+      _setHeadingTarget(widget.observedHeading);
+    }
+    if (!identical(widget.observedTrail, oldWidget.observedTrail)) {
+      unawaited(_pushTrail());
     }
 
     final positionChanged = vehiclePositionChanged(
@@ -202,7 +231,7 @@ class _TransitMapState extends State<TransitMap>
       // Debounce: arrastar o sheet não gera uma chamada nativa por frame.
       _insetsTimer?.cancel();
       _insetsTimer = Timer(_insetsDebounce, () {
-        unawaited(_applyInsets());
+        unawaited(_applyInsetsAndRefollow());
         _applyAttribution();
       });
     }
@@ -317,7 +346,26 @@ class _TransitMapState extends State<TransitMap>
     }
     if (superseded()) return;
 
-    // Secundários por baixo; o acompanhado (halo + ônibus) sempre por cima.
+    // Rastro observado no fundo, depois os secundários; o acompanhado (halo +
+    // ônibus) sempre por cima.
+    await controller.addGeoJsonSource(
+      observedTrailSourceId,
+      observedTrailFeatureCollection(widget.observedTrail),
+    );
+    await controller.addLineLayer(
+      observedTrailSourceId,
+      observedTrailLayerId,
+      LineLayerProperties(
+        lineColor: _hex(_trailColor(tokens, brightness)),
+        lineWidth: 3,
+        lineOpacity: brightness == Brightness.dark ? 0.45 : 0.5,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      enableInteraction: false,
+    );
+    if (superseded()) return;
+
     await controller.addGeoJsonSource(
       secondarySourceId,
       secondaryFeatureCollection(
@@ -345,7 +393,11 @@ class _TransitMapState extends State<TransitMap>
 
     await controller.addGeoJsonSource(
       vehicleSourceId,
-      vehicleFeatureCollection(_motion.shown(_trackedKey), stale: widget.stale),
+      vehicleFeatureCollection(
+        _motion.shown(_trackedKey),
+        stale: widget.stale,
+        heading: _shownHeading,
+      ),
     );
     await controller.addCircleLayer(
       vehicleSourceId,
@@ -376,6 +428,10 @@ class _TransitMapState extends State<TransitMap>
       SymbolLayerProperties(
         iconImage: _variantImageExpression,
         iconSize: _trackedIconSize,
+        // Frente do desenho = topo da imagem = norte; gira pela direção
+        // observada, alinhado ao mapa.
+        iconRotate: const ['get', 'heading'],
+        iconRotationAlignment: 'map',
         iconAllowOverlap: true,
         iconIgnorePlacement: true,
         iconOpacity: const [
@@ -407,6 +463,14 @@ class _TransitMapState extends State<TransitMap>
   String? get _trackedNumber => widget.vehicleNumber;
   String get _trackedKey => 'T:${widget.vehicleNumber}';
   static String _secondaryKey(String number) => 'S:$number';
+
+  /// Novos insets (painel mudou de altura): no Web isso corta a animação de
+  /// câmera em curso; seguindo o ônibus, recentraliza no espaço visível.
+  Future<void> _applyInsetsAndRefollow() async {
+    await _applyInsets();
+    if (!mounted || !_styleReady) return;
+    if (_follow.following && _vehicleCenter != null) await _centerOnVehicle();
+  }
 
   Future<void> _applyInsets() async {
     final controller = _controller;
@@ -460,6 +524,7 @@ class _TransitMapState extends State<TransitMap>
         vehicleFeatureCollection(
           _motion.shown(_trackedKey),
           stale: widget.stale,
+          heading: _shownHeading,
         ),
       );
     }
@@ -474,17 +539,65 @@ class _TransitMapState extends State<TransitMap>
     }
   }
 
+  /// Nova direção observada: gira do ângulo exibido até ela pelo menor
+  /// arco, no mesmo tempo da transição de posição.
+  void _setHeadingTarget(double? target) {
+    if (target == null) {
+      _shownHeading = null;
+      _headingTarget = null;
+      _headingStart = null;
+      return;
+    }
+    if (_headingTarget == target) return;
+    _headingFrom = _shownHeading ?? 0;
+    _headingTarget = target;
+    _headingStart = _clock.elapsed;
+    if (!_ticker.isActive) _ticker.start();
+  }
+
+  /// Avança a rotação; `true` enquanto ainda gira.
+  bool _tickHeading(Duration now) {
+    final start = _headingStart;
+    final target = _headingTarget;
+    if (start == null || target == null) return false;
+    final t =
+        (now - start).inMicroseconds / markerTransitionDuration.inMicroseconds;
+    _shownHeading = interpolateAngle(_headingFrom, target, t);
+    if (t >= 1) {
+      _shownHeading = target;
+      _headingStart = null;
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _pushTrail() async {
+    final controller = _controller;
+    if (controller == null || !_styleReady) return;
+    await controller.setGeoJsonSource(
+      observedTrailSourceId,
+      observedTrailFeatureCollection(widget.observedTrail),
+    );
+  }
+
+  static Color _trailColor(BusaoTokens tokens, Brightness brightness) =>
+      brightness == Brightness.dark
+      ? tokens.accent
+      : Color.lerp(tokens.accent, tokens.accentText, 0.35)!;
+
   void _onTick(Duration _) {
     final now = _clock.elapsed;
     final animatingBefore = _motion.animatingIds.toList();
-    final stillAnimating = _motion.tick(now);
+    final headingBefore = _headingStart != null;
+    final headingAnimating = _tickHeading(now);
+    final stillAnimating = _motion.tick(now) || headingAnimating;
     if (!stillAnimating) _ticker.stop();
     // Durante a transição limita o ritmo; o quadro final (exatamente em B)
     // sempre é enviado.
     if (stillAnimating && now - _lastPush < _pushInterval) return;
     unawaited(
       _pushVehicles(
-        tracked: animatingBefore.contains(_trackedKey),
+        tracked: animatingBefore.contains(_trackedKey) || headingBefore,
         secondary: animatingBefore.any((id) => id.startsWith('S:')),
       ),
     );
@@ -506,10 +619,13 @@ class _TransitMapState extends State<TransitMap>
     if (controller == null || center == null) return;
 
     final zoom = controller.cameraPosition?.zoom ?? 0;
-    final update = _zoomOnNextCenter && zoom < TransitMap.trackingZoom - 1
+    final needsZoom = _zoomOnNextCenter && zoom < TransitMap.trackingZoom - 1;
+    final update = needsZoom
         ? CameraUpdate.newLatLngZoom(center, TransitMap.trackingZoom)
         : CameraUpdate.newLatLng(center);
-    _zoomOnNextCenter = false;
+    // Só deixa de aproximar quando o zoom já chegou: uma animação cortada
+    // (por exemplo, por insets do painel mudando) aproxima de novo.
+    if (!needsZoom) _zoomOnNextCenter = false;
     _follow.beginProgrammaticMove(_cameraDuration);
     await controller.animateCamera(update, duration: _cameraDuration);
   }

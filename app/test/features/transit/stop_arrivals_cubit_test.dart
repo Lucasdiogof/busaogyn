@@ -181,7 +181,11 @@ void main() {
 
     setUp(() {
       flex = _FlexibleRepository();
-      flexCubit = StopArrivalsCubit(flex, trackingRefreshInterval: null);
+      flexCubit = StopArrivalsCubit(
+        flex,
+        trackingRefreshInterval: null,
+        resumeRefreshAfter: Duration.zero,
+      );
     });
 
     tearDown(() => flexCubit.close());
@@ -304,6 +308,78 @@ void main() {
       expect(flex.positionRequests, hasLength(2));
       flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
       await resumed;
+    });
+
+    test('direção e rastro observados só com posições reais', () async {
+      final t0 = DateTime.utc(2026, 10, 7, 18);
+      TransitSnapshot<TrackedVehicle?> at(
+        String number,
+        double lon,
+        int seconds,
+      ) => TransitSnapshot(
+        data: TrackedVehicle(
+          id: 'rmtc:$number',
+          vehicleNumber: number,
+          routeId: '020',
+          routeName: null,
+          destination: null,
+          position: GeoPosition(latitude: -16.7, longitude: lon),
+          accessible: null,
+          punctuality: VehiclePunctuality.unknown,
+        ),
+        fetchedAt: t0.add(Duration(seconds: seconds)),
+        stale: false,
+        ageSeconds: 0,
+      );
+      final timed = StopArrivalsCubit(
+        _SnapshotRepository([
+          at('20529', -49.2500, 0),
+          at('20529', -49.2495, 15),
+          at('20777', -49.3000, 30),
+        ]),
+        trackingRefreshInterval: null,
+        resumeRefreshAfter: Duration.zero,
+      );
+      addTearDown(timed.close);
+      await timed.load('30402');
+
+      await timed.track('20529');
+      var tracking = (timed.state as StopArrivalsLoaded).tracking!;
+      expect(tracking.movement.observedHeading, isNull);
+      expect(tracking.movement.observedTrail, hasLength(1));
+
+      await timed.resumeTracking();
+      tracking = (timed.state as StopArrivalsLoaded).tracking!;
+      // ~53 m para o leste.
+      expect(tracking.movement.observedHeading, closeTo(90, 1));
+      expect(tracking.movement.observedTrail, hasLength(2));
+
+      // Trocar de ônibus limpa direção e rastro do anterior.
+      await timed.track('20777');
+      tracking = (timed.state as StopArrivalsLoaded).tracking!;
+      expect(tracking.vehicleNumber, '20777');
+      expect(tracking.movement.observedHeading, isNull);
+      expect(tracking.movement.observedTrail, hasLength(1));
+
+      // Parar limpa tudo.
+      timed.stopTracking();
+      expect((timed.state as StopArrivalsLoaded).tracking, isNull);
+    });
+
+    test('falha mantém direção e rastro sem criar ponto novo', () async {
+      await loadStop('30402');
+      final tracking = flexCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+      final before = flexLoaded().tracking!.movement;
+
+      final refresh = flexCubit.resumeTracking();
+      flex.positionRequests.last.reply.completeError(_transientError);
+      await refresh;
+
+      final after = flexLoaded().tracking!;
+      expect(after.phase, TrackingPhase.failing);
+      expect(identical(after.movement, before), isTrue);
     });
 
     test('parar de acompanhar limpa o tracking', () async {
@@ -502,4 +578,23 @@ class _FlexibleRepository implements TransitRepository {
     positionRequests.add((vehicleNumber: vehicleNumber, reply: reply));
     return _snapshot(await reply.future);
   }
+}
+
+/// Devolve as posições dadas, em ordem, uma por consulta.
+class _SnapshotRepository implements TransitRepository {
+  _SnapshotRepository(this._positions);
+
+  final List<TransitSnapshot<TrackedVehicle?>> _positions;
+  var _next = 0;
+
+  @override
+  Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(
+    String stopId,
+  ) async => _groups('020');
+
+  @override
+  Future<TransitSnapshot<TrackedVehicle?>> getVehiclePosition({
+    required String vehicleNumber,
+    required String stopId,
+  }) async => _positions[_next++];
 }

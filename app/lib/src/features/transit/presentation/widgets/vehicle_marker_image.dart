@@ -71,7 +71,9 @@ BusMarkerStyle busMarkerStyle(
 
 /// Ônibus visto de cima, com a frente para o topo da imagem: corpo
 /// retangular de cantos arredondados, para-brisa, painéis do teto, vidro
-/// traseiro e retrovisores. A orientação é fixa: a fonte não informa direção.
+/// traseiro e retrovisores. Frente para cima = 0° (norte): o acompanhado
+/// gira pela direção observada; secundários ficam assim (a fonte não informa
+/// direção).
 Future<Uint8List> renderBusMarker(BusMarkerStyle style) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);

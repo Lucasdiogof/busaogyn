@@ -153,6 +153,11 @@ class _TrackingBanner extends StatelessWidget {
     final tokens = context.tokens;
     return Semantics(
       container: true,
+      button: true,
+      label:
+          'Ônibus ${tracking.vehicleNumber} sendo acompanhado. '
+          'Ver em Meu ônibus',
+      excludeSemantics: true,
       child: Material(
         color: tokens.accentSoft,
         shape: RoundedRectangleBorder(
@@ -176,7 +181,7 @@ class _TrackingBanner extends StatelessWidget {
                   child: Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(text: 'Acompanhando o ônibus '),
+                        const TextSpan(text: 'Meu ônibus · '),
                         TextSpan(
                           text: tracking.vehicleNumber,
                           style: monoStyle(

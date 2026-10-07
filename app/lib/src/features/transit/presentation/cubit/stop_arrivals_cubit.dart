@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/tracked_vehicle.dart';
+import '../../domain/models/observed_movement.dart';
 import '../../domain/models/transit_snapshot.dart';
 import '../../domain/repositories/transit_repository.dart';
 import '../formatters/error_messages.dart';
@@ -52,10 +53,15 @@ final class TrackingInfo {
     this.vehicle,
     this.receivedAt,
     this.message,
+    this.movement = ObservedMovement.empty,
   });
 
   final String vehicleNumber;
   final TrackingPhase phase;
+
+  /// Direção e rastro observados, só com posições reais deste ônibus nesta
+  /// sessão; some ao trocar de ônibus ou parar o acompanhamento.
+  final ObservedMovement movement;
 
   /// Último snapshot com posição válida do ônibus acompanhado.
   final TransitSnapshot<TrackedVehicle?>? vehicle;
@@ -292,6 +298,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
               : previous!.phase,
           vehicle: switching ? null : previous?.vehicle,
           receivedAt: switching ? null : previous?.receivedAt,
+          movement: switching
+              ? ObservedMovement.empty
+              : previous?.movement ?? ObservedMovement.empty,
         ),
       ),
     );
@@ -362,16 +371,27 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
             vehicle: previous?.vehicle,
             receivedAt: previous?.receivedAt,
             message: 'A fonte não informou a posição deste ônibus agora.',
+            movement: previous?.movement ?? ObservedMovement.empty,
           ),
         );
       } else {
         _emitTracking(
           generation,
-          (_) => TrackingInfo(
+          (previous) => TrackingInfo(
             vehicleNumber: vehicleNumber,
             phase: TrackingPhase.active,
             vehicle: snapshot,
             receivedAt: _clock(),
+            // Só posições reais entram; stale/repetidas são ignoradas.
+            movement:
+                (previous?.vehicleNumber == vehicleNumber
+                        ? previous!.movement
+                        : ObservedMovement.empty)
+                    .observe(
+                      snapshot.data!.position!,
+                      sampledAt: snapshot.fetchedAt,
+                      stale: snapshot.stale,
+                    ),
           ),
         );
       }
@@ -388,6 +408,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
           vehicle: previous?.vehicle,
           receivedAt: previous?.receivedAt,
           message: message,
+          movement: previous?.movement ?? ObservedMovement.empty,
         ),
       );
     } finally {

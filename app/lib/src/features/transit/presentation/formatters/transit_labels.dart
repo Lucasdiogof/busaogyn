@@ -287,3 +287,10 @@ String destinationLabel(String destination) {
     (match) => '${match[1]} ',
   );
 }
+
+/// "Indo para T MARANATA"; sem destino informado, não inventa um.
+String headingToLabel(String? destination) {
+  final value = destination?.trim();
+  if (value == null || value.isEmpty) return 'Destino não informado';
+  return 'Indo para ${destinationLabel(value)}';
+}

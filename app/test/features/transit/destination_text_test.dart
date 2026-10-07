@@ -40,4 +40,28 @@ void main() {
   testWidgets('nunca abaixo do mínimo', (tester) async {
     expect(await _render(tester, 40), 11);
   });
+
+  testWidgets('espaço não separável conta como parte da palavra', (
+    tester,
+  ) async {
+    // "T MARANATA" (como sai de destinationLabel) é uma unidade só:
+    // 10 caracteres a 14 px = 140 px; em 120 px a fonte precisa reduzir.
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 120,
+            child: DestinationText(
+              'T MARANATA',
+              style: TextStyle(fontSize: 14),
+            ),
+          ),
+        ),
+      ),
+    );
+    final size = tester
+        .renderObject<RenderDestinationText>(find.byType(DestinationText))
+        .fontSize;
+    expect(10 * size, lessThanOrEqualTo(120));
+  });
 }
