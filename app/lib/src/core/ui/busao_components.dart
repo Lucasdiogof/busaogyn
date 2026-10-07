@@ -1,6 +1,60 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../theme/busao_tokens.dart';
+
+/// Superfície que flutua sobre o mapa: quase opaca, borda fina e sombra.
+///
+/// Sem `BackdropFilter`: o mapa é uma platform view (Android/iOS) ou um
+/// elemento HTML (Web) e não passa pelo filtro; o desfoque só custaria
+/// desempenho.
+class GlassSurface extends StatelessWidget {
+  const GlassSurface({
+    required this.child,
+    this.radius = Radii.header,
+    this.padding = EdgeInsets.zero,
+    this.elevated = true,
+    this.solid = false,
+    super.key,
+  });
+
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry padding;
+  final bool elevated;
+
+  /// Painéis com listas: quase sem transparência, para o mapa não competir
+  /// com o texto.
+  final bool solid;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: solid ? tokens.panel : tokens.glass,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: tokens.glassBorder),
+        boxShadow: elevated
+            ? [
+                BoxShadow(
+                  color: tokens.shadow,
+                  blurRadius: 28,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
+      ),
+    );
+  }
+}
 
 /// Marca BusãoGyn: selo com ônibus + wordmark.
 class BrandMark extends StatelessWidget {
@@ -11,30 +65,25 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final tokens = context.tokens;
 
     final seal = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: tokens.plate,
-        borderRadius: BorderRadius.circular(size * 0.3),
+        color: tokens.brandTile,
+        borderRadius: BorderRadius.circular(size * 0.31),
+        border: Border.all(color: const Color(0x24F6F6F6)),
       ),
       alignment: Alignment.center,
       child: Icon(
-        Icons.directions_bus_filled_rounded,
-        size: size * 0.6,
-        color: tokens.plateText,
+        Icons.directions_bus_rounded,
+        size: size * 0.56,
+        color: tokens.accent,
       ),
     );
     if (!showWordmark) return ExcludeSemantics(child: seal);
 
-    final style = Theme.of(context).textTheme.titleLarge?.copyWith(
-      fontWeight: FontWeight.w900,
-      letterSpacing: -0.6,
-      height: 1,
-    );
     return Semantics(
       label: 'BusãoGyn',
       excludeSemantics: true,
@@ -49,11 +98,17 @@ class BrandMark extends StatelessWidget {
                 const TextSpan(text: 'Busão'),
                 TextSpan(
                   text: 'Gyn',
-                  style: TextStyle(color: scheme.primary),
+                  style: TextStyle(color: tokens.accentText),
                 ),
               ],
             ),
-            style: style,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+              height: 1,
+              color: tokens.strongText,
+            ),
           ),
         ],
       ),
@@ -61,41 +116,48 @@ class BrandMark extends StatelessWidget {
   }
 }
 
-/// Número da linha no estilo do letreiro de destino (placa escura, dígitos
-/// âmbar).
+/// Número da linha: placa com contorno âmbar e dígitos em Geist Mono.
+/// [filled] destaca a linha do ônibus acompanhado.
 class RoutePlate extends StatelessWidget {
-  const RoutePlate(this.routeId, {this.dense = false, super.key});
+  const RoutePlate(
+    this.routeId, {
+    this.dense = false,
+    this.filled = false,
+    super.key,
+  });
 
   final String routeId;
   final bool dense;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final height = dense ? 36.0 : 44.0;
     return Semantics(
       label: 'Linha $routeId',
       excludeSemantics: true,
       child: Container(
-        constraints: BoxConstraints(minWidth: dense ? 44 : 58),
-        padding: EdgeInsets.symmetric(
-          horizontal: dense ? Space.xs : Space.sm,
-          vertical: dense ? Space.xxs : 6,
-        ),
+        constraints: BoxConstraints(minWidth: dense ? 44 : 52),
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
-          color: tokens.plate,
-          borderRadius: BorderRadius.circular(Radii.chip),
+          color: filled ? tokens.accent : tokens.background,
+          borderRadius: BorderRadius.circular(Radii.plate),
+          border: Border.all(color: tokens.accent, width: 2),
         ),
         alignment: Alignment.center,
         child: Text(
           routeId,
           maxLines: 1,
-          style: TextStyle(
-            color: tokens.plateText,
-            fontWeight: FontWeight.w900,
-            fontSize: dense ? 14 : 20,
-            letterSpacing: 1.2,
-            height: 1.1,
-            fontFeatures: const [FontFeature.tabularFigures()],
+          style: monoStyle(
+            TextStyle(
+              color: filled ? tokens.onAccent : tokens.strongText,
+              fontWeight: FontWeight.w700,
+              fontSize: dense ? 14 : 16,
+              letterSpacing: -0.3,
+              height: 1,
+            ),
           ),
         ),
       ),
@@ -104,6 +166,20 @@ class RoutePlate extends StatelessWidget {
 }
 
 enum PillTone { neutral, positive, caution, danger, accent }
+
+(Color fg, Color bg) pillColors(BuildContext context, PillTone tone) {
+  final tokens = context.tokens;
+  return switch (tone) {
+    PillTone.neutral => (tokens.scheduled, tokens.scheduledContainer),
+    PillTone.positive => (tokens.realtime, tokens.realtimeContainer),
+    PillTone.caution => (tokens.unconfirmed, tokens.unconfirmedContainer),
+    PillTone.danger => (
+      tokens.danger,
+      Theme.of(context).colorScheme.errorContainer,
+    ),
+    PillTone.accent => (tokens.strongText, tokens.accentSoft),
+  };
+}
 
 /// Ícone + texto: estados nunca dependem só de cor.
 class StatusPill extends StatelessWidget {
@@ -122,38 +198,30 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final scheme = Theme.of(context).colorScheme;
-    final (fg, bg) = switch (tone) {
-      PillTone.neutral => (tokens.scheduled, tokens.scheduledContainer),
-      PillTone.positive => (tokens.realtime, tokens.realtimeContainer),
-      PillTone.caution => (tokens.unconfirmed, tokens.unconfirmedContainer),
-      PillTone.danger => (scheme.error, scheme.errorContainer),
-      PillTone.accent => (scheme.primary, scheme.primaryContainer),
-    };
-
+    final (fg, bg) = pillColors(context, tone);
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: dense ? 6 : Space.xs,
-        vertical: dense ? 2 : Space.xxs,
-      ),
+      height: dense ? 20 : 32,
+      padding: EdgeInsets.symmetric(horizontal: dense ? 6 : 10),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(Radii.pill),
+        borderRadius: BorderRadius.circular(dense ? Radii.pill : 10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: dense ? 13 : 15, color: fg),
-          const SizedBox(width: Space.xxs),
+          Icon(icon, size: dense ? 11 : 15, color: fg),
+          SizedBox(width: dense ? 3 : 6),
           Flexible(
             child: Text(
-              label,
+              dense ? label.toUpperCase() : label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              style: TextStyle(
                 color: fg,
-                fontWeight: FontWeight.w700,
+                fontSize: dense ? 9.5 : 13,
+                fontWeight: dense ? FontWeight.w700 : FontWeight.w600,
+                letterSpacing: dense ? 0.4 : 0,
+                height: 1,
               ),
             ),
           ),
@@ -161,6 +229,231 @@ class StatusPill extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Título de seção do painel: ícone âmbar + rótulo em caixa alta.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel({
+    required this.icon,
+    required this.label,
+    this.trailing,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: tokens.accentText),
+          const SizedBox(width: Space.xs),
+          Expanded(
+            child: Semantics(
+              container: true,
+              header: true,
+              child: Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: tokens.softText,
+                ),
+              ),
+            ),
+          ),
+          ?trailing,
+        ],
+      ),
+    );
+  }
+}
+
+/// Nota de rodapé do painel (ícone de informação + texto pequeno).
+class FootNote extends StatelessWidget {
+  const FootNote({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(
+              Icons.info_outline_rounded,
+              size: 15,
+              color: tokens.softText,
+            ),
+          ),
+          const SizedBox(width: Space.xs),
+          Expanded(
+            child: DefaultTextStyle.merge(
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: tokens.mutedText,
+              ),
+              child: child,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Indicador de cor. Com [pulsing], pulsa duas vezes ao aparecer e a cada
+/// mudança de [pulseKey] (dado novo), sem animar para sempre.
+class StatusDot extends StatefulWidget {
+  const StatusDot({
+    required this.color,
+    this.pulsing = false,
+    this.pulseKey,
+    super.key,
+  });
+
+  final Color color;
+  final bool pulsing;
+  final Object? pulseKey;
+
+  @override
+  State<StatusDot> createState() => _StatusDotState();
+}
+
+class _StatusDotState extends State<StatusDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  int _remaining = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse.addStatusListener(_onStatus);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  @override
+  void didUpdateWidget(covariant StatusDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pulsing != widget.pulsing ||
+        oldWidget.pulseKey != widget.pulseKey) {
+      _start();
+    }
+  }
+
+  void _start() {
+    if (!mounted) return;
+    if (!widget.pulsing || MediaQuery.disableAnimationsOf(context)) {
+      _remaining = 0;
+      _pulse
+        ..stop()
+        ..value = 0;
+      return;
+    }
+    _remaining = 2;
+    _pulse.forward(from: 0);
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _remaining--;
+    if (_remaining > 0) {
+      _pulse.forward(from: 0);
+    } else {
+      _pulse.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: 18,
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, _) {
+            final t = _pulse.value;
+            return Center(
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    if (t > 0)
+                      BoxShadow(
+                        color: widget.color.withValues(alpha: 0.6 * (1 - t)),
+                        spreadRadius: 9 * t,
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Reconstrói [builder] periodicamente para textos de idade ("há 25 s").
+class PeriodicRebuild extends StatefulWidget {
+  const PeriodicRebuild({
+    required this.builder,
+    this.interval = const Duration(seconds: 5),
+    super.key,
+  });
+
+  final WidgetBuilder builder;
+  final Duration interval;
+
+  @override
+  State<PeriodicRebuild> createState() => _PeriodicRebuildState();
+}
+
+class _PeriodicRebuildState extends State<PeriodicRebuild> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(widget.interval, (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
 }
 
 /// Bloco pulsante para carregamento; não anuncia nada a leitores de tela.
@@ -195,7 +488,6 @@ class _SkeletonBlockState extends State<SkeletonBlock>
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     return ExcludeSemantics(
       child: FadeTransition(
         opacity: Tween(begin: 0.45, end: 1.0).animate(_pulse),
@@ -203,7 +495,7 @@ class _SkeletonBlockState extends State<SkeletonBlock>
           height: widget.height,
           width: widget.width,
           decoration: BoxDecoration(
-            color: color,
+            color: context.tokens.raised,
             borderRadius: BorderRadius.circular(widget.radius),
           ),
         ),
@@ -212,7 +504,8 @@ class _SkeletonBlockState extends State<SkeletonBlock>
   }
 }
 
-/// Estado vazio/erro com ícone, título, explicação e ação opcional.
+/// Estado vazio/erro com ícone, título, explicação e ação opcional, dentro
+/// de uma moldura tracejada como na prévia.
 class MessageView extends StatelessWidget {
   const MessageView({
     required this.icon,
@@ -232,43 +525,78 @@ class MessageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final scheme = Theme.of(context).colorScheme;
-    final (fg, bg) = switch (tone) {
-      PillTone.danger => (scheme.error, scheme.errorContainer),
-      PillTone.caution => (tokens.unconfirmed, tokens.unconfirmedContainer),
-      PillTone.accent => (scheme.primary, scheme.primaryContainer),
-      _ => (tokens.mutedText, scheme.surfaceContainerHighest),
+    final Color fg = switch (tone) {
+      PillTone.neutral => tokens.softText,
+      _ => pillColors(context, tone).$1,
     };
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Space.lg),
-      child: Column(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Icon(icon, color: fg, size: 26),
-          ),
-          const SizedBox(height: Space.sm),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (body != null) ...[
-            const SizedBox(height: Space.xxs),
+    return CustomPaint(
+      key: const ValueKey('message-view'),
+      painter: _DashedBorderPainter(color: tokens.hairline),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Space.md,
+          Space.lg,
+          Space.md,
+          Space.lg,
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: fg, size: 26),
+            const SizedBox(height: Space.sm),
             Text(
-              body!,
+              title,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: tokens.mutedText),
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
+            if (body != null) ...[
+              const SizedBox(height: Space.xxs),
+              Text(
+                body!,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: tokens.softText),
+              ),
+            ],
+            if (action != null) ...[const SizedBox(height: Space.md), action!],
           ],
-          if (action != null) ...[const SizedBox(height: Space.md), action!],
-        ],
+        ),
       ),
     );
   }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          const Radius.circular(Radii.header),
+        ),
+      );
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + 5), paint);
+        distance += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
