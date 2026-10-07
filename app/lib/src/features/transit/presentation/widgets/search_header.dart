@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../formatters/search_feedback.dart';
 
 /// Busca por código RMTC. Só aceita dígitos e mantém zeros à esquerda (o
 /// código é tratado como texto).
@@ -13,6 +14,8 @@ class SearchHeader extends StatefulWidget {
     required this.onSearch,
     this.focusNode,
     this.onCancel,
+    this.error,
+    this.onEdited,
     super.key,
   });
 
@@ -23,6 +26,12 @@ class SearchHeader extends StatefulWidget {
 
   /// Volta ao ponto já exibido sem buscar outro.
   final VoidCallback? onCancel;
+
+  /// Última busca falhou: borda de erro e aviso curto logo abaixo do campo.
+  final SearchFeedback? error;
+
+  /// O código foi editado (o aviso de erro deixa de valer).
+  final VoidCallback? onEdited;
 
   @override
   State<SearchHeader> createState() => _SearchHeaderState();
@@ -50,7 +59,14 @@ class _SearchHeaderState extends State<SearchHeader> {
     super.dispose();
   }
 
+  String _lastText = '';
+
   void _onTextChanged() {
+    final text = widget.controller.text;
+    if (text != _lastText) {
+      _lastText = text;
+      if (widget.error != null) widget.onEdited?.call();
+    }
     if (mounted) setState(() {});
   }
 
@@ -58,9 +74,11 @@ class _SearchHeaderState extends State<SearchHeader> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final hasText = widget.controller.text.isNotEmpty;
+    final error = widget.error;
 
-    return GlassSurface(
+    final field = GlassSurface(
       radius: Radii.field,
+      borderColor: error == null ? null : tokens.danger,
       child: SizedBox(
         height: 56,
         child: Row(
@@ -145,6 +163,75 @@ class _SearchHeaderState extends State<SearchHeader> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+
+    if (error == null) return field;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        field,
+        const SizedBox(height: Space.xs),
+        SearchErrorNote(error),
+      ],
+    );
+  }
+}
+
+/// Aviso compacto de busca que falhou: ícone, título e uma linha de ajuda.
+class SearchErrorNote extends StatelessWidget {
+  const SearchErrorNote(this.feedback, {super.key});
+
+  final SearchFeedback feedback;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final icon = switch (feedback.kind) {
+      SearchFeedbackKind.offline => Icons.wifi_off_rounded,
+      SearchFeedbackKind.timeout => Icons.hourglass_bottom_rounded,
+      SearchFeedbackKind.unavailable => Icons.cloud_off_rounded,
+      _ => Icons.error_outline_rounded,
+    };
+    return Semantics(
+      liveRegion: true,
+      label: '${feedback.title}. ${feedback.message}',
+      excludeSemantics: true,
+      child: GlassSurface(
+        radius: Radii.plate,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Space.sm,
+            vertical: 10,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: tokens.danger),
+              const SizedBox(width: Space.xs),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: feedback.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: tokens.danger,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' · ${feedback.message}',
+                        style: TextStyle(color: tokens.softText),
+                      ),
+                    ],
+                  ),
+                  style: const TextStyle(fontSize: 13, height: 1.3),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

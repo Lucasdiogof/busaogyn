@@ -7,27 +7,25 @@ import '../../domain/entities/tracked_vehicle.dart';
 import '../../domain/models/transit_snapshot.dart';
 import '../../domain/repositories/transit_repository.dart';
 import '../formatters/error_messages.dart';
+import '../formatters/search_feedback.dart';
+
+export '../formatters/search_feedback.dart'
+    show SearchFeedback, SearchFeedbackKind;
 
 sealed class StopArrivalsState {
   const StopArrivalsState();
 }
 
 final class StopArrivalsInitial extends StopArrivalsState {
-  const StopArrivalsInitial();
+  const StopArrivalsInitial({this.searchError});
+
+  /// Última busca falhou e ainda não há ponto carregado.
+  final SearchFeedback? searchError;
 }
 
 final class StopArrivalsLoading extends StopArrivalsState {
   const StopArrivalsLoading({this.stopId});
 
-  final String? stopId;
-}
-
-final class StopArrivalsFailure extends StopArrivalsState {
-  const StopArrivalsFailure(this.message, {this.stopId});
-
-  final String message;
-
-  /// Ponto que falhou, quando o código era válido; permite tentar de novo.
   final String? stopId;
 }
 
@@ -76,6 +74,8 @@ final class StopArrivalsLoaded extends StopArrivalsState {
     this.tracking,
     this.refreshing = false,
     this.refreshError,
+    this.searchingStopId,
+    this.searchError,
   });
 
   final String stopId;
@@ -89,6 +89,12 @@ final class StopArrivalsLoaded extends StopArrivalsState {
   /// Falha ao atualizar chegadas já exibidas; o conteúdo anterior continua.
   final String? refreshError;
 
+  /// Outro ponto sendo buscado; este continua na tela até a busca dar certo.
+  final String? searchingStopId;
+
+  /// A busca de outro ponto falhou; este ponto continua válido na tela.
+  final SearchFeedback? searchError;
+
   String? get trackingVehicleNumber => tracking?.vehicleNumber;
   TransitSnapshot<TrackedVehicle?>? get trackedVehicle => tracking?.vehicle;
   String? get trackingError => tracking?.message;
@@ -100,6 +106,8 @@ final class StopArrivalsLoaded extends StopArrivalsState {
     TrackingInfo? Function()? tracking,
     bool? refreshing,
     String? Function()? refreshError,
+    String? Function()? searchingStopId,
+    SearchFeedback? Function()? searchError,
   }) {
     return StopArrivalsLoaded(
       stopId: stopId,
@@ -108,6 +116,10 @@ final class StopArrivalsLoaded extends StopArrivalsState {
       tracking: tracking != null ? tracking() : this.tracking,
       refreshing: refreshing ?? this.refreshing,
       refreshError: refreshError != null ? refreshError() : this.refreshError,
+      searchingStopId: searchingStopId != null
+          ? searchingStopId()
+          : this.searchingStopId,
+      searchError: searchError != null ? searchError() : this.searchError,
     );
   }
 }
@@ -137,13 +149,14 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   int _arrivalsGeneration = 0;
 
   /// Busca um ponto. Repetir o ponto já exibido equivale a [refresh] e
-  /// preserva o acompanhamento; outro ponto encerra o tracking.
+  /// preserva o acompanhamento. Outro ponto só substitui o atual (e encerra
+  /// o tracking) quando a busca dá certo; uma falha vira [SearchFeedback]
+  /// compacto sem apagar o que já estava na tela.
   Future<void> load(String rawStopId) async {
     final stopId = rawStopId.trim();
     if (!RegExp(r'^\d+$').hasMatch(stopId)) {
       _arrivalsGeneration++;
-      _clearTracking();
-      emit(const StopArrivalsFailure('Informe um código de ponto válido.'));
+      _emitSearchError(SearchFeedback.invalidCode);
       return;
     }
 
@@ -152,12 +165,21 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       return refresh();
     }
 
-    _clearTracking();
     final generation = ++_arrivalsGeneration;
-    emit(StopArrivalsLoading(stopId: stopId));
+    if (current is StopArrivalsLoaded) {
+      emit(
+        current.copyWith(
+          searchingStopId: () => stopId,
+          searchError: () => null,
+        ),
+      );
+    } else {
+      emit(StopArrivalsLoading(stopId: stopId));
+    }
     try {
       final arrivals = await _repository.getArrivals(stopId);
       if (generation != _arrivalsGeneration) return;
+      _clearTracking();
       emit(
         StopArrivalsLoaded(
           stopId: stopId,
@@ -167,7 +189,31 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       );
     } catch (error) {
       if (generation != _arrivalsGeneration) return;
-      emit(StopArrivalsFailure(_arrivalsMessage(error), stopId: stopId));
+      _emitSearchError(SearchFeedback.fromError(error, stopId));
+    }
+  }
+
+  /// Some o retorno de erro da busca (por exemplo, ao editar o código).
+  void clearSearchError() {
+    final current = state;
+    if (current is StopArrivalsInitial && current.searchError != null) {
+      emit(const StopArrivalsInitial());
+    } else if (current is StopArrivalsLoaded && current.searchError != null) {
+      emit(current.copyWith(searchError: () => null));
+    }
+  }
+
+  void _emitSearchError(SearchFeedback feedback) {
+    final current = state;
+    if (current is StopArrivalsLoaded) {
+      emit(
+        current.copyWith(
+          searchingStopId: () => null,
+          searchError: () => feedback,
+        ),
+      );
+    } else {
+      emit(StopArrivalsInitial(searchError: feedback));
     }
   }
 
@@ -178,7 +224,14 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
 
     final stopId = current.stopId;
     final generation = ++_arrivalsGeneration;
-    emit(current.copyWith(refreshing: true, refreshError: () => null));
+    emit(
+      current.copyWith(
+        refreshing: true,
+        refreshError: () => null,
+        searchingStopId: () => null,
+        searchError: () => null,
+      ),
+    );
     try {
       final arrivals = await _repository.getArrivals(stopId);
       final latest = state;

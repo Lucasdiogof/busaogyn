@@ -16,11 +16,15 @@ class GlassSurface extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.elevated = true,
     this.solid = false,
+    this.borderColor,
     super.key,
   });
 
   final Widget child;
   final double radius;
+
+  /// Borda de destaque (por exemplo, erro); padrão é a borda do vidro.
+  final Color? borderColor;
   final EdgeInsetsGeometry padding;
   final bool elevated;
 
@@ -35,7 +39,9 @@ class GlassSurface extends StatelessWidget {
       decoration: BoxDecoration(
         color: solid ? tokens.panel : tokens.glass,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: tokens.glassBorder),
+        border: borderColor == null
+            ? Border.all(color: tokens.glassBorder)
+            : Border.all(color: borderColor!, width: 1.5),
         boxShadow: elevated
             ? [
                 BoxShadow(

@@ -217,7 +217,13 @@ void main() {
     test('sem consulta não há status', () {
       expect(liveStatus(const StopArrivalsInitial(), now), isNull);
       expect(liveStatus(const StopArrivalsLoading(stopId: '1'), now), isNull);
-      expect(liveStatus(const StopArrivalsFailure('x'), now), isNull);
+      expect(
+        liveStatus(
+          const StopArrivalsInitial(searchError: SearchFeedback.invalidCode),
+          now,
+        ),
+        isNull,
+      );
     });
 
     test('ao vivo só com tempo real recente', () {

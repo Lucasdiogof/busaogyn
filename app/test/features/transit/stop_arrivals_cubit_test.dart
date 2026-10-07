@@ -284,6 +284,145 @@ void main() {
       expect(flexLoaded().tracking, isNull);
     });
   });
+
+  group('busca de ponto', () {
+    late _FlexibleRepository flex;
+    late StopArrivalsCubit searchCubit;
+
+    const notFound = ApiException(
+      code: 'SOURCE_INVALID_RESPONSE',
+      message: 'RMTC arrivals payload has an unexpected shape.',
+      retryable: true,
+      statusCode: 502,
+    );
+
+    setUp(() {
+      flex = _FlexibleRepository();
+      searchCubit = StopArrivalsCubit(flex, trackingRefreshInterval: null);
+    });
+
+    tearDown(() => searchCubit.close());
+
+    Future<void> loadOk(String stopId) async {
+      final loading = searchCubit.load(stopId);
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+    }
+
+    Future<void> loadFailing(String stopId, Object error) async {
+      final loading = searchCubit.load(stopId);
+      flex.arrivalRequests.last.reply.completeError(error);
+      await loading;
+    }
+
+    test('erro sem ponto anterior não vira tela de conteúdo', () async {
+      await loadFailing('99999', notFound);
+
+      final state = searchCubit.state;
+      expect(state, isA<StopArrivalsInitial>());
+      final feedback = (state as StopArrivalsInitial).searchError!;
+      expect(feedback.kind, SearchFeedbackKind.notFound);
+      expect(feedback.title, 'Ponto não encontrado');
+      // A mensagem técnica do Worker não chega na UI.
+      expect(feedback.message, isNot(contains('RMTC')));
+      expect(feedback.title, isNot(contains('payload')));
+    });
+
+    test('erro mantém o ponto válido anterior e o tracking', () async {
+      await loadOk('30402');
+      final tracking = searchCubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      final searching = searchCubit.load('99999');
+      final during = searchCubit.state as StopArrivalsLoaded;
+      expect(during.stopId, '30402');
+      expect(during.searchingStopId, '99999');
+      flex.arrivalRequests.last.reply.completeError(notFound);
+      await searching;
+
+      final after = searchCubit.state as StopArrivalsLoaded;
+      expect(after.stopId, '30402');
+      expect(after.arrivals.data, hasLength(1));
+      expect(after.trackingVehicleNumber, '20529');
+      expect(after.searchingStopId, isNull);
+      expect(after.searchError?.kind, SearchFeedbackKind.notFound);
+    });
+
+    test('nova busca válida limpa o erro e substitui o ponto', () async {
+      await loadOk('30402');
+      await loadFailing('99999', notFound);
+      await loadOk('30100');
+
+      final state = searchCubit.state as StopArrivalsLoaded;
+      expect(state.stopId, '30100');
+      expect(state.searchError, isNull);
+    });
+
+    test('separa timeout, sem conexão e indisponível', () async {
+      await loadFailing(
+        '1',
+        const ApiException(
+          code: 'CLIENT_TIMEOUT',
+          message: 'x',
+          retryable: true,
+        ),
+      );
+      expect(
+        (searchCubit.state as StopArrivalsInitial).searchError!.kind,
+        SearchFeedbackKind.timeout,
+      );
+
+      await loadFailing(
+        '2',
+        const ApiException(
+          code: 'NETWORK_ERROR',
+          message: 'x',
+          retryable: true,
+        ),
+      );
+      expect(
+        (searchCubit.state as StopArrivalsInitial).searchError!.title,
+        'Sem conexão',
+      );
+
+      await loadFailing(
+        '3',
+        const ApiException(
+          code: 'SOURCE_UNAVAILABLE',
+          message: 'Upstream source is unavailable.',
+          retryable: true,
+          statusCode: 503,
+        ),
+      );
+      expect(
+        (searchCubit.state as StopArrivalsInitial).searchError!.title,
+        'Serviço temporariamente indisponível',
+      );
+    });
+
+    test('código vazio é aviso compacto e não apaga o ponto', () async {
+      await loadOk('30402');
+      await searchCubit.load('');
+
+      final state = searchCubit.state as StopArrivalsLoaded;
+      expect(state.stopId, '30402');
+      expect(state.searchError?.kind, SearchFeedbackKind.invalidCode);
+    });
+
+    test('erro atrasado de busca antiga não sobrescreve a nova', () async {
+      final old = searchCubit.load('99999');
+      final fresh = searchCubit.load('30100');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await fresh;
+      flex.arrivalRequests.first.reply.completeError(notFound);
+      await old;
+
+      final state = searchCubit.state as StopArrivalsLoaded;
+      expect(state.stopId, '30100');
+      expect(state.searchError, isNull);
+    });
+  });
 }
 
 TransitSnapshot<List<ArrivalGroup>> _groups(String first, [String? second]) {

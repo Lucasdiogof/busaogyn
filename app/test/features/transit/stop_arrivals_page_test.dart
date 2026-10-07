@@ -1,5 +1,6 @@
 import 'package:busaogyn/src/app.dart';
 import 'package:busaogyn/src/core/config/map_config.dart';
+import 'package:busaogyn/src/core/network/api_exception.dart';
 import 'package:busaogyn/src/core/settings/theme_mode_cubit.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
@@ -92,9 +93,14 @@ class _FakeTransitRepository implements TransitRepository {
   final bool staleArrivals;
   final requestedStops = <String>[];
 
+  /// Pontos que falham com o erro dado.
+  final failures = <String, Object>{};
+
   @override
   Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(String stopId) async {
     requestedStops.add(stopId);
+    final failure = failures[stopId];
+    if (failure != null) throw failure;
     return _snapshot(groups, stale: staleArrivals);
   }
 
@@ -455,5 +461,82 @@ void main() {
     final search = tester.getRect(find.byType(SearchHeader));
     expect(search.left, closeTo(1366 - search.right, 1));
     expect(search.width, lessThanOrEqualTo(460));
+  });
+
+  group('erro de busca de ponto', () {
+    const notFound = ApiException(
+      code: 'SOURCE_INVALID_RESPONSE',
+      message: 'RMTC arrivals payload has an unexpected shape.',
+      retryable: true,
+      statusCode: 502,
+    );
+
+    testWidgets('sem ponto anterior: aviso junto do campo, sem tela de erro', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository()..failures['99999'] = notFound;
+      await _pumpApp(tester, repository);
+      await _search(tester, '99999');
+
+      expect(find.text('Não foi possível consultar'), findsNothing);
+      expect(find.textContaining('RMTC arrivals payload'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(SearchHeader),
+          matching: find.byType(SearchErrorNote),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byKey(const Key('fake-map')), findsOneWidget);
+    });
+
+    testWidgets('mantém o ponto válido anterior e o tracking', (tester) async {
+      final repository = _FakeTransitRepository()..failures['99999'] = notFound;
+      await _pumpApp(tester, repository);
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+      await tester.tap(find.text('Ponto'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Buscar outro ponto'));
+      await tester.pumpAndSettle();
+      await _search(tester, '99999');
+
+      expect(find.byType(SearchErrorNote), findsOneWidget);
+      expect(find.textContaining('Ponto não encontrado'), findsWidgets);
+      // O ponto anterior e o ônibus acompanhado continuam.
+      expect(find.byTooltip('Acompanhar ônibus 20529'), findsNothing);
+      expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
+      expect(_map(tester).vehicleNumber, '20529');
+
+      // Editar o código tira o aviso; uma busca válida substitui o ponto.
+      await tester.enterText(find.byType(TextField), '3010');
+      await tester.pump();
+      expect(find.byType(SearchErrorNote), findsNothing);
+      await _search(tester, '30100');
+      expect(find.text('Ponto 30100'), findsOneWidget);
+      expect(find.byType(SearchErrorNote), findsNothing);
+    });
+
+    testWidgets('fechar a busca com erro volta ao ponto anterior', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository()..failures['99999'] = notFound;
+      await _pumpApp(tester, repository);
+      await _search(tester, '30402');
+      await tester.tap(find.byTooltip('Buscar outro ponto'));
+      await tester.pumpAndSettle();
+      await _search(tester, '99999');
+      expect(find.byType(SearchErrorNote), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pump();
+      await tester.tap(find.byTooltip('Voltar ao ponto'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ponto 30402'), findsOneWidget);
+      expect(find.byType(SearchErrorNote), findsNothing);
+    });
   });
 }

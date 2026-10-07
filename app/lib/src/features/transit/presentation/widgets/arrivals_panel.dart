@@ -8,11 +8,11 @@ import 'arrival_card.dart';
 /// Exemplo da intro; é um ponto real da RMTC, não um favorito.
 const exampleStopId = '30402';
 
-/// Conteúdo da aba Ponto: intro, carregamento, erro ou chegadas do ponto.
+/// Conteúdo da aba Ponto: intro, carregamento ou chegadas do ponto. Erros de
+/// busca aparecem junto do campo (ver `SearchHeader`), não aqui.
 class ArrivalsPanel extends StatelessWidget {
   const ArrivalsPanel({
     required this.state,
-    required this.onRetry,
     required this.onRefresh,
     required this.onTrack,
     required this.onOpenTracking,
@@ -21,7 +21,6 @@ class ArrivalsPanel extends StatelessWidget {
   });
 
   final StopArrivalsState state;
-  final ValueChanged<String?> onRetry;
   final VoidCallback onRefresh;
   final ValueChanged<String> onTrack;
   final VoidCallback onOpenTracking;
@@ -32,21 +31,6 @@ class ArrivalsPanel extends StatelessWidget {
     final children = switch (state) {
       StopArrivalsInitial() => [_Intro(onExample: onExample)],
       StopArrivalsLoading(:final stopId) => [_LoadingView(stopId: stopId)],
-      StopArrivalsFailure(:final message, :final stopId) => [
-        MessageView(
-          icon: Icons.cloud_off_rounded,
-          tone: PillTone.danger,
-          title: 'Não foi possível consultar',
-          body: message,
-          action: stopId == null
-              ? null
-              : OutlinedButton.icon(
-                  onPressed: () => onRetry(stopId),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Tentar novamente'),
-                ),
-        ),
-      ],
       final StopArrivalsLoaded loaded => _loaded(context, loaded),
     };
 

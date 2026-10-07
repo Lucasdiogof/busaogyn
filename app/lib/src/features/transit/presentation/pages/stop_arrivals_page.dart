@@ -102,6 +102,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// Campo de busca aberto por cima de um ponto já exibido.
   bool _searching = false;
 
+  /// Código enviado na última busca, para fechar o campo quando ela der
+  /// certo.
+  String? _pendingSearch;
+
   DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
   @override
@@ -145,19 +149,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _search() {
     FocusScope.of(context).unfocus();
-    setState(() => _searching = false);
-    context.read<StopArrivalsCubit>().load(_stopController.text);
+    final cubit = context.read<StopArrivalsCubit>();
+    // Com um ponto na tela, a busca só fecha quando der certo (ver
+    // _onStateChanged); se falhar, o campo continua com o aviso.
+    _pendingSearch = _stopController.text.trim();
+    if (cubit.state is! StopArrivalsLoaded) {
+      setState(() => _searching = false);
+    }
+    cubit.load(_stopController.text);
   }
 
   void _searchExample(String stopId) {
     _stopController.text = stopId;
     _search();
-  }
-
-  void _retry(String? stopId) {
-    if (stopId == null) return _search();
-    _stopController.text = stopId;
-    context.read<StopArrivalsCubit>().load(stopId);
   }
 
   void _openSearch() {
@@ -168,6 +172,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _cancelSearch() {
     FocusScope.of(context).unfocus();
+    context.read<StopArrivalsCubit>().clearSearchError();
+    _pendingSearch = null;
     setState(() => _searching = false);
   }
 
@@ -222,13 +228,20 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         );
       case StopArrivalsLoading(:final stopId):
         vehicles.sync(stopId: stopId, groups: const []);
-      case StopArrivalsInitial() || StopArrivalsFailure():
+      case StopArrivalsInitial():
         vehicles.sync(stopId: null, groups: const []);
     }
   }
 
   void _onStateChanged(BuildContext context, StopArrivalsState state) {
     _syncMapVehicles(state);
+    if (state is StopArrivalsLoaded &&
+        state.searchingStopId == null &&
+        state.searchError == null &&
+        state.stopId == _pendingSearch) {
+      _pendingSearch = null;
+      if (_searching) setState(() => _searching = false);
+    }
     if (_selectedSecondary != null &&
         (state is! StopArrivalsLoaded ||
             state.tracking?.vehicleNumber == _selectedSecondary)) {
@@ -463,11 +476,21 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       StopArrivalsLoading(:final stopId) => stopId,
       _ => null,
     };
+    final searchError = switch (state) {
+      StopArrivalsInitial(:final searchError) => searchError,
+      StopArrivalsLoaded(:final searchError) => searchError,
+      _ => null,
+    };
+    // Buscando outro ponto ou com erro de busca: o campo continua à vista
+    // sobre o ponto válido anterior, que não sai da tela.
+    final searchingOther =
+        state is StopArrivalsLoaded && state.searchingStopId != null;
     final showSearch =
         _searching ||
         stopId == null ||
-        state is StopArrivalsFailure ||
-        state is StopArrivalsInitial;
+        state is StopArrivalsInitial ||
+        searchingOther ||
+        searchError != null;
 
     if (showSearch) {
       return (
@@ -475,9 +498,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         SearchHeader(
           controller: _stopController,
           focusNode: _searchFocus,
-          loading: state is StopArrivalsLoading,
+          loading: state is StopArrivalsLoading || searchingOther,
+          error: searchError,
+          onEdited: context.read<StopArrivalsCubit>().clearSearchError,
           onSearch: _search,
-          onCancel: _searching && state is StopArrivalsLoaded
+          onCancel: state is StopArrivalsLoaded && !searchingOther
               ? _cancelSearch
               : null,
         ),
@@ -581,7 +606,6 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         final Widget child = switch (_tab) {
           HomeTab.stop => ArrivalsPanel(
             state: state,
-            onRetry: _retry,
             onRefresh: cubit.refresh,
             onTrack: _track,
             onOpenTracking: () => _select(HomeTab.tracking),
