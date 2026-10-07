@@ -32,12 +32,15 @@
   <title>BusãoGyn</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    /* Layout de celular (< 720 px, mesmo breakpoint do app): o painel cobre
-       a parte de baixo do mapa e o plugin web não aceita margens para o
-       controle nativo de atribuição, que ficaria sobre o painel. O app
-       mostra a atribuição OpenFreeMap/OpenMapTiles/OSM acima do painel. */
-    @media (max-width: 719.98px) {
-      .maplibregl-ctrl-attrib { display: none !important; }
+    /* Os controles do MapLibre têm z-index; sem um contexto de empilhamento
+       próprio eles passam por cima dos painéis do Flutter. */
+    .maplibregl-map { isolation: isolate; }
+    /* O plugin web ignora attributionButtonMargins: o app informa a altura
+       coberta pelo painel e o controle nativo de atribuição (com os créditos
+       e links do estilo em uso) fica logo acima dele. */
+    .maplibregl-ctrl-bottom-right {
+      bottom: var(--busao-map-attribution-bottom, 0px) !important;
+      transition: bottom 150ms ease-out;
     }
   </style>
 </head>

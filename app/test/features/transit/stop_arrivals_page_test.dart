@@ -3,6 +3,7 @@ import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
 import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dart';
 import 'package:busaogyn/src/features/transit/domain/repositories/transit_repository.dart';
+import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -220,4 +221,38 @@ void main() {
       expect(find.text('Acompanhando'), findsWidgets);
     });
   }
+
+  testWidgets('atribuição nativa fica acima do sheet no celular', (
+    tester,
+  ) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await tester.pumpAndSettle();
+
+    final map = tester.widget<TransitMap>(find.byType(TransitMap));
+    expect(map.attributionBottom, greaterThan(0));
+
+    // Expandido ao máximo, o sheet ainda deixa uma faixa de mapa (com a
+    // atribuição) abaixo do cabeçalho.
+    final sheet = tester.widget<DraggableScrollableSheet>(
+      find.byType(DraggableScrollableSheet),
+    );
+    final headerBottom = tester.getBottomLeft(find.byType(SearchHeader)).dy;
+    expect(844 * (1 - sheet.maxChildSize), greaterThan(headerBottom + 32));
+  });
+
+  testWidgets('em tela larga a atribuição fica no canto do mapa', (
+    tester,
+  ) async {
+    await _pumpApp(
+      tester,
+      _FakeTransitRepository(),
+      size: const Size(1366, 768),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TransitMap>(find.byType(TransitMap)).attributionBottom,
+      0,
+    );
+  });
 }

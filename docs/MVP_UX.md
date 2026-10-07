@@ -126,7 +126,12 @@ Câmera inicial: centro de Goiânia, apenas contexto. Nenhum marcador é desenha
 
 ### Atribuição
 
-No Web com largura menor que 720 px, o painel cobre a parte de baixo do mapa e o plugin web não aceita margens para o controle nativo de atribuição, que ficaria sobre o painel. Nesse caso o controle nativo é ocultado por CSS e o app mostra `© OpenFreeMap © OpenMapTiles © OpenStreetMap` acima do painel. Em telas largas o controle nativo continua visível.
+Usa sempre o controle nativo do MapLibre, com os créditos e links definidos pelo estilo em uso (funciona para qualquer `MAP_STYLE_URL`). Nada de texto estático.
+
+- Celular: o controle fica no canto inferior direito do mapa, logo acima do bottom sheet, acompanhando sua altura. Android/iOS usam `attributionButtonMargins`; no Web o plugin ignora margens, então o app informa a altura coberta pelo painel na variável CSS `--busao-map-attribution-bottom`, lida pelo `web/index.html`.
+- O sheet expandido sempre deixa uma faixa de mapa abaixo do cabeçalho para a atribuição. O botão `Centralizar ônibus` só aparece quando cabe sem cobri-la.
+- `.maplibregl-map { isolation: isolate }` impede que os controles do MapLibre passem por cima dos painéis do Flutter no Web.
+- Telas largas (painel lateral): canto inferior direito do mapa, sem deslocamento.
 
 ## Timeout
 

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' show Point;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/config/map_config.dart';
+import '../../../../core/platform/map_attribution_offset.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import 'camera_follow.dart';
@@ -41,6 +43,8 @@ class TransitMap extends StatefulWidget {
     required this.stale,
     this.cameraPadding = EdgeInsets.zero,
     this.controlsPadding = EdgeInsets.zero,
+    this.attributionBottom = 0,
+    this.showControls = true,
     this.mapBuilder,
     super.key,
   });
@@ -59,6 +63,13 @@ class TransitMap extends StatefulWidget {
 
   /// Onde ficam os controles flutuantes do mapa.
   final EdgeInsets controlsPadding;
+
+  /// Altura coberta por painéis na base do mapa; o controle nativo de
+  /// atribuição do MapLibre fica logo acima dela.
+  final double attributionBottom;
+
+  /// Falso quando não há espaço de mapa visível para os controles.
+  final bool showControls;
   final VehicleMapBuilder? mapBuilder;
 
   /// Contexto inicial: centro de Goiânia. Não representa ponto nem ônibus.
@@ -83,6 +94,7 @@ class _TransitMapState extends State<TransitMap> {
   bool _wasCameraMoving = false;
   bool _following = true;
   Timer? _insetsTimer;
+  double _attributionBottom = 0;
 
   /// O próximo centralizar deve aproximar (primeira posição de um ônibus).
   bool _zoomOnNextCenter = true;
@@ -113,10 +125,28 @@ class _TransitMapState extends State<TransitMap> {
       unawaited(_syncVehicle(follow: positionChanged && _follow.following));
     }
 
-    if (widget.cameraPadding != oldWidget.cameraPadding) {
+    if (widget.cameraPadding != oldWidget.cameraPadding ||
+        widget.attributionBottom != oldWidget.attributionBottom) {
+      // Debounce: arrastar o sheet não gera uma chamada nativa por frame.
       _insetsTimer?.cancel();
-      _insetsTimer = Timer(_insetsDebounce, _applyInsets);
+      _insetsTimer = Timer(_insetsDebounce, () {
+        unawaited(_applyInsets());
+        _applyAttribution();
+      });
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _attributionBottom = widget.attributionBottom;
+    setWebMapAttributionOffset(_attributionBottom);
+  }
+
+  void _applyAttribution() {
+    if (!mounted || _attributionBottom == widget.attributionBottom) return;
+    setState(() => _attributionBottom = widget.attributionBottom);
+    setWebMapAttributionOffset(_attributionBottom);
   }
 
   @override
@@ -284,6 +314,7 @@ class _TransitMapState extends State<TransitMap> {
       trackCameraPosition: true,
       logoViewPosition: LogoViewPosition.topLeft,
       attributionButtonPosition: AttributionButtonPosition.bottomRight,
+      attributionButtonMargins: Point(Space.xs, _attributionBottom + Space.xs),
       onMapCreated: params.onMapCreated,
       onStyleLoadedCallback: params.onStyleLoaded,
       onCameraMove: params.onCameraMove,
@@ -318,7 +349,7 @@ class _TransitMapState extends State<TransitMap> {
             child: _buildSurface(context),
           ),
         ),
-        if (hasVehicle)
+        if (hasVehicle && widget.showControls)
           Positioned(
             top: widget.controlsPadding.top,
             right: widget.controlsPadding.right,

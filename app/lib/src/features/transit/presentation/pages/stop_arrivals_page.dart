@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -28,6 +28,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   static const _sheetMin = 0.22;
   static const _sheetMid = 0.48;
   static const _sheetMax = 0.92;
+
+  /// Faixa de mapa que sempre sobra entre o cabeçalho e o sheet expandido,
+  /// onde fica o controle nativo de atribuição.
+  static const _mapBand = 56.0;
   static const _sideWidth = 400.0;
 
   /// Altura aproximada do cabeçalho flutuante (marca + campo de busca).
@@ -158,10 +162,18 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                           top: safe.top + _headerHeight + Space.md + Space.xs,
                           right: Space.md,
                         );
+                  // Com o sheet quase todo aberto não sobra mapa para o botão
+                  // de centralizar sem cobrir a atribuição.
+                  final mapTop = safe.top + _headerHeight + Space.md;
+                  final sheetTop = media.size.height * (1 - extent);
+                  final showControls =
+                      wide || sheetTop - mapTop >= 48 + _mapBand + Space.md;
                   return _MapBinding(
                     mapBuilder: widget.mapBuilder,
                     cameraPadding: cameraPadding,
                     controlsPadding: controlsPadding,
+                    showControls: showControls,
+                    attributionBottom: wide ? 0 : media.size.height * extent,
                   );
                 },
               ),
@@ -174,10 +186,6 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 panelBuilder: (state) => _panel(state),
               )
             else ...[
-              _SheetAttribution(
-                key: const ValueKey('attribution'),
-                extent: _sheetExtent,
-              ),
               NotificationListener<DraggableScrollableNotification>(
                 key: const ValueKey('sheet'),
                 onNotification: (notification) {
@@ -188,7 +196,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   controller: _sheetController,
                   initialChildSize: _sheetMid,
                   minChildSize: _sheetMin,
-                  maxChildSize: _sheetMax,
+                  maxChildSize: _sheetMaxFor(media),
                   snap: true,
                   snapSizes: const [_sheetMid],
                   builder: (context, scroll) => _SheetSurface(
@@ -216,6 +224,12 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     );
   }
 
+  /// O sheet expandido para abaixo do cabeçalho + [_mapBand].
+  double _sheetMaxFor(MediaQueryData media) {
+    final reserved = media.padding.top + Space.sm + _headerHeight + _mapBand;
+    return (1 - reserved / media.size.height).clamp(_sheetMid + 0.1, _sheetMax);
+  }
+
   Widget _searchHeader({required bool floating}) {
     return BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
       selector: (state) => state is StopArrivalsLoading,
@@ -238,11 +252,15 @@ class _MapBinding extends StatelessWidget {
     required this.mapBuilder,
     required this.cameraPadding,
     required this.controlsPadding,
+    required this.attributionBottom,
+    required this.showControls,
   });
 
   final VehicleMapBuilder? mapBuilder;
+  final bool showControls;
   final EdgeInsets cameraPadding;
   final EdgeInsets controlsPadding;
+  final double attributionBottom;
 
   static _MapData _select(StopArrivalsState state) {
     if (state is! StopArrivalsLoaded || state.tracking == null) {
@@ -268,6 +286,8 @@ class _MapBinding extends StatelessWidget {
         stale: data.stale,
         cameraPadding: cameraPadding,
         controlsPadding: controlsPadding,
+        attributionBottom: attributionBottom,
+        showControls: showControls,
         mapBuilder: mapBuilder,
       ),
     );
@@ -290,7 +310,19 @@ class _SheetSurface extends StatelessWidget {
         top: Radius.circular(Radii.panel),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SafeArea(top: false, child: child),
+      // No Web o padrão não arrasta com mouse; sem isso o sheet não abre
+      // nem recolhe num navegador de desktop estreito.
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+            PointerDeviceKind.stylus,
+          },
+        ),
+        child: SafeArea(top: false, child: child),
+      ),
     );
   }
 }
@@ -313,48 +345,6 @@ class _SheetHandle extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// No celular o controle nativo de atribuição fica sob o sheet; esta
-/// etiqueta mantém a atribuição do OpenFreeMap/OSM visível acima dele.
-class _SheetAttribution extends StatelessWidget {
-  const _SheetAttribution({required this.extent, super.key});
-
-  final ValueListenable<double> extent;
-
-  @override
-  Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height;
-    final tokens = context.tokens;
-    return ValueListenableBuilder<double>(
-      valueListenable: extent,
-      builder: (context, value, _) {
-        if (value > 0.75) return const SizedBox.shrink();
-        return Positioned(
-          left: Space.sm,
-          bottom: height * value + Space.xs,
-          child: IgnorePointer(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: tokens.floatingSurface.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(Radii.chip - 2),
-              ),
-              child: Text(
-                '© OpenFreeMap © OpenMapTiles © OpenStreetMap',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  letterSpacing: 0,
-                  fontWeight: FontWeight.w500,
-                  color: tokens.mutedText,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
