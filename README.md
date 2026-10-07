@@ -56,6 +56,8 @@ O deploy do Worker executa um smoke de produção cobrindo health, ETA do ponto 
 
 Identificador Android/iOS: `com.lucksrei.busaogyn`. Alvos: Android (minSdk 24), iOS (13+ exigido pelo MapLibre; projeto em 15.0) e Web.
 
+A baseline é o Flutter 3.38.5: os arquivos de Android/iOS seguem o template dessa versão (AGP 8.11.1, Kotlin 2.2.20, Gradle 8.14). O minSdk 24 vem de `flutter.minSdkVersion` do Flutter 3.38.5; o `maplibre_gl` 0.27.1 exige só 21, então o piso é do Flutter.
+
 O mapa usa [MapLibre](https://maplibre.org) (`maplibre_gl`) com o estilo [OpenFreeMap Liberty](https://openfreemap.org), sem chave de API. Para trocar o estilo:
 
 ```bash

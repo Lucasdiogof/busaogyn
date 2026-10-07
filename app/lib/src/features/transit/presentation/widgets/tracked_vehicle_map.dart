@@ -50,16 +50,25 @@ class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
     _syncVehicle(follow: true);
   }
 
+  void _onMapCreated(MapLibreMapController controller) {
+    // Controller novo (mapa recriado): nada do estilo anterior existe nele.
+    _controller = controller;
+    _styleReady = false;
+  }
+
+  /// Chamado a cada carga de estilo, inclusive após troca/recarga: imagem,
+  /// source e layer pertencem ao estilo e precisam ser recriados aqui.
   Future<void> _onStyleLoaded() async {
     final controller = _controller;
     if (controller == null) return;
+    _styleReady = false;
 
     final scheme = Theme.of(context).colorScheme;
     final marker = await renderVehicleMarker(
       background: scheme.primary,
       foreground: scheme.onPrimary,
     );
-    if (!mounted) return;
+    if (!mounted || !identical(controller, _controller)) return;
 
     await controller.addImage(vehicleImageId, marker);
     await controller.addGeoJsonSource(
@@ -110,7 +119,7 @@ class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
       return builder(
         context,
         initialTarget: center,
-        onMapCreated: (controller) => _controller = controller,
+        onMapCreated: _onMapCreated,
         onStyleLoaded: _onStyleLoaded,
       );
     }
@@ -124,7 +133,7 @@ class _TrackedVehicleMapState extends State<TrackedVehicleMap> {
       tiltGesturesEnabled: false,
       logoViewPosition: LogoViewPosition.topLeft,
       attributionButtonPosition: AttributionButtonPosition.bottomRight,
-      onMapCreated: (controller) => _controller = controller,
+      onMapCreated: _onMapCreated,
       onStyleLoadedCallback: _onStyleLoaded,
     );
   }

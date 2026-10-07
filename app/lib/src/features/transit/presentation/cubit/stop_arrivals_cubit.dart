@@ -56,6 +56,10 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   String? _trackedStopId;
   bool _positionRequestInFlight = false;
 
+  /// Incrementado a cada novo tracking; respostas de gerações anteriores são
+  /// descartadas.
+  int _trackingGeneration = 0;
+
   Future<void> load(String rawStopId) async {
     _clearTracking();
 
@@ -91,14 +95,20 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     if (current is! StopArrivalsLoaded) return;
 
     _trackingTimer?.cancel();
+    final switching = _trackedVehicleNumber != vehicleNumber;
     _trackedVehicleNumber = vehicleNumber;
     _trackedStopId = current.stopId;
+    _trackingGeneration++;
+    // Uma requisição do veículo anterior não pode bloquear a do novo.
+    _positionRequestInFlight = false;
 
     emit(
       StopArrivalsLoaded(
         stopId: current.stopId,
         arrivals: current.arrivals,
-        trackedVehicle: current.trackedVehicle,
+        // Ao trocar de ônibus, a posição do anterior não pode aparecer como
+        // se fosse a do novo.
+        trackedVehicle: switching ? null : current.trackedVehicle,
         trackingVehicleNumber: vehicleNumber,
       ),
     );
@@ -140,6 +150,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       return;
     }
 
+    final generation = _trackingGeneration;
     _positionRequestInFlight = true;
     try {
       final vehicle = await _repository.getVehiclePosition(
@@ -148,43 +159,48 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       );
 
       final latest = state;
-      if (latest is StopArrivalsLoaded &&
-          _trackedVehicleNumber == vehicleNumber &&
-          _trackedStopId == stopId) {
+      if (latest is StopArrivalsLoaded && generation == _trackingGeneration) {
         emit(
           StopArrivalsLoaded(
             stopId: latest.stopId,
             arrivals: latest.arrivals,
             trackedVehicle: vehicle,
+            trackingVehicleNumber: vehicleNumber,
           ),
         );
       }
     } on ApiException catch (error) {
       _emitTrackingFailure(
+        generation,
         showInitialError
             ? error.message
             : 'Posição temporariamente indisponível.',
       );
     } catch (_) {
       _emitTrackingFailure(
+        generation,
         showInitialError
             ? 'Não foi possível localizar este ônibus agora.'
             : 'Posição temporariamente indisponível.',
       );
     } finally {
-      _positionRequestInFlight = false;
+      if (generation == _trackingGeneration) _positionRequestInFlight = false;
     }
   }
 
-  void _emitTrackingFailure(String message) {
+  void _emitTrackingFailure(int generation, String message) {
     final latest = state;
-    if (latest is! StopArrivalsLoaded) return;
+    if (latest is! StopArrivalsLoaded || generation != _trackingGeneration) {
+      return;
+    }
 
     emit(
       StopArrivalsLoaded(
         stopId: latest.stopId,
         arrivals: latest.arrivals,
+        // Mantém a última posição válida do mesmo ônibus.
         trackedVehicle: latest.trackedVehicle,
+        trackingVehicleNumber: _trackedVehicleNumber,
         trackingError: message,
       ),
     );
@@ -196,6 +212,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     _trackedVehicleNumber = null;
     _trackedStopId = null;
     _positionRequestInFlight = false;
+    _trackingGeneration++;
   }
 
   @override
