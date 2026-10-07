@@ -225,6 +225,7 @@ class _LoadedState extends StatelessWidget {
               _ArrivalGroupCard(
                 group: group,
                 trackingVehicleNumber: state.trackingVehicleNumber,
+                hasTrackedPosition: trackedVehicle != null,
               ),
               const SizedBox(height: 10),
             ],
@@ -265,10 +266,12 @@ class _ArrivalGroupCard extends StatelessWidget {
   const _ArrivalGroupCard({
     required this.group,
     required this.trackingVehicleNumber,
+    required this.hasTrackedPosition,
   });
 
   final ArrivalGroup group;
   final String? trackingVehicleNumber;
+  final bool hasTrackedPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +304,7 @@ class _ArrivalGroupCard extends StatelessWidget {
               label: 'Próximo',
               arrival: group.next,
               tracking: trackingVehicleNumber == group.next.vehicleNumber,
+              hasTrackedPosition: hasTrackedPosition,
             ),
             if (group.following != null) ...[
               const SizedBox(height: 12),
@@ -309,6 +313,7 @@ class _ArrivalGroupCard extends StatelessWidget {
                 arrival: group.following!,
                 tracking:
                     trackingVehicleNumber == group.following!.vehicleNumber,
+                hasTrackedPosition: hasTrackedPosition,
               ),
             ],
           ],
@@ -323,11 +328,13 @@ class _ArrivalRow extends StatelessWidget {
     required this.label,
     required this.arrival,
     required this.tracking,
+    required this.hasTrackedPosition,
   });
 
   final String label;
   final Arrival arrival;
   final bool tracking;
+  final bool hasTrackedPosition;
 
   String get _minutes {
     if (arrival.minutes == null) return '—';
@@ -355,10 +362,7 @@ class _ArrivalRow extends StatelessWidget {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 3),
-              Text(
-                arrival.realtime ? '● Tempo real' : '○ Programado',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              _ArrivalSourceBadge(realtime: arrival.realtime),
               if (arrival.vehicleNumber != null)
                 Text(
                   'Ônibus ${arrival.vehicleNumber}',
@@ -374,14 +378,49 @@ class _ArrivalRow extends StatelessWidget {
                 : () => context.read<StopArrivalsCubit>().track(
                     arrival.vehicleNumber!,
                   ),
-            icon: tracking
+            icon: tracking && !hasTrackedPosition
                 ? const SizedBox.square(
                     dimension: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.gps_fixed_rounded),
-            label: Text(tracking ? 'Buscando' : 'Acompanhar'),
+            label: Text(
+              !tracking
+                  ? 'Acompanhar'
+                  : hasTrackedPosition
+                  ? 'Acompanhando'
+                  : 'Buscando…',
+            ),
           ),
+      ],
+    );
+  }
+}
+
+/// Origem da previsão com ícone e texto, sem depender só de cor nem de
+/// glifos que faltam em fontes do Web.
+class _ArrivalSourceBadge extends StatelessWidget {
+  const _ArrivalSourceBadge({required this.realtime});
+
+  final bool realtime;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall;
+    final color = realtime
+        ? Theme.of(context).colorScheme.primary
+        : style?.color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          realtime ? Icons.sensors_rounded : Icons.schedule_rounded,
+          size: 14,
+          color: color,
+        ),
+        const SizedBox(width: 4),
+        Text(realtime ? 'Tempo real' : 'Programado', style: style),
       ],
     );
   }
