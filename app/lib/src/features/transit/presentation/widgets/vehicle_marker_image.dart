@@ -9,6 +9,10 @@ import '../../domain/entities/map_vehicle.dart';
 const _busWidth = 120.0;
 const _busHeight = 176.0;
 
+/// Espaço acima (seta) e abaixo (simetria) na imagem com direção: o ônibus
+/// continua no centro, que é o eixo da rotação.
+const _arrowPad = 44.0;
+
 /// Cores de um marcador de ônibus.
 @immutable
 class BusMarkerStyle {
@@ -74,9 +78,34 @@ BusMarkerStyle busMarkerStyle(
 /// traseiro e retrovisores. Frente para cima = 0° (norte): o acompanhado
 /// gira pela direção observada; secundários ficam assim (a fonte não informa
 /// direção).
-Future<Uint8List> renderBusMarker(BusMarkerStyle style) async {
+///
+/// Com [headingArrow], uma seta à frente do para-brisa marca a direção
+/// observada pelo deslocamento recente. Não indica rota nem destino.
+Future<Uint8List> renderBusMarker(
+  BusMarkerStyle style, {
+  bool headingArrow = false,
+}) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
+  final pad = headingArrow ? _arrowPad : 0.0;
+  if (headingArrow) {
+    final arrow = Path()
+      ..moveTo(60, 4)
+      ..lineTo(88, 38)
+      ..lineTo(60, 28)
+      ..lineTo(32, 38)
+      ..close();
+    canvas.drawPath(
+      arrow,
+      Paint()
+        ..color = style.outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 7
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.drawPath(arrow, Paint()..color = style.body);
+    canvas.translate(0, pad);
+  }
 
   RRect rrect(double l, double t, double r, double b, double radius) =>
       RRect.fromLTRBR(l, t, r, b, Radius.circular(radius));
@@ -120,7 +149,7 @@ Future<Uint8List> renderBusMarker(BusMarkerStyle style) async {
 
   final image = await recorder.endRecording().toImage(
     _busWidth.toInt(),
-    _busHeight.toInt(),
+    (_busHeight + pad * 2).toInt(),
   );
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();

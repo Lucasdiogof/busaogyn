@@ -58,6 +58,7 @@ class TransitMap extends StatefulWidget {
     this.showControls = true,
     this.secondaryVehicles = const [],
     this.onSecondaryTap,
+    this.onTrackedTap,
     this.onMapTap,
     this.mapBuilder,
     super.key,
@@ -110,6 +111,9 @@ class TransitMap extends StatefulWidget {
 
   /// Toque num ônibus secundário (recebe o número do veículo).
   final ValueChanged<String>? onSecondaryTap;
+
+  /// Toque no ônibus acompanhado (abre os detalhes dele).
+  final VoidCallback? onTrackedTap;
 
   /// Toque no mapa fora de qualquer ônibus.
   final VoidCallback? onMapTap;
@@ -357,6 +361,14 @@ class _TransitMapState extends State<TransitMap>
           busMarkerStyle(variant, tokens: tokens, brightness: brightness),
         );
       }
+      images[trackedHeadingImageId] = await renderBusMarker(
+        busMarkerStyle(
+          MarkerVariant.tracked,
+          tokens: tokens,
+          brightness: brightness,
+        ),
+        headingArrow: true,
+      );
       for (final entry in images.entries) {
         if (!await step(() => controller.addImage(entry.key, entry.value))) {
           return;
@@ -468,7 +480,6 @@ class _TransitMapState extends State<TransitMap>
                   1.0,
                 ],
               ),
-              enableInteraction: false,
             ),
           )) {
         return;
@@ -492,6 +503,8 @@ class _TransitMapState extends State<TransitMap>
     busImageIds[MarkerVariant.stale]!,
     MarkerVariant.tracked.name,
     busImageIds[MarkerVariant.tracked]!,
+    trackedHeadingVariant,
+    trackedHeadingImageId,
     busImageIds[MarkerVariant.secondary]!,
   ];
 
@@ -655,6 +668,7 @@ class _TransitMapState extends State<TransitMap>
     Annotation? annotation,
   ) {
     if (layerId == secondaryLayerId) widget.onSecondaryTap?.call(id);
+    if (layerId == vehicleLayerId) widget.onTrackedTap?.call();
   }
 
   Future<void> _centerOnVehicle() async {
