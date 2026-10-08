@@ -25,10 +25,16 @@ class SettingsPanel extends StatelessWidget {
                 segments: const [
                   ButtonSegment(
                     value: ThemeMode.system,
-                    label: Text('Sistema'),
+                    label: _SegmentLabel('Sistema'),
                   ),
-                  ButtonSegment(value: ThemeMode.dark, label: Text('Noturno')),
-                  ButtonSegment(value: ThemeMode.light, label: Text('Claro')),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: _SegmentLabel('Noturno'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: _SegmentLabel('Claro'),
+                  ),
                 ],
                 selected: {mode},
                 onSelectionChanged: (selection) =>
@@ -63,6 +69,22 @@ class SettingsPanel extends StatelessWidget {
               showLicensePage(context: context, applicationName: 'BusãoGyn'),
         ),
       ],
+    );
+  }
+}
+
+/// Rótulo de uma opção de tema numa linha só: com fonte grande ele reduz
+/// para caber no segmento em vez de partir a palavra ("Sistem/a").
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(text, maxLines: 1, softWrap: false),
     );
   }
 }
