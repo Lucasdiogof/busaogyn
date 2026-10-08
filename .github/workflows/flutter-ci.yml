@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -39,8 +41,15 @@ jobs:
   build-android-web:
     needs: flutter
     runs-on: ubuntu-latest
+    env:
+      # Sem secrets de assinatura no CI: os releases deste job são artefatos de
+      # VALIDAÇÃO (R8, manifest, AAB, permissões, libs nativas), assinados com
+      # a chave de debug e não publicáveis.
+      BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE: 'true'
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +63,16 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
-      # Sem secrets de assinatura no CI: o release usa a chave de debug e
-      # serve só para validar build, R8, manifest e bibliotecas nativas.
+      - name: Release sem chave de upload precisa falhar
+        env:
+          BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE: ''
+        run: |
+          if flutter build appbundle --release > guard.log 2>&1; then
+            echo "::error::Release sem chave de upload foi gerado."
+            exit 1
+          fi
+          grep -q 'Release sem chave de upload' guard.log || { tail -40 guard.log; exit 1; }
+          echo "OK: sem chave de upload, o release falha com mensagem clara."
       - run: flutter build apk --release
       - run: flutter build appbundle --release
       - name: Permissões do APK release
@@ -84,6 +101,8 @@ jobs:
     runs-on: macos-latest
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4

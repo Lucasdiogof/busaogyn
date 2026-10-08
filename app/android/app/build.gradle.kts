@@ -8,8 +8,10 @@ plugins {
 }
 
 // Assinatura de release: android/key.properties (local, fora do git) ou
-// variáveis de ambiente (CI). Sem nenhuma das duas, o release é assinado
-// com a chave de debug, o que serve para testes mas não para a Play Store.
+// variáveis BUSAOGYN_ANDROID_* (CI). Sem chave de upload, build release
+// falha, a menos que BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true peça um
+// artefato de validação assinado com a chave de debug (não publicável).
+val allowDebugSignedRelease = System.getenv("BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE") == "true"
 val releaseSigning: Map<String, String>? =
     run {
         val keys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
@@ -76,15 +78,35 @@ android {
     buildTypes {
         release {
             signingConfig =
-                if (releaseSigning != null) {
-                    signingConfigs.getByName("release")
-                } else {
-                    logger.warn(
-                        "BusãoGyn: sem chave de upload configurada; o release será " +
-                            "assinado com a chave de debug (não aceito pela Play Store).",
-                    )
-                    signingConfigs.getByName("debug")
+                when {
+                    releaseSigning != null -> signingConfigs.getByName("release")
+                    allowDebugSignedRelease -> signingConfigs.getByName("debug")
+                    else -> null
                 }
+        }
+    }
+}
+
+// Falha cedo e com mensagem clara em vez de gerar um release sem assinatura
+// ou assinado por engano com a chave de debug.
+gradle.taskGraph.whenReady {
+    val releaseRequested =
+        allTasks.any {
+            it.project == project &&
+                (it.name == "assembleRelease" || it.name == "bundleRelease")
+        }
+    if (releaseRequested && releaseSigning == null) {
+        if (allowDebugSignedRelease) {
+            logger.warn(
+                "BusãoGyn: release de VALIDAÇÃO assinado com a chave de debug " +
+                    "(BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true). Não publicável.",
+            )
+        } else {
+            throw GradleException(
+                "Release sem chave de upload. Configure android/key.properties ou " +
+                    "BUSAOGYN_ANDROID_* (docs/MOBILE_RELEASE.md). Para um build só de " +
+                    "validação, defina BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true.",
+            )
         }
     }
 }
