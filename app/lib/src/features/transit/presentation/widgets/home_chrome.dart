@@ -163,14 +163,25 @@ class TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = this.status;
+    // Com fonte muito grande o wordmark (decorativo) sai e fica só o selo,
+    // deixando a largura para o status ao vivo, que continua escalando.
+    final wordmark = MediaQuery.textScalerOf(context).scale(1) < 1.5;
     return Row(
       children: [
-        const GlassSurface(
+        GlassSurface(
           radius: Radii.pill,
-          padding: EdgeInsets.fromLTRB(6, 0, 14, 0),
+          padding: EdgeInsets.fromLTRB(6, 0, wordmark ? 14 : 6, 0),
           child: SizedBox(
             height: Chrome.pill,
-            child: Center(widthFactor: 1, child: BrandMark()),
+            child: Center(
+              widthFactor: 1,
+              child: wordmark
+                  ? const BrandMark()
+                  : Semantics(
+                      label: 'BusãoGyn',
+                      child: const BrandMark(showWordmark: false),
+                    ),
+            ),
           ),
         ),
         const SizedBox(width: Space.xs),
