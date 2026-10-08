@@ -39,10 +39,12 @@ enum TrackingPhase {
   /// Última consulta trouxe uma posição.
   active,
 
-  /// A fonte respondeu, mas sem posição para o ônibus.
+  /// A fonte respondeu sem posição utilizável para o ônibus (sem
+  /// coordenada ou com dado inválido): não é falha de conexão.
   unavailable,
 
-  /// A última consulta falhou; a última posição válida (se houver) é mantida.
+  /// Falha de conexão ou serviço; a última posição válida (se houver) é
+  /// mantida.
   failing,
 }
 
@@ -136,6 +138,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     this.trackingRefreshInterval = const Duration(seconds: 15),
     this.arrivalsRefreshInterval = const Duration(seconds: 30),
     this.resumeRefreshAfter = const Duration(seconds: 10),
+    this.positionMaxAge = const Duration(seconds: 90),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(const StopArrivalsInitial());
@@ -149,6 +152,14 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
 
   /// Intervalo mínimo para uma consulta imediata ao retomar o app.
   final Duration resumeRefreshAfter;
+
+  /// Idade total máxima (idade na API + tempo local) da última posição do
+  /// ônibus acompanhado. Passado isso o marcador sai do mapa; linha,
+  /// destino e previsão continuam.
+  final Duration positionMaxAge;
+
+  /// Único timer de expiração da posição do acompanhado.
+  Timer? _positionExpiryTimer;
   final DateTime Function() _clock;
 
   Timer? _trackingTimer;
@@ -408,21 +419,24 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     final previous = current.tracking;
     emit(
       current.copyWith(
-        tracking: () => TrackingInfo(
-          vehicleNumber: vehicleNumber,
-          // Ao trocar de ônibus, a posição do anterior não pode aparecer como
-          // se fosse a do novo.
-          phase: switching || previous?.vehicle == null
-              ? TrackingPhase.searching
-              : previous!.phase,
-          vehicle: switching ? null : previous?.vehicle,
-          receivedAt: switching ? null : previous?.receivedAt,
-          movement: switching
-              ? ObservedMovement.empty
-              : previous?.movement ?? ObservedMovement.empty,
+        tracking: () => _expirePosition(
+          TrackingInfo(
+            vehicleNumber: vehicleNumber,
+            // Ao trocar de ônibus, a posição do anterior não pode aparecer como
+            // se fosse a do novo.
+            phase: switching || previous?.vehicle == null
+                ? TrackingPhase.searching
+                : previous!.phase,
+            vehicle: switching ? null : previous?.vehicle,
+            receivedAt: switching ? null : previous?.receivedAt,
+            movement: switching
+                ? ObservedMovement.empty
+                : previous?.movement ?? ObservedMovement.empty,
+          ),
         ),
       ),
     );
+    _armPositionExpiry();
 
     await _refreshTrackedVehicle(showInitialError: true);
     _startTrackingTimer();
@@ -521,7 +535,11 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
         );
       }
     } catch (error) {
-      final message = showInitialError
+      // Resposta sem dado utilizável do ônibus não é "conexão instável".
+      final connectivity = isConnectivityError(error);
+      final message = !connectivity
+          ? 'A fonte não informou a posição deste ônibus agora.'
+          : showInitialError
           ? friendlyErrorMessage(error, ErrorSubject.position)
           : 'Posição temporariamente indisponível.';
       _emitTracking(
@@ -529,7 +547,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
         (previous) => TrackingInfo(
           vehicleNumber: vehicleNumber,
           // Mantém a última posição válida do mesmo ônibus.
-          phase: TrackingPhase.failing,
+          phase: connectivity
+              ? TrackingPhase.failing
+              : TrackingPhase.unavailable,
           vehicle: previous?.vehicle,
           receivedAt: previous?.receivedAt,
           message: message,
@@ -549,7 +569,87 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     if (latest is! StopArrivalsLoaded || generation != _trackingGeneration) {
       return;
     }
-    emit(latest.copyWith(tracking: () => build(latest.tracking)));
+    emit(
+      latest.copyWith(tracking: () => _expirePosition(build(latest.tracking))),
+    );
+    _armPositionExpiry();
+  }
+
+  int _positionAgeSeconds(TrackingInfo info) {
+    final receivedAt = info.receivedAt;
+    final local = receivedAt == null
+        ? 0
+        : _clock().difference(receivedAt).inSeconds;
+    return (info.vehicle?.ageSeconds ?? 0) + (local < 0 ? 0 : local);
+  }
+
+  /// Tira do acompanhamento a coordenada mais velha que [positionMaxAge].
+  /// Só a coordenada sai: linha, destino, pontualidade, acessibilidade,
+  /// rastro e direção observados ficam. Sem falha de conexão, o estado
+  /// passa a "posição indisponível".
+  TrackingInfo _expirePosition(TrackingInfo info) {
+    final snapshot = info.vehicle;
+    final data = snapshot?.data;
+    if (snapshot == null || data == null || data.position == null) {
+      return info;
+    }
+    if (_positionAgeSeconds(info) <= positionMaxAge.inSeconds) return info;
+    return TrackingInfo(
+      vehicleNumber: info.vehicleNumber,
+      phase: switch (info.phase) {
+        TrackingPhase.failing => TrackingPhase.failing,
+        TrackingPhase.searching => TrackingPhase.searching,
+        _ => TrackingPhase.unavailable,
+      },
+      vehicle: TransitSnapshot<TrackedVehicle?>(
+        data: TrackedVehicle(
+          id: data.id,
+          vehicleNumber: data.vehicleNumber,
+          routeId: data.routeId,
+          routeName: data.routeName,
+          destination: data.destination,
+          position: null,
+          accessible: data.accessible,
+          punctuality: data.punctuality,
+        ),
+        fetchedAt: snapshot.fetchedAt,
+        stale: true,
+        ageSeconds: snapshot.ageSeconds,
+      ),
+      receivedAt: info.receivedAt,
+      message: info.message,
+      movement: info.movement,
+    );
+  }
+
+  /// Agenda a expiração da posição atual do acompanhado (se houver).
+  void _armPositionExpiry() {
+    _positionExpiryTimer?.cancel();
+    _positionExpiryTimer = null;
+    final current = state;
+    if (current is! StopArrivalsLoaded) return;
+    final tracking = current.tracking;
+    if (tracking?.vehicle?.data?.position == null) return;
+    // Expira quando a idade passa do limite: no segundo seguinte a ele.
+    final remaining =
+        positionMaxAge.inSeconds - _positionAgeSeconds(tracking!) + 1;
+    _positionExpiryTimer = Timer(
+      Duration(seconds: remaining < 1 ? 1 : remaining),
+      _onPositionExpiry,
+    );
+  }
+
+  void _onPositionExpiry() {
+    _positionExpiryTimer = null;
+    final current = state;
+    if (current is! StopArrivalsLoaded || current.tracking == null) return;
+    final tracking = current.tracking!;
+    final expired = _expirePosition(tracking);
+    if (identical(expired, tracking)) {
+      _armPositionExpiry();
+      return;
+    }
+    emit(current.copyWith(tracking: () => expired));
   }
 
   String _arrivalsMessage(Object error) =>
@@ -558,6 +658,8 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   void _clearTracking() {
     _trackingTimer?.cancel();
     _trackingTimer = null;
+    _positionExpiryTimer?.cancel();
+    _positionExpiryTimer = null;
     _trackedVehicleNumber = null;
     _trackedStopId = null;
     _positionRequestInFlight = false;

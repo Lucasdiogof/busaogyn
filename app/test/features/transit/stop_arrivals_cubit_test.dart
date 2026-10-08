@@ -784,6 +784,206 @@ void main() {
     });
   });
 
+  group('falha da posição: conexão x dado ausente', () {
+    Future<StopArrivalsLoaded> trackFailing(Object error) async {
+      final flex = _FlexibleRepository();
+      final cubit = StopArrivalsCubit(flex, trackingRefreshInterval: null);
+      addTearDown(cubit.close);
+      final loading = cubit.load('30402');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+      final tracking = cubit.track('20529');
+      flex.positionRequests.single.reply.completeError(error);
+      await tracking;
+      return cubit.state as StopArrivalsLoaded;
+    }
+
+    test('timeout e rede viram conexão instável (failing)', () async {
+      for (final code in [ApiClient.timeoutCode, ApiClient.networkErrorCode]) {
+        final state = await trackFailing(
+          ApiException(code: code, message: 'x', retryable: true),
+        );
+        expect(state.trackingPhase, TrackingPhase.failing, reason: code);
+      }
+      final unavailable = await trackFailing(
+        const ApiException(
+          code: 'SOURCE_UNAVAILABLE',
+          message: 'x',
+          retryable: true,
+          statusCode: 503,
+        ),
+      );
+      expect(unavailable.trackingPhase, TrackingPhase.failing);
+    });
+
+    test('resposta sem dado do ônibus não é falha de conexão', () async {
+      for (final error in <Object>[
+        const ApiException(
+          code: 'SOURCE_INVALID_RESPONSE',
+          message: 'RMTC individual vehicle payload has an unexpected shape.',
+          retryable: true,
+          statusCode: 502,
+        ),
+        const FormatException('x'),
+      ]) {
+        final state = await trackFailing(error);
+        expect(
+          state.trackingPhase,
+          TrackingPhase.unavailable,
+          reason: '$error',
+        );
+        expect(state.trackingVehicleNumber, '20529');
+        // As chegadas do ponto (e a previsão) seguem intactas.
+        expect(state.arrivals.data.single.routeId, '020');
+      }
+    });
+  });
+
+  group('validade da posição do acompanhado (90 s)', () {
+    late _QueuedRepository repo;
+    late DateTime now;
+    late StopArrivalsCubit cubit;
+    var sample = 0;
+
+    StopArrivalsLoaded current() => cubit.state as StopArrivalsLoaded;
+    GeoPosition? position() => current().trackedVehicle?.data?.position;
+
+    Future<void> advance(WidgetTester tester, int seconds) async {
+      now = now.add(Duration(seconds: seconds));
+      await tester.pump(Duration(seconds: seconds));
+    }
+
+    /// Responde a consulta pendente com uma posição real nova.
+    Future<void> reply(WidgetTester tester, double latitude) async {
+      sample++;
+      repo.positions
+          .removeAt(0)
+          .complete(
+            TransitSnapshot(
+              data: _vehicle('20529', latitude),
+              fetchedAt: DateTime(
+                2026,
+                10,
+                8,
+                12,
+              ).add(Duration(minutes: sample)),
+              stale: false,
+              ageSeconds: 0,
+            ),
+          );
+      await tester.pump();
+    }
+
+    Future<void> start(WidgetTester tester) async {
+      repo = _QueuedRepository();
+      now = DateTime(2026, 10, 8, 12);
+      sample = 0;
+      cubit = StopArrivalsCubit(
+        repo,
+        trackingRefreshInterval: null,
+        resumeRefreshAfter: Duration.zero,
+        clock: () => now,
+      );
+      await cubit.load('30402');
+      unawaited(cubit.track('20529'));
+      await reply(tester, -16.7000);
+    }
+
+    testWidgets('89 e 90 s mantêm a posição; 91 s tira só a coordenada', (
+      tester,
+    ) async {
+      await start(tester);
+      // Segunda posição real, 50 m ao norte: direção observada = norte.
+      unawaited(cubit.resume());
+      await reply(tester, -16.69955);
+      final trail = current().tracking!.movement.observedTrail;
+      final heading = current().tracking!.movement.observedHeading;
+      expect(trail, hasLength(2));
+      expect(heading, closeTo(0, 1));
+
+      await advance(tester, 89);
+      expect(position(), isNotNull);
+      await advance(tester, 1);
+      expect(position(), isNotNull, reason: '90 s ainda está no limite');
+      await advance(tester, 1);
+      expect(position(), isNull, reason: '91 s passou do limite');
+
+      final tracking = current().tracking!;
+      // Ônibus, linha, destino e dados do veículo continuam.
+      expect(tracking.vehicleNumber, '20529');
+      expect(current().trackedVehicle?.data?.routeId, '020');
+      expect(current().trackedVehicle?.data?.destination, 'T. BIBLIA');
+      expect(current().trackedVehicle?.data?.accessible, isTrue);
+      expect(current().arrivals.data.single.routeId, '020');
+      // Sem erro de rede: indisponível, não "conexão instável".
+      expect(tracking.phase, TrackingPhase.unavailable);
+      // Nada de ponto ou direção inventados no período sem posição.
+      expect(tracking.movement.observedTrail, same(trail));
+      expect(tracking.movement.observedHeading, heading);
+
+      await advance(tester, 120);
+      expect(current().tracking!.movement.observedTrail, same(trail));
+      await cubit.close();
+    });
+
+    testWidgets('a próxima posição real traz o marcador de volta, sem linha '
+        'gigante', (tester) async {
+      await start(tester);
+      await advance(tester, 91);
+      expect(position(), isNull);
+
+      unawaited(cubit.resume());
+      await reply(tester, -16.6800); // ~2,2 km da anterior
+      expect(position()?.latitude, -16.68);
+      expect(current().trackingPhase, TrackingPhase.active);
+      // Salto acima de 1000 m: o rastro recomeça na posição nova.
+      expect(current().tracking!.movement.observedTrail, hasLength(1));
+
+      // A nova posição tem os próprios 90 s.
+      await advance(tester, 90);
+      expect(position(), isNotNull);
+      await advance(tester, 1);
+      expect(position(), isNull);
+      await cubit.close();
+    });
+
+    testWidgets('falha de rede depois do limite é conexão instável; dado '
+        'ausente não', (tester) async {
+      await start(tester);
+      await advance(tester, 91);
+
+      unawaited(cubit.resume());
+      repo.positions
+          .removeAt(0)
+          .completeError(
+            const ApiException(
+              code: 'SOURCE_INVALID_RESPONSE',
+              message: 'x',
+              retryable: true,
+              statusCode: 502,
+            ),
+          );
+      await tester.pump();
+      expect(current().trackingPhase, TrackingPhase.unavailable);
+      expect(position(), isNull);
+
+      unawaited(cubit.resume());
+      repo.positions
+          .removeAt(0)
+          .completeError(
+            const ApiException(
+              code: ApiClient.timeoutCode,
+              message: 'x',
+              retryable: true,
+            ),
+          );
+      await tester.pump();
+      expect(current().trackingPhase, TrackingPhase.failing);
+      expect(position(), isNull);
+      await cubit.close();
+    });
+  });
+
   group('busca de ponto', () {
     late _FlexibleRepository flex;
     late StopArrivalsCubit searchCubit;
@@ -987,4 +1187,24 @@ class _SnapshotRepository implements TransitRepository {
     required String vehicleNumber,
     required String stopId,
   }) async => _positions[_next++];
+}
+
+/// Chegadas imediatas; cada consulta de posição fica pendente na fila.
+class _QueuedRepository implements TransitRepository {
+  final positions = <Completer<TransitSnapshot<TrackedVehicle?>>>[];
+
+  @override
+  Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(
+    String stopId,
+  ) async => _groups('020');
+
+  @override
+  Future<TransitSnapshot<TrackedVehicle?>> getVehiclePosition({
+    required String vehicleNumber,
+    required String stopId,
+  }) {
+    final reply = Completer<TransitSnapshot<TrackedVehicle?>>();
+    positions.add(reply);
+    return reply.future;
+  }
 }

@@ -91,15 +91,42 @@ class Freshness {
   final FreshnessTone tone;
 }
 
-Freshness positionFreshness(TrackingInfo tracking, DateTime now) {
+/// Estado da posição do ônibus acompanhado. Separa o que a fonte não
+/// informou ([unavailable]) de falha de conexão ([connection]) e de posição
+/// antiga ([stale]): nenhum deles é apresentado como "ao vivo".
+enum PositionState { searching, live, aging, stale, unavailable, connection }
+
+class PositionStatus {
+  const PositionStatus(this.state, this.text);
+
+  final PositionState state;
+  final String text;
+
+  FreshnessTone get tone => switch (state) {
+    PositionState.live => FreshnessTone.fresh,
+    PositionState.searching || PositionState.aging => FreshnessTone.aging,
+    PositionState.stale => FreshnessTone.stale,
+    PositionState.unavailable ||
+    PositionState.connection => FreshnessTone.unavailable,
+  };
+}
+
+PositionStatus positionStatus(TrackingInfo tracking, DateTime now) {
   final vehicle = tracking.vehicle;
   if (vehicle?.data?.position == null) {
     return switch (tracking.phase) {
-      TrackingPhase.searching => const Freshness(
-        'Buscando posição',
-        FreshnessTone.aging,
+      TrackingPhase.searching => const PositionStatus(
+        PositionState.searching,
+        'Buscando posição do ônibus',
       ),
-      _ => const Freshness('Posição indisponível', FreshnessTone.unavailable),
+      TrackingPhase.failing => const PositionStatus(
+        PositionState.connection,
+        'Conexão instável',
+      ),
+      _ => const PositionStatus(
+        PositionState.unavailable,
+        'Posição temporariamente indisponível',
+      ),
     };
   }
 
@@ -109,20 +136,17 @@ Freshness positionFreshness(TrackingInfo tracking, DateTime now) {
     now: now,
   );
   if (vehicle.stale || tracking.phase != TrackingPhase.active) {
-    return Freshness(
-      'Posição temporariamente desatualizada · consultada há ${ageLabel(age)}',
-      FreshnessTone.stale,
+    return PositionStatus(
+      PositionState.stale,
+      'Posição desatualizada · há ${ageLabel(age)}',
     );
   }
   if (age <= recentThresholdSeconds) {
-    return const Freshness(
-      'Dados atualizados recentemente',
-      FreshnessTone.fresh,
-    );
+    return PositionStatus(PositionState.live, 'Ao vivo · há ${ageLabel(age)}');
   }
-  return Freshness(
-    'Última posição consultada há ${ageLabel(age)}',
-    FreshnessTone.aging,
+  return PositionStatus(
+    PositionState.aging,
+    'Última posição há ${ageLabel(age)}',
   );
 }
 
@@ -195,9 +219,20 @@ LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
   if (tracking != null) {
     final snapshot = tracking.vehicle;
     if (snapshot?.data?.position == null) {
-      return tracking.phase == TrackingPhase.searching
-          ? const LiveStatus('Buscando', 'posição', LiveTone.scheduled)
-          : const LiveStatus('Sem posição', 'do ônibus', LiveTone.stale);
+      return switch (tracking.phase) {
+        TrackingPhase.searching => const LiveStatus(
+          'Buscando',
+          'posição',
+          LiveTone.scheduled,
+        ),
+        TrackingPhase.failing => const LiveStatus(
+          'Conexão',
+          'instável',
+          LiveTone.stale,
+        ),
+        // A fonte não informou a posição agora; o app segue tentando.
+        _ => const LiveStatus('Localizando', 'ônibus', LiveTone.stale),
+      };
     }
     final age = snapshotAgeSeconds(
       apiAgeSeconds: snapshot!.ageSeconds,

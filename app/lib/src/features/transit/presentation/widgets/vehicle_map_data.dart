@@ -23,6 +23,10 @@ const busImageIds = <MarkerVariant, String>{
   MarkerVariant.stale: 'bus-stale',
 };
 
+/// Acompanhado com direção observada: o mesmo ônibus com uma seta à frente.
+const trackedHeadingImageId = 'bus-tracked-heading';
+const trackedHeadingVariant = 'tracked-heading';
+
 Map<String, dynamic> _collection(List<Map<String, dynamic>> features) => {
   'type': 'FeatureCollection',
   'features': features,
@@ -48,17 +52,23 @@ Map<String, dynamic> _point(
 /// GeoJSON do ônibus acompanhado; vazio quando não há posição.
 ///
 /// [heading] é a direção observada exibida (graus a partir do norte); sem
-/// ela o desenho fica com a frente para cima.
+/// ela o desenho fica com a frente para cima e sem seta. A seta só aparece
+/// com direção observada e posição atual (não antiga).
 Map<String, dynamic> vehicleFeatureCollection(
   GeoPosition? position, {
   bool stale = false,
   double? heading,
 }) {
+  final variant = stale
+      ? MarkerVariant.stale.name
+      : heading != null
+      ? trackedHeadingVariant
+      : MarkerVariant.tracked.name;
   return _collection([
     if (position != null)
       _point(position, {
         'stale': stale,
-        'variant': (stale ? MarkerVariant.stale : MarkerVariant.tracked).name,
+        'variant': variant,
         'heading': heading ?? 0,
       }),
   ]);

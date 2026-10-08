@@ -236,4 +236,25 @@ void main() {
       );
     });
   });
+
+  group('seta de direção no marcador', () {
+    Map<String, dynamic> props(Map<String, dynamic> collection) =>
+        ((collection['features'] as List).single as Map)['properties']
+            as Map<String, dynamic>;
+
+    test('só aparece com direção observada e posição atual', () {
+      expect(props(vehicleFeatureCollection(_origin))['variant'], 'tracked');
+      expect(
+        props(vehicleFeatureCollection(_origin, heading: 90))['variant'],
+        trackedHeadingVariant,
+      );
+      // Posição antiga não exibe seta, mesmo com direção anterior.
+      expect(
+        props(
+          vehicleFeatureCollection(_origin, heading: 90, stale: true),
+        )['variant'],
+        'stale',
+      );
+    });
+  });
 }
