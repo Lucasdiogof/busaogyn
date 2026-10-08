@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Fundo do selo BusãoGyn (BusaoTokens.brandTile). -->
-    <color name="ic_launcher_background">#0B0A08</color>
     <!-- Fundo do splash: o mesmo do tema claro do app. -->
     <color name="launch_background">#FFFFFF</color>
 </resources>

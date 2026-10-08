@@ -1,41 +1,32 @@
 #!/usr/bin/env python3
-"""Gera ícones e imagens de splash a partir do BrandMark do app.
+"""Gera ícones, splash e favicons a partir dos masters oficiais da logo.
 
-O BrandMark (lib/src/core/ui/busao_components.dart) é o selo BusãoGyn: um
-quadrado arredondado #0B0A08 com o ícone Material `directions_bus_rounded`
-em âmbar #FFC53D ocupando 56% do lado. Este script reproduz esse selo em
-todos os tamanhos exigidos por Android, iOS e Web; não há arte nova.
+Fonte única: `docs/brand/source/` (ver docs/brand/README.md). Este script só
+adapta tamanhos e formatos; não desenha arte nova.
 
 Uso (a partir de app/):
 
-    python3 tool/generate_brand_assets.py [--flutter-root CAMINHO]
+    python3 tool/generate_brand_assets.py          # gera os assets
+    python3 tool/generate_brand_assets.py --check  # só confere se estão em dia
 
-Requer Pillow e o SDK Flutter (de onde vem a fonte MaterialIcons). Sem
---flutter-root, usa $FLUTTER_ROOT ou o `flutter` do PATH.
+Requer apenas Pillow.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
-import shutil
+import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
-
-TILE = (0x0B, 0x0A, 0x08, 255)
-ACCENT = (0xFF, 0xC5, 0x3D, 255)
-# Borda do selo no app: 0x24F6F6F6 com 1 px a cada 32 px de lado.
-BORDER = (0xF6, 0xF6, 0xF6, 0x24)
-BUS_CODEPOINT = 0xF6B1  # Icons.directions_bus_rounded
-GLYPH_RATIO = 0.56  # Icon(size: size * 0.56) no BrandMark
-CORNER_RATIO = 0.31  # BorderRadius.circular(size * 0.31)
-SUPERSAMPLE = 4
+from PIL import Image, ImageChops
 
 APP = Path(__file__).resolve().parent.parent
+ROOT = APP.parent
+SRC = ROOT / 'docs/brand/source'
 ANDROID_RES = APP / 'android/app/src/main/res'
 IOS_ASSETS = APP / 'ios/Runner/Assets.xcassets'
 WEB = APP / 'web'
+APP_BRAND = APP / 'assets/brand'
 
 ANDROID_DENSITIES = {
     'mdpi': 1.0,
@@ -44,99 +35,6 @@ ANDROID_DENSITIES = {
     'xxhdpi': 3.0,
     'xxxhdpi': 4.0,
 }
-
-
-def flutter_root(cli_value: str | None) -> Path:
-    if cli_value:
-        return Path(cli_value)
-    if os.environ.get('FLUTTER_ROOT'):
-        return Path(os.environ['FLUTTER_ROOT'])
-    flutter = shutil.which('flutter')
-    if flutter is None:
-        raise SystemExit('Informe --flutter-root ou coloque o flutter no PATH.')
-    return Path(flutter).resolve().parent.parent
-
-
-class Painter:
-    def __init__(self, font_path: Path) -> None:
-        self.font_path = font_path
-
-    def _glyph(self, canvas: Image.Image, em: float) -> None:
-        font = ImageFont.truetype(str(self.font_path), max(1, round(em)))
-        draw = ImageDraw.Draw(canvas)
-        center = (canvas.width / 2, canvas.height / 2)
-        draw.text(center, chr(BUS_CODEPOINT), font=font, fill=ACCENT, anchor='mm')
-
-    def render(
-        self,
-        size: int,
-        *,
-        rounded: bool,
-        glyph_ratio: float = GLYPH_RATIO,
-        tile_ratio: float = 1.0,
-        background: bool = True,
-    ) -> Image.Image:
-        """Selo em [size] px.
-
-        - rounded: cantos do BrandMark e fundo transparente fora do selo;
-          caso contrário o quadrado inteiro é preenchido (iOS e maskable
-          aplicam a própria máscara).
-        - tile_ratio: fração do canvas ocupada pelo selo (margem em volta).
-        - background: False desenha só o ônibus (foreground adaptativo).
-        """
-        big = size * SUPERSAMPLE
-        canvas = Image.new('RGBA', (big, big), (0, 0, 0, 0))
-        tile = big * tile_ratio
-        offset = (big - tile) / 2
-        box = (offset, offset, offset + tile - 1, offset + tile - 1)
-        draw = ImageDraw.Draw(canvas)
-        if background and rounded:
-            radius = tile * CORNER_RATIO
-            draw.rounded_rectangle(box, radius=radius, fill=TILE)
-            width = max(1, round(tile / 32))
-            draw.rounded_rectangle(box, radius=radius, outline=BORDER, width=width)
-        elif background:
-            draw.rectangle((0, 0, big, big), fill=TILE)
-        self._glyph(canvas, tile * glyph_ratio)
-        return canvas.resize((size, size), Image.LANCZOS)
-
-
-def save(image: Image.Image, path: Path, *, opaque: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if opaque:
-        flat = Image.new('RGB', image.size, TILE[:3])
-        flat.paste(image, mask=image.split()[3])
-        flat.save(path, optimize=True)
-    else:
-        image.save(path, optimize=True)
-    print(path.relative_to(APP))
-
-
-def android(p: Painter) -> None:
-    for name, scale in ANDROID_DENSITIES.items():
-        mipmap = ANDROID_RES / f'mipmap-{name}'
-        # Ícone legado (API < 26): selo arredondado em 48 dp, 2 dp de margem.
-        save(
-            p.render(round(48 * scale), rounded=True, tile_ratio=44 / 48),
-            mipmap / 'ic_launcher.png',
-        )
-        # Foreground adaptativo (API 26+): 108 dp, área visível de ~72 dp; o
-        # ônibus mantém a proporção do BrandMark sobre essa área.
-        save(
-            p.render(
-                round(108 * scale),
-                rounded=False,
-                background=False,
-                glyph_ratio=GLYPH_RATIO * 72 / 108,
-            ),
-            mipmap / f'ic_launcher_foreground.png',
-        )
-        # Selo do splash (API < 31), 96 dp.
-        save(
-            p.render(round(96 * scale), rounded=True),
-            ANDROID_RES / f'drawable-{name}' / 'launch_mark.png',
-        )
-
 
 IOS_ICONS = {
     'Icon-App-20x20@1x.png': 20,
@@ -156,54 +54,226 @@ IOS_ICONS = {
     'Icon-App-1024x1024@1x.png': 1024,
 }
 
+# Ícone monocromático (themed icon): preto com a transparência derivada da
+# arte. Três critérios, combinados pelo máximo:
+# - escuridão acima de MONO_FLOOR (vidros e frisos escuros; o claro some: disco,
+#   brilho e sombra do chão, carroceria branca), com rampa suave até
+#   MONO_DARK_SPAN para o vidro ficar semitransparente e deixar ver divisória,
+#   limpadores e letreiro;
+# - verde saturado (ring, pin e faixa verde do ônibus), quase opaco;
+# - o resto (âmbar) entra pela escuridão.
+MONO_FLOOR = 0.14
+MONO_DARK_SPAN = 0.85
+MONO_GREEN_OFFSET = 20  # canal G acima de max(R, B)
+MONO_GREEN_SPAN = 70
+MONO_GREEN_ALPHA = 0.95
+# Maskable: o círculo seguro é 80% do lado; o símbolo ocupa 76%.
+MASKABLE_RATIO = 0.76
+APP_MARK_BASE = 64  # lado em px a 1x do logo-mark do BrandMark (2x e 3x derivam)
 
-def ios(p: Painter) -> None:
+
+class Writer:
+    """Grava os arquivos ou, com --check, só compara com o que existe."""
+
+    def __init__(self, check: bool) -> None:
+        self.check = check
+        self.stale: list[str] = []
+        self.count = 0
+
+    def _rel(self, path: Path) -> str:
+        return str(path.relative_to(ROOT))
+
+    def _mark(self, path: Path, same: bool) -> None:
+        self.count += 1
+        if not same:
+            self.stale.append(self._rel(path))
+        if not self.check:
+            print(self._rel(path))
+
+    def png(self, image: Image.Image, path: Path, *, opaque: bool = False) -> None:
+        image = image.convert('RGB' if opaque else 'RGBA')
+        if self.check:
+            same = False
+            if path.exists():
+                current = Image.open(path)
+                current = current.convert(image.mode)
+                same = current.size == image.size and ImageChops.difference(
+                    current, image
+                ).getbbox() is None
+            self._mark(path, same)
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        image.save(path, optimize=True)
+        self._mark(path, True)
+
+    def ico(self, frames: list[Image.Image], path: Path) -> None:
+        sizes = [(f.width, f.height) for f in frames]
+        if self.check:
+            same = False
+            if path.exists():
+                current = Image.open(path)
+                same = set(current.info.get('sizes', [])) == set(sizes) and all(
+                    ImageChops.difference(
+                        current.ico.getimage(s).convert('RGBA'),
+                        f.convert('RGBA'),
+                    ).getbbox()
+                    is None
+                    for s, f in zip(sizes, frames)
+                )
+            self._mark(path, same)
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        biggest = max(frames, key=lambda f: f.width)
+        biggest.save(path, format='ICO', sizes=sizes, append_images=frames)
+        self._mark(path, True)
+
+    def text(self, content: str, path: Path) -> None:
+        if self.check:
+            self._mark(path, path.exists() and path.read_text() == content)
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        self._mark(path, True)
+
+
+class Masters:
+    def __init__(self) -> None:
+        self.symbol_full = Image.open(SRC / 'logo-master-transparent.png').convert('RGBA')
+        bbox = self.symbol_full.getchannel('A').point(lambda v: 255 if v > 5 else 0).getbbox()
+        # Recorte justo do símbolo (ring + pin), sem a folga do canvas.
+        self.symbol = self.symbol_full.crop(bbox)
+        self.app_icon = Image.open(SRC / 'app-icon-master-1024.png').convert('RGB')
+        self.adaptive_fg = Image.open(SRC / 'adaptive-foreground-1024.png').convert('RGBA')
+        bg = Image.open(SRC / 'adaptive-background-1024.png').convert('RGB')
+        colors = bg.getcolors(16)
+        if colors is None or len(colors) != 1:
+            raise SystemExit('adaptive-background-1024.png deve ser uma cor chapada.')
+        self.background_rgb = colors[0][1]
+
+    def background_hex(self) -> str:
+        return '#%02X%02X%02X' % self.background_rgb
+
+
+def fit_symbol(m: Masters, size: int, margin: float = 0.0) -> Image.Image:
+    """Símbolo centralizado num canvas quadrado transparente de [size] px."""
+    diameter = size * (1 - 2 * margin)
+    scale = diameter / max(m.symbol.size)
+    logo = m.symbol.resize(
+        (max(1, round(m.symbol.width * scale)), max(1, round(m.symbol.height * scale))),
+        Image.LANCZOS,
+    )
+    canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    canvas.alpha_composite(
+        logo, ((size - logo.width) // 2, (size - logo.height) // 2)
+    )
+    return canvas
+
+
+def monochrome(foreground: Image.Image) -> Image.Image:
+    """Versão monocromática: preto com alfa derivado da arte (ver MONO_*)."""
+    r, g, b, a = foreground.split()
+    luma = foreground.convert('RGB').convert('L')
+    dark = luma.point(
+        lambda v: round(
+            255 * min(1.0, max(0.0, ((255 - v) / 255 - MONO_FLOOR) / MONO_DARK_SPAN))
+        )
+    )
+    green = ImageChops.subtract(g, ImageChops.lighter(r, b)).point(
+        lambda v: round(
+            255
+            * MONO_GREEN_ALPHA
+            * min(1.0, max(0.0, (v - MONO_GREEN_OFFSET) / MONO_GREEN_SPAN))
+        )
+    )
+    alpha = ImageChops.multiply(ImageChops.lighter(dark, green), a)
+    out = Image.new('RGBA', foreground.size, (0, 0, 0, 0))
+    out.putalpha(alpha)
+    return out
+
+
+def android(m: Masters, w: Writer) -> None:
+    for name, scale in ANDROID_DENSITIES.items():
+        mipmap = ANDROID_RES / f'mipmap-{name}'
+        # Ícone legado (API < 26): símbolo em 48 dp, 2 dp de margem.
+        w.png(fit_symbol(m, round(48 * scale), margin=2 / 48), mipmap / 'ic_launcher.png')
+        # Adaptativo (API 26+): 108 dp, o master já respeita a zona segura.
+        size = round(108 * scale)
+        foreground = m.adaptive_fg.resize((size, size), Image.LANCZOS)
+        w.png(foreground, mipmap / 'ic_launcher_foreground.png')
+        w.png(monochrome(foreground), mipmap / 'ic_launcher_monochrome.png')
+        # Splash (API < 31), 96 dp.
+        w.png(
+            fit_symbol(m, round(96 * scale)),
+            ANDROID_RES / f'drawable-{name}' / 'launch_mark.png',
+        )
+    w.text(
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<resources>\n'
+        '    <!-- Fundo do ícone adaptativo: cor de adaptive-background-1024.png.\n'
+        '         Gerado por tool/generate_brand_assets.py. -->\n'
+        f'    <color name="ic_launcher_background">{m.background_hex()}</color>\n'
+        '</resources>\n',
+        ANDROID_RES / 'values/ic_launcher_background.xml',
+    )
+
+
+def ios(m: Masters, w: Writer) -> None:
     # App Store exige ícones opacos; o iOS aplica os cantos.
     for name, size in IOS_ICONS.items():
-        save(
-            p.render(size, rounded=False),
-            IOS_ASSETS / 'AppIcon.appiconset' / name,
-            opaque=True,
-        )
+        image = m.app_icon if size == 1024 else m.app_icon.resize((size, size), Image.LANCZOS)
+        w.png(image, IOS_ASSETS / 'AppIcon.appiconset' / name, opaque=True)
     for suffix, scale in (('', 1), ('@2x', 2), ('@3x', 3)):
-        save(
-            p.render(96 * scale, rounded=True),
+        w.png(
+            fit_symbol(m, 96 * scale),
             IOS_ASSETS / 'LaunchImage.imageset' / f'LaunchImage{suffix}.png',
         )
 
 
-def web(p: Painter) -> None:
-    save(p.render(32, rounded=True), WEB / 'favicon.png')
+def web(m: Masters, w: Writer) -> None:
+    w.png(fit_symbol(m, 32, 0.04), WEB / 'favicon.png')
+    w.ico([fit_symbol(m, s, 0.02) for s in (16, 32, 48)], WEB / 'favicon.ico')
     for size in (192, 512):
-        save(p.render(size, rounded=True), WEB / 'icons' / f'Icon-{size}.png')
-        # Maskable: zona segura é o círculo central de 80%.
-        save(
-            p.render(size, rounded=False, glyph_ratio=0.45),
-            WEB / 'icons' / f'Icon-maskable-{size}.png',
-            opaque=True,
-        )
-    save(
-        p.render(180, rounded=False),
+        w.png(fit_symbol(m, size, 0.04), WEB / 'icons' / f'Icon-{size}.png')
+        maskable = Image.new('RGB', (size, size), m.background_rgb).convert('RGBA')
+        maskable.alpha_composite(fit_symbol(m, size, (1 - MASKABLE_RATIO) / 2))
+        w.png(maskable, WEB / 'icons' / f'Icon-maskable-{size}.png', opaque=True)
+    w.png(
+        m.app_icon.resize((180, 180), Image.LANCZOS),
         WEB / 'icons' / 'apple-touch-icon.png',
         opaque=True,
     )
 
 
-def main() -> None:
+def app(m: Masters, w: Writer) -> None:
+    """Símbolo do BrandMark em 1x/2x/3x (Image.asset escolhe a densidade)."""
+    for scale, folder in ((1, ''), (2, '2.0x'), (3, '3.0x')):
+        path = APP_BRAND / folder / 'logo-mark.png'
+        w.png(fit_symbol(m, APP_MARK_BASE * scale), path)
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument('--flutter-root')
-    args = parser.parse_args()
-    font = (
-        flutter_root(args.flutter_root)
-        / 'bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf'
+    parser.add_argument(
+        '--check',
+        action='store_true',
+        help='não grava nada; sai com erro se algum asset estiver fora de data',
     )
-    if not font.exists():
-        raise SystemExit(f'Fonte não encontrada: {font} (rode `flutter precache`).')
-    painter = Painter(font)
-    android(painter)
-    ios(painter)
-    web(painter)
+    args = parser.parse_args()
+    writer = Writer(args.check)
+    masters = Masters()
+    android(masters, writer)
+    ios(masters, writer)
+    web(masters, writer)
+    app(masters, writer)
+    if args.check:
+        if writer.stale:
+            print('Assets fora de data (rode tool/generate_brand_assets.py):')
+            for path in writer.stale:
+                print(f'  {path}')
+            return 1
+        print(f'OK: {writer.count} assets em dia com docs/brand/source.')
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

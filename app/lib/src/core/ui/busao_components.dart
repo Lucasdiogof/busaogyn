@@ -62,9 +62,15 @@ class GlassSurface extends StatelessWidget {
   }
 }
 
-/// Marca BusãoGyn: selo com ônibus + wordmark.
+/// Marca BusãoGyn: símbolo da logo oficial + wordmark.
+///
+/// O símbolo vem de `assets/brand/logo-mark.png` (gerado por
+/// `tool/generate_brand_assets.py` a partir de `docs/brand/source`); o letreiro
+/// "BUSÃO GYN" fica ilegível neste tamanho, então o nome textual acompanha.
 class BrandMark extends StatelessWidget {
   const BrandMark({this.showWordmark = true, this.size = 32, super.key});
+
+  static const symbolAsset = 'assets/brand/logo-mark.png';
 
   final bool showWordmark;
   final double size;
@@ -73,20 +79,12 @@ class BrandMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
-    final seal = Container(
+    final seal = Image.asset(
+      symbolAsset,
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: tokens.brandTile,
-        borderRadius: BorderRadius.circular(size * 0.31),
-        border: Border.all(color: const Color(0x24F6F6F6)),
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.directions_bus_rounded,
-        size: size * 0.56,
-        color: tokens.accent,
-      ),
+      filterQuality: FilterQuality.medium,
+      excludeFromSemantics: true,
     );
     if (!showWordmark) return ExcludeSemantics(child: seal);
 
