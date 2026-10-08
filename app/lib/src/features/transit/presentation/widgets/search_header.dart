@@ -261,9 +261,11 @@ class ContextHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final scaler = MediaQuery.textScalerOf(context);
+    final subtitleLines = Chrome.headerSubtitleLines(scaler);
     return GlassSurface(
       child: SizedBox(
-        height: Chrome.header,
+        height: Chrome.headerHeight(scaler),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
           child: Row(
@@ -275,10 +277,11 @@ class ContextHeader extends StatelessWidget {
                   label: semanticsLabel,
                   container: true,
                   excludeSemantics: semanticsLabel != null,
-                  // A barra tem altura fixa: acima de 130% o texto seria
-                  // cortado, então a escala para por aí.
+                  // A altura da barra acompanha a escala (Chrome.headerHeight),
+                  // mas o texto para em 130%: acima disso o subtítulo ganha
+                  // uma segunda linha em vez de a barra crescer sem limite.
                   child: MediaQuery.withClampedTextScaling(
-                    maxScaleFactor: 1.3,
+                    maxScaleFactor: Chrome.headerMaxTextScale,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +299,7 @@ class ContextHeader extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         DefaultTextStyle.merge(
-                          maxLines: 1,
+                          maxLines: subtitleLines,
                           overflow: TextOverflow.ellipsis,
                           style: monoStyle(
                             TextStyle(

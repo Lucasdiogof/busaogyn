@@ -112,6 +112,35 @@ class ArrivalCard extends StatelessWidget {
     final following = group.following;
     final nextQuality = displayQuality(next);
     final tracked = _isTracked(next) || _isTracked(following);
+    final stackDestination =
+        Chrome.textScale(MediaQuery.textScalerOf(context)) >=
+        Chrome.largeTextScale;
+    final destinationBlock = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DestinationText(
+          group.destination == null
+              ? 'Destino não informado'
+              : destinationLabel(group.destination!),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontSize: 14,
+            height: 1.25,
+          ),
+        ),
+        if (following == null) ...[
+          const SizedBox(height: 3),
+          Text(
+            'sem seguinte',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: monoStyle(
+              TextStyle(fontSize: 11.5, color: tokens.mutedText),
+            ),
+          ),
+        ],
+      ],
+    );
 
     return Semantics(
       container: true,
@@ -134,37 +163,12 @@ class ArrivalCard extends StatelessWidget {
                 children: [
                   Align(child: RoutePlate(group.routeId)),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DestinationText(
-                          group.destination == null
-                              ? 'Destino não informado'
-                              : destinationLabel(group.destination!),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontSize: 14,
-                            height: 1.25,
-                          ),
-                        ),
-                        if (following == null) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            'sem seguinte',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: monoStyle(
-                              TextStyle(
-                                fontSize: 11.5,
-                                color: tokens.mutedText,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                  // Com fonte grande o destino sai desta linha (placa, chegada
+                  // e botão já ocupam a largura) e ganha o cartão inteiro.
+                  if (stackDestination)
+                    const Spacer()
+                  else
+                    Expanded(child: destinationBlock),
                   const SizedBox(width: Space.xs),
                   Semantics(
                     container: true,
@@ -212,6 +216,10 @@ class ArrivalCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (stackDestination) ...[
+              const SizedBox(height: Space.xs),
+              Align(alignment: Alignment.centerLeft, child: destinationBlock),
+            ],
             if (following != null && canTrack(following)) ...[
               const SizedBox(height: Space.xs),
               _FollowingStrip(
