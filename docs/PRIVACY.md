@@ -37,11 +37,12 @@ O app não envia identificadores próprios, cookies nem tokens.
 | API BusãoGyn (Cloudflare Workers, `busaogyn-api.lively-cloud-f009.workers.dev`) | Chegadas por ponto e posição do ônibus | Código do ponto, número do ônibus e dados técnicos de rede | Todas |
 | OpenFreeMap (`tiles.openfreemap.org`) | Estilo, tiles, fontes e ícones do mapa | Área e zoom do mapa exibido, dados técnicos de rede | Todas |
 | unpkg (`unpkg.com`) | Biblioteca MapLibre GL JS 6.4.1 e seu CSS, carregados pelo plugin `maplibre_gl_web` | Dados técnicos de rede | Somente Web |
-| Hospedagem do site | Arquivos do app Web | Dados técnicos de rede | Somente Web |
+| Google Fonts (`fonts.gstatic.com`) | Fontes de fallback do Flutter Web, baixadas só se a tela precisar de caracteres fora das fontes do app (por exemplo, emoji) | Dados técnicos de rede | Somente Web |
+| Hospedagem do site (a definir) | Arquivos do app Web | Dados técnicos de rede, conforme os logs do provedor escolhido | Somente Web |
 
 Notas:
 
-- **API BusãoGyn**: o Worker registra em log o método, o caminho da requisição (que contém o código do ponto ou o número do ônibus), o status e a duração (`worker/src/infra/logger.ts`). Ele não registra o IP em log próprio. A Cloudflare processa as requisições como provedora da infraestrutura.
+- **API BusãoGyn**: o código do Worker registra em log o método, o caminho da requisição (que contém o código do ponto ou o número do ônibus), o status e a duração (`worker/src/infra/logger.ts`). O código da aplicação não registra deliberadamente o IP nem cabeçalhos. A Cloudflare processa as requisições como provedora da infraestrutura e pode manter registros e métricas próprios da plataforma, conforme a configuração da conta e os termos dela. Este repositório não configura nem comprova o que a plataforma retém.
 - A API repassa consultas às fontes públicas da RMTC/RedeMob. O app não acessa essas fontes diretamente.
 - No Web, o CanvasKit (motor gráfico do Flutter) é servido pelo próprio site, e não pelo CDN `gstatic.com`.
 - O plugin de mapa (MapLibre) não recebe a localização do usuário. As permissões de localização que ele declararia no Android são removidas do manifest final.
@@ -54,7 +55,7 @@ Notas:
 
 ## 5. Respostas sugeridas para as lojas
 
-Estas respostas valem para o comportamento atual e devem ser revistas se surgir login, analytics, crash reporting ou localização.
+São sugestões factuais, a confirmar junto com a política final: os formulários têm definições próprias, como "coleta" e "processamento efêmero". Elas valem para o comportamento atual e devem ser revistas se surgir login, analytics, crash reporting ou localização.
 
 - **Google Play — Segurança dos dados**: nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
 - **App Store — Privacidade do app**: "Data Not Collected". Tracking: não.

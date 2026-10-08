@@ -79,12 +79,18 @@ Splash, igual nas três plataformas: fundo do tema do sistema (claro `#FFFFFF`, 
 
 ### Permissões
 
-| Permissão | Motivo |
-| --- | --- |
-| `INTERNET` | API e mapa |
-| `ACCESS_NETWORK_STATE` e similares | Se vierem de MapLibre/OkHttp/Play Services, servem para checar conectividade |
+Permissões efetivas do APK release (`aapt2 dump permissions`, CI de 08/10/2026):
 
-- `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`, declaradas pelo plugin de mapa, são removidas no manifest com `tools:node="remove"`.
+| Permissão | Origem | Motivo |
+| --- | --- | --- |
+| `INTERNET` | App | API e mapa |
+| `ACCESS_NETWORK_STATE` | MapLibre Android 13.5.0 | Detectar a conectividade (`ConnectivityReceiver`) |
+| `ACCESS_WIFI_STATE` | MapLibre Android 13.5.0 | Declarada no manifest do SDK, mas nem as classes Java nem a `libmaplibre.so` usam APIs de Wi-Fi. É uma permissão normal (sem prompt). Candidata a `tools:node="remove"` depois de testar em aparelho |
+| `com.lucksrei.busaogyn.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX Core | Permissão interna do próprio app, para receivers não exportados |
+
+Ausentes no APK final: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `CAMERA`, `RECORD_AUDIO`, `READ_CONTACTS` e permissões de mídia ou armazenamento.
+
+- `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`, declaradas pelo MapLibre, são removidas no manifest com `tools:node="remove"`.
 - O CI lista as permissões do APK release (`aapt2 dump permissions`) e falha se aparecer localização, câmera, microfone, contatos ou mídia.
 - Localização só pode entrar junto com uma funcionalidade que a use, e nesse caso a declaração de dados da Play precisa ser revista.
 
@@ -110,10 +116,20 @@ O release procura a chave de upload, nesta ordem:
 
 2. As variáveis de ambiente `BUSAOGYN_ANDROID_KEYSTORE_PATH`, `BUSAOGYN_ANDROID_KEYSTORE_PASSWORD`, `BUSAOGYN_ANDROID_KEY_ALIAS` e `BUSAOGYN_ANDROID_KEY_PASSWORD` (CI).
 
-Comportamento:
+Build de loja e build de validação são separados de propósito:
 
-- Sem nenhuma das duas, o release é assinado com a chave de debug e o Gradle avisa. Esse build serve para testes e para o CI, **não para a Play Store**.
-- Configuração parcial (por exemplo, senha faltando) interrompe o build.
+| Situação | Resultado de `flutter build apk/appbundle --release` |
+| --- | --- |
+| Chave de upload configurada | Release assinado com a chave de upload: **o único publicável** |
+| Sem chave de upload | **Falha**, com a mensagem "Release sem chave de upload…" |
+| Sem chave e com `BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true` | Release de **validação**, assinado com a chave de debug. O Gradle avisa que não é publicável. A Play Store o rejeitaria |
+| Configuração parcial (por exemplo, senha faltando) | Falha |
+
+O CI usa o modo de validação para conferir R8, manifest, AAB, permissões e bibliotecas nativas. Ele também tem um step que confere que, sem a variável, o release falha. Para testar um release localmente sem a chave:
+
+```bash
+BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true flutter build apk --release
+```
 
 Criar a chave de upload (uma vez, fora do repositório):
 
@@ -236,7 +252,8 @@ O `build/web/` pode ir para qualquer hospedagem estática com HTTPS (o service w
   - `<noscript>`.
 - O viewport é injetado pelo próprio Flutter.
 - Service worker: gerado pelo Flutter (`flutter_service_worker.js`). Ele guarda o shell do app (HTML, JS, CanvasKit local, fontes, ícones), então o app abre sem rede.
-- **Dados de ônibus e mapa não funcionam offline.** Chegadas, posições, tiles e o MapLibre GL JS (do unpkg) dependem de rede. Sem conexão, a busca mostra "Sem conexão".
+- **Offline, só o shell.** Sem rede, o app abre a partir do cache do service worker: tela inicial, busca e navegação.
+- **Não funcionam offline:** chegadas, posições em tempo real, tiles do mapa e o MapLibre GL JS (do unpkg). Sem conexão, a busca mostra "Sem conexão". O BusãoGyn não é um app de transporte offline.
 - CanvasKit: servido pelo próprio site (`canvasKitBaseUrl: 'canvaskit/'` em `web/flutter_bootstrap.js`), não pelo `gstatic.com`.
 - MapLibre GL JS 6 exige WebGL2. O plugin carrega o JS e o CSS automaticamente. Não adicione `maplibre-gl.js` manualmente no `index.html`.
 
@@ -247,6 +264,20 @@ O `build/web/` pode ir para qualquer hospedagem estática com HTTPS (o service w
 - [ ] Cabeçalhos de cache configurados na hospedagem.
 - [ ] Smoke em produção: abrir, buscar 30402, chegadas, Meu ônibus, mapa, recarregar a página, instalar como app (Chrome/Edge, Android e "Adicionar à Tela de Início" no iOS).
 - [ ] Política de privacidade publicada no mesmo domínio.
+
+## Tamanhos medidos
+
+Medidos em 08/10/2026, versão `1.0.0+1`:
+
+| Artefato | Tamanho | Observação |
+| --- | --- | --- |
+| APK release | 81,9 MB (81.861.609 bytes) | APK universal com 3 ABIs (arm64-v8a, armeabi-v7a, x86_64). Não é o que o usuário baixa da Play |
+| AAB release | 55,1 MB (55.072.730 bytes) | A Play gera APKs por ABI e densidade. O download real aparece no App Bundle Explorer depois do upload |
+| iOS `Runner.app` release (sem assinatura) | 26,4 MB | Saída do `flutter build ios --release --no-codesign`. O tamanho na App Store só aparece depois do processamento |
+| Web `build/web` | 32 MB no disco | Cerca de 27 MB são as variantes do CanvasKit (`canvaskit/`); cada navegador baixa só uma |
+| Web, primeiro carregamento (Chromium) | ~10,0 MB do próprio host (16 arquivos), ~3,65 MB se servido com gzip | Medido com cache vazio: `canvaskit/chromium/canvaskit.wasm` 5,7 MB, `main.dart.js` 3,1 MB, fontes Geist ~1,1 MB. MapLibre GL JS (unpkg) e tiles vêm à parte e não entraram na medição |
+
+Não há asset desproporcional no app: os maiores são as fontes Geist (8 arquivos, ~1,1 MB) e o estilo noturno empacotado (`liberty-night.json`, ~73 KB). No Android, o grosso do tamanho vem das bibliotecas nativas `libmaplibre.so` e `libflutter.so`, multiplicadas pelas 3 ABIs do APK universal.
 
 ## Assets de loja
 
@@ -265,11 +296,12 @@ As capturas devem ser reais, tiradas do app. Não use mockups artificiais.
 
 ## CI
 
-`.github/workflows/flutter-ci.yml` roda em PRs e em push para `main`, `feat/**`, `fix/**` e `chore/**`:
+`.github/workflows/flutter-ci.yml` roda em PRs e em push para `main`, `feat/**`, `fix/**` e `chore/**`. Todos os steps usam `shell: bash`, com `pipefail`, então uma falha antes de um `|` não fica mascarada.
 
 - **flutter**: `pub get --enforce-lockfile`, `dart format --set-exit-if-changed`, `analyze`, `test`.
 - **build-android-web** (JDK 21):
-  - APK release e AAB release, assinados com a chave de debug porque não há secrets;
+  - confere que um release sem chave de upload falha;
+  - APK release e AAB release em modo de validação (`BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true`), não publicáveis;
   - permissões do APK;
   - páginas de 16 KB;
   - Web release;
