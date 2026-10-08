@@ -277,7 +277,7 @@ Medidos em 08/10/2026, versão `1.0.0+1`:
 | Web `build/web` | 32 MB no disco | Cerca de 27 MB são as variantes do CanvasKit (`canvaskit/`); cada navegador baixa só uma |
 | Web, primeiro carregamento (Chromium) | ~10,0 MB do próprio host (16 arquivos), ~3,65 MB se servido com gzip | Medido com cache vazio: `canvaskit/chromium/canvaskit.wasm` 5,7 MB, `main.dart.js` 3,1 MB, fontes Geist ~1,1 MB. MapLibre GL JS (unpkg) e tiles vêm à parte e não entraram na medição |
 
-Não há asset desproporcional no app: os maiores são as fontes Geist (8 arquivos, ~1,1 MB) e o estilo noturno empacotado (`liberty-night.json`, ~73 KB). No Android, o grosso do tamanho vem das bibliotecas nativas `libmaplibre.so` e `libflutter.so`, multiplicadas pelas 3 ABIs do APK universal.
+Não há asset desproporcional no app: os maiores são as fontes Geist (8 arquivos, ~1,1 MB) e os estilos do mapa empacotados (`busao-light.json` e `busao-dark.json`, ~54 KB cada). No Android, o grosso do tamanho vem das bibliotecas nativas `libmaplibre.so` e `libflutter.so`, multiplicadas pelas 3 ABIs do APK universal.
 
 ## Assets de loja
 
