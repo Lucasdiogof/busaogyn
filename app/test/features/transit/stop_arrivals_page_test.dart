@@ -335,7 +335,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
-    expect(find.text('nenhum ônibus acompanhado'), findsOneWidget);
+    expect(find.text('Acompanhe um veículo em tempo real'), findsOneWidget);
     expect(
       find.text('Escolha um ônibus em tempo real nas chegadas de um ponto.'),
       findsOneWidget,

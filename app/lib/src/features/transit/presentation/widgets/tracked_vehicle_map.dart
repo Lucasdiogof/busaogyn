@@ -358,7 +358,7 @@ class _TransitMapState extends State<TransitMap>
       LineLayerProperties(
         lineColor: _hex(_trailColor(tokens, brightness)),
         lineWidth: 3,
-        lineOpacity: brightness == Brightness.dark ? 0.45 : 0.5,
+        lineOpacity: brightness == Brightness.dark ? 0.58 : 0.5,
         lineCap: 'round',
         lineJoin: 'round',
       ),

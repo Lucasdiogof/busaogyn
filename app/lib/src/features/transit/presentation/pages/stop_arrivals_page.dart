@@ -561,7 +561,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         const ContextHeader(
           leading: HeaderTile(Icons.directions_bus_outlined, filled: false),
           title: 'Meu ônibus',
-          subtitle: Text('nenhum ônibus acompanhado'),
+          subtitle: Text('Acompanhe um veículo em tempo real'),
         ),
       );
     }
