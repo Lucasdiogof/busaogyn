@@ -48,10 +48,12 @@ class _Geometry {
     left = wide ? (size.width - columnWidth) / 2 : Chrome.gutter;
     width = columnWidth;
     top = safe.top + Space.sm;
+    headerHeight = Chrome.headerHeight(media.textScaler);
+    dockLayout = Chrome.dockLayout(columnWidth, media.textScaler);
     headerTop = top + Chrome.pill + 10;
-    headerBottom = headerTop + Chrome.header;
+    headerBottom = headerTop + headerHeight;
     dockBottom = math.max(safe.bottom, Space.xs) + Space.xs;
-    dockTop = size.height - dockBottom - Chrome.dock;
+    dockTop = size.height - dockBottom - dockLayout.height;
     panelBottom = size.height - dockTop + Space.xs;
   }
 
@@ -64,6 +66,8 @@ class _Geometry {
   late final double left;
   late final double width;
   late final double top;
+  late final double headerHeight;
+  late final ({int labelLines, double height}) dockLayout;
   late final double headerTop;
   late final double headerBottom;
   late final double dockBottom;
@@ -405,6 +409,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   selected: _tab,
                   onSelected: _select,
                   trackingActive: trackingActive,
+                  layout: geometry.dockLayout,
                 ),
               ),
             ),
@@ -438,7 +443,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       // na altura do cabeçalho; cresce para a esquerda quando pausado.
       controlsPadding: g.wide
           ? EdgeInsets.only(
-              top: g.headerTop + (Chrome.header - 48) / 2,
+              top: g.headerTop + (g.headerHeight - 48) / 2,
               right: g.size.width - g.left + Space.sm,
             )
           : EdgeInsets.only(top: mapTop + Space.sm, right: Chrome.gutter),

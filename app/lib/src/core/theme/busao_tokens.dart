@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Escala de espaçamento (múltiplos de 4).
@@ -27,9 +29,64 @@ abstract final class Chrome {
   /// Pílulas do topo (marca e status).
   static const pill = 44.0;
 
-  /// Cartão de contexto (busca, ponto, ônibus, ajustes).
+  /// Cartão de contexto (busca, ponto, ônibus, ajustes) e dock, com a fonte
+  /// em 100%. Com fonte grande use [headerHeight] e [dockLayout].
   static const header = 64.0;
   static const dock = 70.0;
+
+  /// Fator de escala de texto efetivo (1.0 = 100%).
+  static double textScale(TextScaler scaler) => scaler.scale(16) / 16;
+
+  /// Acima desta escala os layouts passam do modo compacto ao modo para
+  /// fonte grande (destino em duas linhas, rótulos do dock em duas linhas).
+  static const largeTextScale = 1.3;
+
+  /// Escala máxima dentro do cartão de contexto (a barra não cresce sem
+  /// limite); o texto escala até aqui e o resto vira linhas.
+  static const headerMaxTextScale = 1.3;
+
+  /// Linhas do subtítulo do cartão de contexto: duas só com fonte grande.
+  static int headerSubtitleLines(TextScaler scaler) =>
+      textScale(scaler) >= largeTextScale ? 2 : 1;
+
+  /// Altura do cartão de contexto. Com fonte normal é [header]; com fonte
+  /// grande cresce o suficiente para título e duas linhas de subtítulo.
+  static double headerHeight(TextScaler scaler) {
+    final lines = headerSubtitleLines(scaler);
+    if (lines == 1) return header;
+    final scale = math.min(textScale(scaler), headerMaxTextScale);
+    // Margens verticais (10 + 10), título (15 px), 2 px e o subtítulo
+    // (11.5 px), todos com altura de linha 1.2.
+    final content = 20 + 15 * 1.2 * scale + 2 + lines * 11.5 * 1.2 * scale;
+    return math.max(header, content.ceilToDouble() + 2);
+  }
+
+  /// Rótulos do dock, do mais longo (10 caracteres) ao mais curto.
+  static const _dockLongestLabel = 10;
+  static const _dockLabelSize = 11.0;
+  static const _dockLabelChar = 0.58; // largura média de um caractere, em em
+  static const _dockPadding = 6.0;
+  static const _dockGap = 4.0;
+
+  /// Linhas dos rótulos do dock e altura resultante para a [width] do dock.
+  ///
+  /// Com fonte normal os rótulos têm uma linha e o dock mede [dock]. Quando o
+  /// rótulo mais longo ("Meu ônibus") não cabe numa linha na largura de cada
+  /// aba, as palavras passam para linhas separadas e o dock cresce só o
+  /// necessário. É uma estimativa por escala e largura (sem medir texto), de
+  /// modo que a geometria da página e o dock chegam à mesma altura.
+  static ({int labelLines, double height}) dockLayout(
+    double width,
+    TextScaler scaler,
+  ) {
+    final scale = textScale(scaler);
+    final item = (width - _dockPadding * 2 - _dockGap * 2) / 3;
+    final oneLine = _dockLabelSize * scale * _dockLabelChar * _dockLongestLabel;
+    final lines = oneLine <= item - 8 ? 1 : 2;
+    // Margens (12), folga (4), ícone (22), 3 px e as linhas do rótulo.
+    final content = 12 + 4 + 22 + 3 + lines * _dockLabelSize * 1.25 * scale;
+    return (labelLines: lines, height: math.max(dock, content.ceilToDouble()));
+  }
 
   /// Margem lateral dos elementos flutuantes.
   static const gutter = 16.0;

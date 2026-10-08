@@ -25,6 +25,19 @@ class SecondaryVehicleCallout extends StatelessWidget {
     final theme = Theme.of(context);
     final routeId = vehicle.routeId;
     final destination = vehicle.destination;
+    // Com fonte grande o destino não cabe ao lado da placa e do botão de
+    // fechar: ele passa para uma linha própria, na largura do painel.
+    final stackDestination =
+        Chrome.textScale(MediaQuery.textScalerOf(context)) >=
+        Chrome.largeTextScale;
+    final destinationText = destination == null
+        ? null
+        : Text(
+            destinationLabel(destination),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(color: tokens.softText),
+          );
 
     return GlassSurface(
       radius: Radii.header,
@@ -53,15 +66,8 @@ class SecondaryVehicleCallout extends StatelessWidget {
                       'Ônibus ${vehicle.vehicleNumber}',
                       style: theme.textTheme.titleSmall,
                     ),
-                    if (destination != null)
-                      Text(
-                        destinationLabel(destination),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.softText,
-                        ),
-                      ),
+                    if (destinationText != null && !stackDestination)
+                      destinationText,
                     if (vehicle.stale)
                       Text(
                         'Posição possivelmente desatualizada',
@@ -79,6 +85,11 @@ class SecondaryVehicleCallout extends StatelessWidget {
               ),
             ],
           ),
+          if (destinationText != null && stackDestination)
+            Padding(
+              padding: const EdgeInsets.only(right: Space.sm),
+              child: destinationText,
+            ),
           const SizedBox(height: Space.xs),
           Padding(
             padding: const EdgeInsets.only(right: Space.sm),

@@ -9,11 +9,17 @@ import '../formatters/transit_labels.dart';
 enum HomeTab { stop, tracking, settings }
 
 /// Dock inferior flutuante com três destinos.
+///
+/// [layout] vem de `Chrome.dockLayout` (a página usa a mesma medida na
+/// geometria): com fonte normal os rótulos têm uma linha e o dock mede
+/// `Chrome.dock`; com fonte grande, rótulos como "Meu ônibus" passam para
+/// duas linhas e o dock cresce só o necessário.
 class AppDock extends StatelessWidget {
   const AppDock({
     required this.selected,
     required this.onSelected,
     required this.trackingActive,
+    required this.layout,
     super.key,
   });
 
@@ -23,18 +29,21 @@ class AppDock extends StatelessWidget {
   /// Marca a aba Meu ônibus quando há um ônibus acompanhado.
   final bool trackingActive;
 
+  final ({int labelLines, double height}) layout;
+
   @override
   Widget build(BuildContext context) {
     return GlassSurface(
       radius: Radii.dock,
       padding: const EdgeInsets.all(6),
       child: SizedBox(
-        height: Chrome.dock - 12,
+        height: layout.height - 12,
         child: Row(
           children: [
             _DockItem(
               icon: Icons.departure_board_rounded,
               label: 'Chegadas',
+              labelLines: layout.labelLines,
               selected: selected == HomeTab.stop,
               onTap: () => onSelected(HomeTab.stop),
             ),
@@ -42,6 +51,7 @@ class AppDock extends StatelessWidget {
             _DockItem(
               icon: Icons.directions_bus_outlined,
               label: 'Meu ônibus',
+              labelLines: layout.labelLines,
               selected: selected == HomeTab.tracking,
               badge: trackingActive,
               onTap: () => onSelected(HomeTab.tracking),
@@ -50,6 +60,7 @@ class AppDock extends StatelessWidget {
             _DockItem(
               icon: Icons.tune_rounded,
               label: 'Ajustes',
+              labelLines: layout.labelLines,
               selected: selected == HomeTab.settings,
               onTap: () => onSelected(HomeTab.settings),
             ),
@@ -64,6 +75,7 @@ class _DockItem extends StatelessWidget {
   const _DockItem({
     required this.icon,
     required this.label,
+    required this.labelLines,
     required this.selected,
     required this.onTap,
     this.badge = false,
@@ -71,6 +83,7 @@ class _DockItem extends StatelessWidget {
 
   final IconData icon;
   final String label;
+  final int labelLines;
   final bool selected;
   final VoidCallback onTap;
   final bool badge;
@@ -79,6 +92,15 @@ class _DockItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final radius = BorderRadius.circular(Radii.dock - 6);
+    final labelStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      color: selected ? tokens.strongText : tokens.mutedText,
+    );
+    // Cada palavra numa linha própria quando o rótulo não cabe em uma; o
+    // FittedBox só encolhe uma palavra que, sozinha, passe da largura da
+    // aba (nunca corta a letra).
+    final words = labelLines > 1 ? label.split(' ') : [label];
     return Expanded(
       child: Semantics(
         container: true,
@@ -132,17 +154,16 @@ class _DockItem extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                      color: selected ? tokens.strongText : tokens.mutedText,
+                  for (final word in words)
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        word,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: labelStyle,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
