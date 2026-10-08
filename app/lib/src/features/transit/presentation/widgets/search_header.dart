@@ -106,6 +106,8 @@ class _SearchHeaderState extends State<SearchHeader> {
                   ),
                 ),
                 decoration: InputDecoration(
+                  // Área de toque com a altura da barra, não só a da linha.
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   hintText: 'Código do ponto, ex.: 30402',
                   hintStyle: TextStyle(
                     fontFamily: BusaoFonts.sans,
@@ -132,7 +134,7 @@ class _SearchHeaderState extends State<SearchHeader> {
             Padding(
               padding: const EdgeInsets.only(right: Space.xs),
               child: SizedBox.square(
-                dimension: 40,
+                dimension: 44,
                 child: Tooltip(
                   message: 'Buscar',
                   excludeFromSemantics: true,
@@ -140,7 +142,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                     onPressed: widget.onSearch,
                     style: FilledButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      minimumSize: const Size.square(40),
+                      minimumSize: const Size.square(44),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.plate),
                       ),
@@ -273,35 +275,40 @@ class ContextHeader extends StatelessWidget {
                   label: semanticsLabel,
                   container: true,
                   excludeSemantics: semanticsLabel != null,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: tokens.strongText,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      DefaultTextStyle.merge(
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: monoStyle(
-                          TextStyle(
-                            fontSize: 11.5,
-                            color: tokens.mutedText,
+                  // A barra tem altura fixa: acima de 130% o texto seria
+                  // cortado, então a escala para por aí.
+                  child: MediaQuery.withClampedTextScaling(
+                    maxScaleFactor: 1.3,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.strongText,
                             height: 1.2,
                           ),
                         ),
-                        child: subtitle,
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        DefaultTextStyle.merge(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: monoStyle(
+                            TextStyle(
+                              fontSize: 11.5,
+                              color: tokens.mutedText,
+                              height: 1.2,
+                            ),
+                          ),
+                          child: subtitle,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

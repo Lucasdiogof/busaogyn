@@ -58,45 +58,54 @@ class TrackingCard extends StatelessWidget {
       ),
     };
 
+    final status = [
+      Icon(icon, size: 17, color: color),
+      const SizedBox(width: Space.xs),
+      Expanded(
+        child: Semantics(
+          liveRegion: true,
+          child: Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: tokens.softText,
+            ),
+          ),
+        ),
+      ),
+    ];
+    final age = PeriodicRebuild(
+      builder: (context) {
+        final age = positionAgeLabel(tracking, clock());
+        if (age == null) return const SizedBox.shrink();
+        return Text(
+          age,
+          style: monoStyle(TextStyle(fontSize: 11.5, color: tokens.mutedText)),
+        );
+      },
+    );
+    // Com fonte grande (150%+) a idade da posição desce para baixo do
+    // estado em vez de disputar a mesma linha e estourar a largura.
+    final stacked = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
-          child: Row(
-            children: [
-              Icon(icon, size: 17, color: color),
-              const SizedBox(width: Space.xs),
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    label.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                      color: tokens.softText,
-                    ),
-                  ),
-                ),
-              ),
-              PeriodicRebuild(
-                builder: (context) {
-                  final age = positionAgeLabel(tracking, clock());
-                  if (age == null) return const SizedBox.shrink();
-                  return Text(
+          child: stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: status),
                     age,
-                    style: monoStyle(
-                      TextStyle(fontSize: 11.5, color: tokens.mutedText),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+                  ],
+                )
+              : Row(children: [...status, age]),
         ),
         const SizedBox(height: Space.sm),
         _Identity(

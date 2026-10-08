@@ -64,7 +64,7 @@ class ArrivalsPanel extends StatelessWidget {
             ),
             const SizedBox(width: Space.xxs),
             SizedBox.square(
-              dimension: 36,
+              dimension: 44,
               child: IconButton(
                 onPressed: state.refreshing ? null : onRefresh,
                 tooltip: 'Atualizar chegadas',

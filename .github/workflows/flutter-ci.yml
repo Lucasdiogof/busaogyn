@@ -9,6 +9,8 @@ on:
     branches:
       - main
       - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
     paths:
       - 'app/**'
       - '.github/workflows/flutter-ci.yml'
@@ -21,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +33,23 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
 
   build-android-web:
     needs: flutter
     runs-on: ubuntu-latest
+    env:
+      # Sem secrets de assinatura no CI: os releases deste job são artefatos de
+      # VALIDAÇÃO (R8, manifest, AAB, permissões, libs nativas), assinados com
+      # a chave de debug e não publicáveis.
+      BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE: 'true'
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -50,15 +62,47 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter build apk --debug
+      - run: flutter pub get --enforce-lockfile
+      - name: Release sem chave de upload precisa falhar
+        env:
+          BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE: ''
+        run: |
+          if flutter build appbundle --release > guard.log 2>&1; then
+            echo "::error::Release sem chave de upload foi gerado."
+            exit 1
+          fi
+          grep -q 'Release sem chave de upload' guard.log || { tail -40 guard.log; exit 1; }
+          echo "OK: sem chave de upload, o release falha com mensagem clara."
+      - run: flutter build apk --release
+      - run: flutter build appbundle --release
+      - name: Permissões do APK release
+        run: |
+          aapt2="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk | tee permissions.txt
+          if grep -E 'LOCATION|CAMERA|RECORD_AUDIO|READ_CONTACTS|READ_MEDIA|READ_EXTERNAL_STORAGE' permissions.txt; then
+            echo "::error::Permissão sem funcionalidade correspondente no app."
+            exit 1
+          fi
+      - name: Bibliotecas nativas e páginas de 16 KB
+        run: |
+          zipalign="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign"
+          "$zipalign" -c -P 16 -v 4 build/app/outputs/flutter-apk/app-release.apk | grep -E 'lib/|Verification'
+          python3 tool/check_android_release.py \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab
       - run: flutter build web --release
+      - name: Tamanhos
+        run: |
+          ls -l build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab
+          du -sh build/web
 
   build-ios:
     needs: flutter
     runs-on: macos-latest
     defaults:
       run:
+        # `shell: bash` liga -o pipefail: falha antes de um pipe não é mascarada.
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -67,5 +111,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter build ios --simulator --no-codesign
+      # Release para dispositivo sem assinatura: valida build de release,
+      # sem certificado nem provisioning profile.
+      - run: flutter build ios --release --no-codesign

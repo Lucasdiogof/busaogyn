@@ -66,3 +66,7 @@ flutter run --dart-define=MAP_STYLE_URL=https://tiles.openfreemap.org/styles/lib
 
 O build Android exige JDK 21.
 
+Versão atual: `1.0.0+1` (`version` em `app/pubspec.yaml`, que define `versionName`/`versionCode` no Android e `CFBundleShortVersionString`/`CFBundleVersion` no iOS).
+
+Publicação nas lojas e no Web, assinatura, ícones e checklist: [docs/MOBILE_RELEASE.md](docs/MOBILE_RELEASE.md). Comportamento de privacidade (dados, rede e serviços externos): [docs/PRIVACY.md](docs/PRIVACY.md).
+
