@@ -24,8 +24,8 @@ import '../widgets/tracking_card.dart';
 
 /// Home map-first: o mapa ocupa a tela inteira e tudo flutua sobre ele —
 /// marca e status no topo, cartão de contexto, painel (bottom sheet no
-/// celular, coluna central em telas largas) e o dock com Ponto,
-/// Acompanhando e Ajustes.
+/// celular, coluna central em telas largas) e o dock com Chegadas,
+/// Meu ônibus e Ajustes.
 class StopArrivalsPage extends StatefulWidget {
   const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
 

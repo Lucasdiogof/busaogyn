@@ -134,7 +134,11 @@ class ObservedMovement {
     var heading = observedHeading;
     var anchor = this.anchor ?? last;
     final moved = geoDistanceMeters(anchor, position);
-    if (moved >= observedHeadingMinMeters && moved <= observedJumpMaxMeters) {
+    if (moved > observedJumpMaxMeters) {
+      // Âncora longe demais para medir direção: recomeça daqui, sem girar.
+      // Sem isso ela ficaria para trás e a direção nunca mais mudaria.
+      anchor = position;
+    } else if (moved >= observedHeadingMinMeters) {
       heading = initialBearingDegrees(anchor, position);
       anchor = position;
     }

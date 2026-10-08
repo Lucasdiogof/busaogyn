@@ -123,6 +123,20 @@ void main() {
       expect(jumped.observedHeading, moving.observedHeading);
     });
 
+    test('âncora a mais de 1000 m não congela a direção', () {
+      // Parado 7 m (abaixo dos 8 m, a âncora fica na origem), depois anda
+      // 996 m: do último ponto é movimento normal, da âncora passa de 1000 m.
+      final near = _offset(_origin, north: 7);
+      final far = _offset(near, north: 996);
+      final m = ObservedMovement.empty
+          .observe(_origin, sampledAt: _t(0), stale: false)
+          .observe(near, sampledAt: _t(15), stale: false)
+          .observe(far, sampledAt: _t(30), stale: false)
+          .observe(_offset(far, east: 50), sampledAt: _t(45), stale: false);
+
+      expect(m.observedHeading, closeTo(90, 1));
+    });
+
     test('posição stale não cria direção nem rastro', () {
       final first = ObservedMovement.empty.observe(
         _origin,
