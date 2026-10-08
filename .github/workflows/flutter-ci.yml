@@ -9,6 +9,8 @@ on:
     branches:
       - main
       - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
     paths:
       - 'app/**'
       - '.github/workflows/flutter-ci.yml'
@@ -29,7 +31,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
 
@@ -50,9 +53,31 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter build apk --debug
+      - run: flutter pub get --enforce-lockfile
+      # Sem secrets de assinatura no CI: o release usa a chave de debug e
+      # serve só para validar build, R8, manifest e bibliotecas nativas.
+      - run: flutter build apk --release
+      - run: flutter build appbundle --release
+      - name: Permissões do APK release
+        run: |
+          aapt2="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk | tee permissions.txt
+          if grep -E 'LOCATION|CAMERA|RECORD_AUDIO|READ_CONTACTS|READ_MEDIA|READ_EXTERNAL_STORAGE' permissions.txt; then
+            echo "::error::Permissão sem funcionalidade correspondente no app."
+            exit 1
+          fi
+      - name: Bibliotecas nativas e páginas de 16 KB
+        run: |
+          zipalign="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign"
+          "$zipalign" -c -P 16 -v 4 build/app/outputs/flutter-apk/app-release.apk | grep -E 'lib/|Verification'
+          python3 tool/check_android_release.py \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab
       - run: flutter build web --release
+      - name: Tamanhos
+        run: |
+          ls -l build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab
+          du -sh build/web
 
   build-ios:
     needs: flutter
@@ -67,5 +92,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter build ios --simulator --no-codesign
+      # Release para dispositivo sem assinatura: valida build de release,
+      # sem certificado nem provisioning profile.
+      - run: flutter build ios --release --no-codesign
