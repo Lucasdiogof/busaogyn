@@ -31,6 +31,18 @@
 
   <title>BusãoGyn</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Os controles do MapLibre têm z-index; sem um contexto de empilhamento
+       próprio eles passam por cima dos painéis do Flutter. */
+    .maplibregl-map { isolation: isolate; }
+    /* O plugin web ignora attributionButtonMargins: o app informa a altura
+       coberta pelo painel e o controle nativo de atribuição (com os créditos
+       e links do estilo em uso) fica logo acima dele. */
+    .maplibregl-ctrl-bottom-right {
+      bottom: var(--busao-map-attribution-bottom, 0px) !important;
+      transition: bottom 150ms ease-out;
+    }
+  </style>
 </head>
 <body>
   <!--

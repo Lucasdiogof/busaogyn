@@ -71,3 +71,22 @@ Resultado da execução:
 - stale: `false`.
 
 Portanto, o fluxo mínimo `ponto -> ETA realtime -> identidade do veículo -> posição individual` da linha 020 está validado de ponta a ponta.
+
+## Busca direta por número do ônibus — bloqueada (07/10/2026)
+
+O app não oferece busca de ônibus sem um ponto, porque a fonte exige o ponto.
+
+Medido pelo Worker rodando localmente contra `simapp.rmtcgoiania.com.br/veiculo/recuperarposicao`, com um veículo em operação:
+
+| `qryIdPontoParada` | Resposta da RMTC |
+|---|---|
+| ponto da chegada (30402) | posição + previsão para o ponto |
+| ponto sem relação (00294) | mesma posição, previsão `null` |
+| ausente | `{"status":"false","mensagem":"Informe o número do ponto de parada para pesquisa de tempo."}` |
+| vazio | mesma recusa |
+
+Ou seja, o ponto é obrigatório no contrato da fonte, embora a posição não dependa dele. Enviar um ponto qualquer só para destravar a consulta seria um ponto falso e não é usado. `cconaweb` (frota) segue restrito server-to-server.
+
+Destrava quando houver: endpoint/autorização da RMTC para posição por veículo, feed de frota (`cconaweb`) liberado, ou GTFS-RT.
+
+O rastro de posições observadas ("Posições recentes") fica para depois. Ele depende só do tracking existente, não da busca por ônibus.

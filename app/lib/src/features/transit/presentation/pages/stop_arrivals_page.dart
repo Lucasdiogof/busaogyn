@@ -1,23 +1,112 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/arrival.dart';
+import '../../../../core/config/map_config.dart';
+import '../../../../core/theme/busao_tokens.dart';
+import '../../../../core/ui/busao_components.dart';
+import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
+import '../cubit/map_vehicles_cubit.dart';
 import '../cubit/stop_arrivals_cubit.dart';
+import '../formatters/transit_labels.dart';
+import '../widgets/arrivals_panel.dart';
+import '../widgets/home_chrome.dart';
+import '../widgets/map_follow_controller.dart';
+import '../widgets/search_header.dart';
+import '../widgets/secondary_vehicle_callout.dart';
+import '../widgets/settings_panel.dart';
 import '../widgets/tracked_vehicle_map.dart';
+import '../widgets/tracking_card.dart';
 
+/// Home map-first: o mapa ocupa a tela inteira e tudo flutua sobre ele —
+/// marca e status no topo, cartão de contexto, painel (bottom sheet no
+/// celular, coluna central em telas largas) e o dock com Ponto,
+/// Acompanhando e Ajustes.
 class StopArrivalsPage extends StatefulWidget {
-  const StopArrivalsPage({this.mapBuilder, super.key});
+  const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
 
   final VehicleMapBuilder? mapBuilder;
+  final DateTime Function()? clock;
 
   @override
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
 }
 
+/// Posições dos elementos flutuantes para um tamanho de tela.
+class _Geometry {
+  _Geometry(MediaQueryData media)
+    : size = media.size,
+      safe = media.padding,
+      wide = media.size.width >= Breakpoints.panel {
+    final columnWidth = wide
+        ? math.min(Chrome.column, size.width - Chrome.gutter * 2)
+        : size.width - Chrome.gutter * 2;
+    left = wide ? (size.width - columnWidth) / 2 : Chrome.gutter;
+    width = columnWidth;
+    top = safe.top + Space.sm;
+    headerTop = top + Chrome.pill + 10;
+    headerBottom = headerTop + Chrome.header;
+    dockBottom = math.max(safe.bottom, Space.xs) + Space.xs;
+    dockTop = size.height - dockBottom - Chrome.dock;
+    panelBottom = size.height - dockTop + Space.xs;
+  }
+
+  /// Faixa de mapa que sempre sobra sob o cabeçalho com o painel aberto.
+  static const mapBand = 56.0;
+
+  final Size size;
+  final EdgeInsets safe;
+  final bool wide;
+  late final double left;
+  late final double width;
+  late final double top;
+  late final double headerTop;
+  late final double headerBottom;
+  late final double dockBottom;
+  late final double dockTop;
+
+  /// Distância da base da tela até a base do painel (acima do dock).
+  late final double panelBottom;
+
+  /// Topo máximo do painel.
+  double get panelTop => headerBottom + mapBand;
+
+  /// Altura disponível para o painel.
+  double get panelArea => size.height - panelBottom - panelTop;
+}
+
 class _StopArrivalsPageState extends State<StopArrivalsPage>
     with WidgetsBindingObserver {
+  static const _sheetMid = 0.56;
+  static const _sheetMax = 1.0;
+  static const _sheetMinPixels = 132.0;
+
   final _stopController = TextEditingController();
+  final _searchFocus = FocusNode();
+  final _sheetController = DraggableScrollableController();
+  final _sheetExtent = ValueNotifier<double>(_sheetMid);
+
+  /// Altura real do painel em telas largas (para a câmera e a atribuição).
+  final _panelHeight = ValueNotifier<double>(0);
+  final _follow = MapFollowController();
+
+  HomeTab _tab = HomeTab.stop;
+
+  /// Ônibus secundário tocado no mapa (mostra o callout).
+  String? _selectedSecondary;
+
+  /// Campo de busca aberto por cima de um ponto já exibido.
+  bool _searching = false;
+
+  /// Código enviado na última busca, para fechar o campo quando ela der
+  /// certo.
+  String? _pendingSearch;
+
+  DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
   @override
   void initState() {
@@ -29,16 +118,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
     final cubit = context.read<StopArrivalsCubit>();
+    final vehicles = context.read<MapVehiclesCubit>();
 
     switch (state) {
       case AppLifecycleState.resumed:
         cubit.resumeTracking();
+        vehicles.resume();
         return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         cubit.pauseTracking();
+        vehicles.pause();
         return;
     }
   }
@@ -47,490 +139,759 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopController.dispose();
+    _searchFocus.dispose();
+    _sheetController.dispose();
+    _sheetExtent.dispose();
+    _panelHeight.dispose();
+    _follow.dispose();
     super.dispose();
   }
 
   void _search() {
     FocusScope.of(context).unfocus();
-    context.read<StopArrivalsCubit>().load(_stopController.text);
+    final cubit = context.read<StopArrivalsCubit>();
+    // Com um ponto na tela, a busca só fecha quando der certo (ver
+    // _onStateChanged); se falhar, o campo continua com o aviso.
+    _pendingSearch = _stopController.text.trim();
+    if (cubit.state is! StopArrivalsLoaded) {
+      setState(() => _searching = false);
+    }
+    cubit.load(_stopController.text);
+  }
+
+  void _searchExample(String stopId) {
+    _stopController.text = stopId;
+    _search();
+  }
+
+  void _openSearch() {
+    _stopController.clear();
+    setState(() => _searching = true);
+    _searchFocus.requestFocus();
+  }
+
+  void _cancelSearch() {
+    FocusScope.of(context).unfocus();
+    context.read<StopArrivalsCubit>().clearSearchError();
+    _pendingSearch = null;
+    setState(() => _searching = false);
+  }
+
+  void _track(String vehicleNumber) {
+    context.read<StopArrivalsCubit>().track(vehicleNumber);
+    _select(HomeTab.tracking);
+  }
+
+  void _trackSecondary(String vehicleNumber) {
+    setState(() => _selectedSecondary = null);
+    _track(vehicleNumber);
+  }
+
+  void _stopTracking() {
+    context.read<StopArrivalsCubit>().stopTracking();
+    _select(HomeTab.stop);
+  }
+
+  void _select(HomeTab tab) {
+    if (tab != HomeTab.stop) FocusScope.of(context).unfocus();
+    if (_tab != tab) setState(() => _tab = tab);
+    if (_sheetExtent.value < _sheetMid - 0.01) _animateSheet(_sheetMid);
+  }
+
+  void _animateSheet(double size) {
+    if (!_sheetController.isAttached) return;
+    unawaited(
+      _sheetController.animateTo(
+        size,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
+  /// Entrega ao coordenador de ônibus do mapa o que as chegadas já sabem.
+  void _syncMapVehicles(StopArrivalsState state) {
+    final vehicles = context.read<MapVehiclesCubit>();
+    switch (state) {
+      case StopArrivalsLoaded():
+        final tracking = state.tracking;
+        final snapshot = tracking?.vehicle;
+        vehicles.sync(
+          stopId: state.stopId,
+          groups: state.arrivals.data,
+          trackedVehicleNumber: tracking?.vehicleNumber,
+          trackedVehicle: snapshot?.data,
+          trackedAgeSeconds: snapshot?.ageSeconds ?? 0,
+          trackedStale:
+              (snapshot?.stale ?? false) ||
+              (tracking != null && tracking.phase != TrackingPhase.active),
+        );
+      case StopArrivalsLoading(:final stopId):
+        vehicles.sync(stopId: stopId, groups: const []);
+      case StopArrivalsInitial():
+        vehicles.sync(stopId: null, groups: const []);
+    }
+  }
+
+  void _onStateChanged(BuildContext context, StopArrivalsState state) {
+    _syncMapVehicles(state);
+    if (state is StopArrivalsLoaded &&
+        state.searchingStopId == null &&
+        state.searchError == null &&
+        state.stopId == _pendingSearch) {
+      _pendingSearch = null;
+      if (_searching) setState(() => _searching = false);
+    }
+    if (_selectedSecondary != null &&
+        (state is! StopArrivalsLoaded ||
+            state.tracking?.vehicleNumber == _selectedSecondary)) {
+      setState(() => _selectedSecondary = null);
+    }
+    // Resultado novo de ponto: mostra as chegadas.
+    if (state is StopArrivalsLoaded &&
+        state.tracking == null &&
+        _tab == HomeTab.stop &&
+        _sheetExtent.value < _sheetMid - 0.01) {
+      _animateSheet(_sheetMid);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final geometry = _Geometry(MediaQuery.of(context));
+    final styles = MapConfig.styles;
+    final brightness = Theme.of(context).brightness;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'BusãoGyn',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: SafeArea(
-        child: Column(
+      resizeToAvoidBottomInset: false,
+      body: BlocListener<StopArrivalsCubit, StopArrivalsState>(
+        listener: _onStateChanged,
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _stopController,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _search(),
-                      decoration: const InputDecoration(
-                        labelText: 'Código do ponto',
-                        hintText: 'Ex.: 30402',
-                        prefixIcon: Icon(Icons.location_on_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(onPressed: _search, child: const Text('Buscar')),
-                ],
+            // Índice 0 fixo em ambos os layouts: o mapa nunca é recriado por
+            // estado do Cubit, por aba, por arrastar o sheet, por tema ou por
+            // redimensionar.
+            Positioned.fill(
+              child: ListenableBuilder(
+                listenable: Listenable.merge([_sheetExtent, _panelHeight]),
+                builder: (context, _) => _MapBinding(
+                  mapBuilder: widget.mapBuilder,
+                  styleString: styles.forBrightness(brightness),
+                  fallbackStyleString: styles.fallback,
+                  followController: _follow,
+                  layout: _mapLayout(geometry),
+                  onSecondaryTap: (number) =>
+                      setState(() => _selectedSecondary = number),
+                  onMapTap: () {
+                    if (_selectedSecondary != null) {
+                      setState(() => _selectedSecondary = null);
+                    }
+                  },
+                ),
               ),
             ),
-            Expanded(
+            if (geometry.wide)
+              Positioned(
+                key: const ValueKey('column-panel'),
+                left: geometry.left,
+                width: geometry.width,
+                bottom: geometry.panelBottom,
+                top: geometry.panelTop,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _SizeReporter(
+                    onHeight: (height) => _panelHeight.value = height,
+                    child: _ColumnPanel(child: _panelContent()),
+                  ),
+                ),
+              )
+            else
+              Positioned(
+                key: const ValueKey('sheet'),
+                left: geometry.left,
+                width: geometry.width,
+                top: geometry.panelTop,
+                bottom: geometry.panelBottom,
+                child: NotificationListener<DraggableScrollableNotification>(
+                  onNotification: (notification) {
+                    _sheetExtent.value = notification.extent;
+                    return false;
+                  },
+                  child: DraggableScrollableSheet(
+                    controller: _sheetController,
+                    initialChildSize: _sheetMid,
+                    minChildSize: _sheetMinFor(geometry),
+                    maxChildSize: _sheetMax,
+                    snap: true,
+                    snapSizes: const [_sheetMid],
+                    builder: (context, scroll) => _SheetSurface(
+                      scrollController: scroll,
+                      child: _panelContent(),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              key: const ValueKey('top-bar'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.top,
               child: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+                builder: (context, state) => PeriodicRebuild(
+                  builder: (context) =>
+                      TopBar(status: liveStatus(state, _clock())),
+                ),
+              ),
+            ),
+            Positioned(
+              key: const ValueKey('header'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.headerTop,
+              child: _header(),
+            ),
+            Positioned(
+              key: const ValueKey('secondary-callout'),
+              left: geometry.left,
+              width: geometry.width,
+              top: geometry.headerBottom + Space.xs,
+              child: BlocBuilder<MapVehiclesCubit, MapVehiclesState>(
                 builder: (context, state) {
-                  return switch (state) {
-                    StopArrivalsInitial() => const _EmptyState(),
-                    StopArrivalsLoading() => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    StopArrivalsFailure(:final message) => _FailureState(
-                      message: message,
-                      onRetry: _search,
-                    ),
-                    StopArrivalsLoaded() => _LoadedState(
-                      state: state,
-                      mapBuilder: widget.mapBuilder,
-                    ),
-                  };
+                  final number = _selectedSecondary;
+                  final vehicle = number == null
+                      ? null
+                      : state.byNumber(number);
+                  if (vehicle == null) return const SizedBox.shrink();
+                  return SecondaryVehicleCallout(
+                    vehicle: vehicle,
+                    onTrack: () => _trackSecondary(vehicle.vehicleNumber),
+                    onClose: () => setState(() => _selectedSecondary = null),
+                  );
                 },
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Text(
-          'Informe o código RMTC de um ponto para ver os próximos ônibus.',
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
-
-class _FailureState extends StatelessWidget {
-  const _FailureState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: onRetry,
-              child: const Text('Tentar novamente'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadedState extends StatelessWidget {
-  const _LoadedState({required this.state, this.mapBuilder});
-
-  final StopArrivalsLoaded state;
-  final VehicleMapBuilder? mapBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final arrivals = state.arrivals.data;
-    final trackedVehicle = state.trackedVehicle?.data;
-
-    return RefreshIndicator(
-      onRefresh: () => context.read<StopArrivalsCubit>().load(state.stopId),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          Text(
-            'Ponto ${state.stopId}',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            state.arrivals.stale
-                ? 'Dados temporariamente desatualizados · ${state.arrivals.ageSeconds}s'
-                : 'Atualizado agora',
-          ),
-          if (state.arrivals.stale) ...[
-            const SizedBox(height: 8),
-            const _StaleBanner(),
-          ],
-          if (state.trackingError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              state.trackingError!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          const SizedBox(height: 12),
-          _TransitMapPanel(vehicle: trackedVehicle, mapBuilder: mapBuilder),
-          if (trackedVehicle != null) ...[
-            const SizedBox(height: 12),
-            _TrackedVehicleCard(
-              vehicle: trackedVehicle,
-              stale: state.trackedVehicle!.stale,
-            ),
-          ],
-          const SizedBox(height: 16),
-          if (arrivals.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: Text('Nenhum ônibus encontrado para este ponto agora.'),
+            Positioned(
+              key: const ValueKey('dock'),
+              left: geometry.left,
+              width: geometry.width,
+              bottom: geometry.dockBottom,
+              child: BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
+                selector: (state) =>
+                    state is StopArrivalsLoaded && state.tracking != null,
+                builder: (context, trackingActive) => AppDock(
+                  selected: _tab,
+                  onSelected: _select,
+                  trackingActive: trackingActive,
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _sheetMinFor(_Geometry geometry) =>
+      (_sheetMinPixels / geometry.panelArea).clamp(0.12, _sheetMid - 0.1);
+
+  _MapLayout _mapLayout(_Geometry g) {
+    final double coveredBottom;
+    if (g.wide) {
+      coveredBottom = g.panelBottom + _panelHeight.value;
+    } else {
+      final sheetTop =
+          g.size.height - g.panelBottom - g.panelArea * _sheetExtent.value;
+      coveredBottom = g.size.height - sheetTop;
+    }
+    final mapTop = g.headerBottom;
+    final visible = g.size.height - coveredBottom - mapTop;
+
+    return _MapLayout(
+      cameraPadding: EdgeInsets.only(
+        top: mapTop,
+        bottom: math.min(coveredBottom, g.size.height * 0.75),
+      ),
+      // Celular: à direita, sob o cabeçalho. Largo: à esquerda da coluna,
+      // na altura do cabeçalho; cresce para a esquerda quando pausado.
+      controlsPadding: g.wide
+          ? EdgeInsets.only(
+              top: g.headerTop + (Chrome.header - 48) / 2,
+              right: g.size.width - g.left + Space.sm,
             )
-          else
-            for (final group in arrivals) ...[
-              _ArrivalGroupCard(
-                group: group,
-                trackingVehicleNumber: state.trackingVehicleNumber,
-                hasTrackedPosition: trackedVehicle != null,
-              ),
-              const SizedBox(height: 10),
-            ],
-        ],
-      ),
+          : EdgeInsets.only(top: mapTop + Space.sm, right: Chrome.gutter),
+      // Em telas largas o canto inferior direito do mapa fica livre.
+      attributionBottom: g.wide ? 0 : coveredBottom,
+      // Sem faixa de mapa suficiente o botão cobriria a atribuição. No
+      // celular o callout de outro ônibus ocupa o mesmo canto (o cartão de
+      // acompanhamento mantém o próprio "Centralizar").
+      showControls:
+          g.wide ||
+          (visible >= 48 + Space.sm + _Geometry.mapBand &&
+              _selectedSecondary == null),
     );
   }
-}
 
-class _StaleBanner extends StatelessWidget {
-  const _StaleBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Theme.of(context).colorScheme.tertiary,
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'A fonte está instável. Mostrando o último dado válido.',
+  Widget _header() {
+    return BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+      builder: (context, state) {
+        final (Key key, Widget child) = switch (_tab) {
+          HomeTab.stop => _stopHeader(state),
+          HomeTab.tracking => _trackingHeader(state),
+          HomeTab.settings => (
+            const ValueKey('header-settings'),
+            ContextHeader(
+              leading: const HeaderTile(Icons.tune_rounded),
+              title: 'Ajustes',
+              subtitle: const Text('Aparência e sobre'),
+              action: IconButton(
+                tooltip: 'Fechar ajustes',
+                onPressed: () => _select(HomeTab.stop),
+                icon: const Icon(Icons.close_rounded),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ArrivalGroupCard extends StatelessWidget {
-  const _ArrivalGroupCard({
-    required this.group,
-    required this.trackingVehicleNumber,
-    required this.hasTrackedPosition,
-  });
-
-  final ArrivalGroup group;
-  final String? trackingVehicleNumber;
-  final bool hasTrackedPosition;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  group.routeId,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    group.destination ?? 'Destino não informado',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            _ArrivalRow(
-              label: 'Próximo',
-              arrival: group.next,
-              tracking: trackingVehicleNumber == group.next.vehicleNumber,
-              hasTrackedPosition: hasTrackedPosition,
-            ),
-            if (group.following != null) ...[
-              const SizedBox(height: 12),
-              _ArrivalRow(
-                label: 'Seguinte',
-                arrival: group.following!,
-                tracking:
-                    trackingVehicleNumber == group.following!.vehicleNumber,
-                hasTrackedPosition: hasTrackedPosition,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ArrivalRow extends StatelessWidget {
-  const _ArrivalRow({
-    required this.label,
-    required this.arrival,
-    required this.tracking,
-    required this.hasTrackedPosition,
-  });
-
-  final String label;
-  final Arrival arrival;
-  final bool tracking;
-  final bool hasTrackedPosition;
-
-  String get _minutes {
-    if (arrival.minutes == null) return '—';
-    if (arrival.minutes == 0) return '< 1 min';
-    return '${arrival.minutes} min';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final canTrack = arrival.realtime && arrival.vehicleNumber != null;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: 2),
-              Text(
-                _minutes,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 3),
-              _ArrivalSourceBadge(realtime: arrival.realtime),
-              if (arrival.vehicleNumber != null)
-                Text(
-                  'Ônibus ${arrival.vehicleNumber}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-            ],
-          ),
-        ),
-        if (canTrack)
-          OutlinedButton.icon(
-            onPressed: tracking
-                ? null
-                : () => context.read<StopArrivalsCubit>().track(
-                    arrival.vehicleNumber!,
-                  ),
-            icon: tracking && !hasTrackedPosition
-                ? const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.gps_fixed_rounded),
-            label: Text(
-              !tracking
-                  ? 'Acompanhar'
-                  : hasTrackedPosition
-                  ? 'Acompanhando'
-                  : 'Buscando…',
             ),
           ),
-      ],
+        };
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.topCenter,
+            children: [...previous, ?current],
+          ),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, -0.08),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: KeyedSubtree(key: key, child: child),
+        );
+      },
     );
   }
-}
 
-/// Origem da previsão com ícone e texto, sem depender só de cor nem de
-/// glifos que faltam em fontes do Web.
-class _ArrivalSourceBadge extends StatelessWidget {
-  const _ArrivalSourceBadge({required this.realtime});
+  (Key, Widget) _stopHeader(StopArrivalsState state) {
+    final stopId = switch (state) {
+      StopArrivalsLoaded(:final stopId) => stopId,
+      StopArrivalsLoading(:final stopId) => stopId,
+      _ => null,
+    };
+    final searchError = switch (state) {
+      StopArrivalsInitial(:final searchError) => searchError,
+      StopArrivalsLoaded(:final searchError) => searchError,
+      _ => null,
+    };
+    // Buscando outro ponto ou com erro de busca: o campo continua à vista
+    // sobre o ponto válido anterior, que não sai da tela.
+    final searchingOther =
+        state is StopArrivalsLoaded && state.searchingStopId != null;
+    final showSearch =
+        _searching ||
+        stopId == null ||
+        state is StopArrivalsInitial ||
+        searchingOther ||
+        searchError != null;
 
-  final bool realtime;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall;
-    final color = realtime
-        ? Theme.of(context).colorScheme.primary
-        : style?.color ?? Theme.of(context).colorScheme.onSurfaceVariant;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          realtime ? Icons.sensors_rounded : Icons.schedule_rounded,
-          size: 14,
-          color: color,
+    if (showSearch) {
+      return (
+        const ValueKey('header-search'),
+        SearchHeader(
+          controller: _stopController,
+          focusNode: _searchFocus,
+          loading: state is StopArrivalsLoading || searchingOther,
+          error: searchError,
+          onEdited: context.read<StopArrivalsCubit>().clearSearchError,
+          onSearch: _search,
+          onCancel: state is StopArrivalsLoaded && !searchingOther
+              ? _cancelSearch
+              : null,
         ),
-        const SizedBox(width: 4),
-        Text(realtime ? 'Tempo real' : 'Programado', style: style),
-      ],
-    );
-  }
-}
-
-class _TransitMapPanel extends StatelessWidget {
-  const _TransitMapPanel({required this.vehicle, this.mapBuilder});
-
-  final TrackedVehicle? vehicle;
-  final VehicleMapBuilder? mapBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final trackedVehicle = vehicle;
-    if (trackedVehicle?.position != null) {
-      return TrackedVehicleMap(
-        vehicle: trackedVehicle!,
-        mapBuilder: mapBuilder,
       );
     }
 
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      height: 220,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
+    return (
+      ValueKey('header-stop-$stopId'),
+      ContextHeader(
+        leading: const HeaderTile(Icons.location_on_outlined),
+        title: 'Ponto $stopId',
+        subtitle: state is StopArrivalsLoaded
+            ? PeriodicRebuild(
+                builder: (context) {
+                  final freshness = arrivalsFreshness(state, _clock());
+                  final lines = state.arrivals.data.length;
+                  return Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: lines == 1 ? '1 linha' : '$lines linhas',
+                          style: TextStyle(color: context.tokens.accentText),
+                        ),
+                        TextSpan(
+                          text:
+                              ' · ${state.refreshing ? 'atualizando…' : freshness.text.toLowerCase()}',
+                          style: freshness.tone == FreshnessTone.stale
+                              ? TextStyle(color: context.tokens.unconfirmed)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : const Text('consultando chegadas…'),
+        action: IconButton(
+          tooltip: 'Buscar outro ponto',
+          onPressed: _openSearch,
+          icon: const Icon(Icons.search_rounded),
+        ),
       ),
-      child: const Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.map_outlined, size: 42),
-            SizedBox(height: 12),
-            Text(
-              'Acompanhe um ônibus em tempo real para ver sua posição no mapa.',
-              textAlign: TextAlign.center,
+    );
+  }
+
+  (Key, Widget) _trackingHeader(StopArrivalsState state) {
+    final tracking = state is StopArrivalsLoaded ? state.tracking : null;
+    if (state is! StopArrivalsLoaded || tracking == null) {
+      return (
+        const ValueKey('header-tracking-empty'),
+        const ContextHeader(
+          leading: HeaderTile(Icons.directions_bus_outlined, filled: false),
+          title: 'Meu ônibus',
+          subtitle: Text('Acompanhe um veículo em tempo real'),
+        ),
+      );
+    }
+
+    final vehicle = tracking.vehicle?.data;
+    final match = trackedArrival(state.arrivals.data, tracking.vehicleNumber);
+    final routeId = vehicle?.routeId ?? match?.group.routeId;
+    final destination = vehicle?.destination ?? match?.group.destination;
+    final tokens = context.tokens;
+
+    return (
+      ValueKey('header-tracking-${tracking.vehicleNumber}'),
+      ContextHeader(
+        leading: routeId != null
+            ? RoutePlate(routeId, filled: true)
+            : const HeaderTile(Icons.directions_bus_rounded),
+        title: 'Ônibus ${tracking.vehicleNumber}',
+        semanticsLabel:
+            'Meu ônibus: ônibus ${tracking.vehicleNumber}'
+            '${routeId != null ? ', linha $routeId' : ''}'
+            ', ${headingToLabel(destination)}',
+        subtitle: Text(
+          headingToLabel(destination),
+          style: TextStyle(
+            color: destination == null ? null : tokens.accentText,
+          ),
+        ),
+        action: IconButton(
+          tooltip: 'Parar de acompanhar',
+          onPressed: _stopTracking,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ),
+    );
+  }
+
+  Widget _panelContent() {
+    return BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+      builder: (context, state) {
+        final cubit = context.read<StopArrivalsCubit>();
+        final Widget child = switch (_tab) {
+          HomeTab.stop => ArrivalsPanel(
+            state: state,
+            onRefresh: cubit.refresh,
+            onTrack: _track,
+            onOpenTracking: () => _select(HomeTab.tracking),
+            onExample: _searchExample,
+          ),
+          HomeTab.tracking => switch (state) {
+            StopArrivalsLoaded(:final tracking?) => TrackingCard(
+              state: state,
+              tracking: tracking,
+              onStop: _stopTracking,
+              clock: _clock,
+              followController: _follow,
             ),
-          ],
+            _ => _TrackingEmpty(
+              hasStop: state is StopArrivalsLoaded,
+              onOpenStop: () => _select(HomeTab.stop),
+            ),
+          },
+          HomeTab.settings => const SettingsPanel(),
+        };
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (current, previous) => Stack(
+            alignment: Alignment.topCenter,
+            children: [...previous, ?current],
+          ),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: KeyedSubtree(key: ValueKey(_tab), child: child),
+        );
+      },
+    );
+  }
+}
+
+class _TrackingEmpty extends StatelessWidget {
+  const _TrackingEmpty({required this.hasStop, required this.onOpenStop});
+
+  final bool hasStop;
+  final VoidCallback onOpenStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MessageView(
+          icon: Icons.directions_bus_outlined,
+          title: 'Nenhum ônibus acompanhado',
+          body: 'Escolha um ônibus em tempo real nas chegadas de um ponto.',
+          action: FilledButton.icon(
+            onPressed: onOpenStop,
+            icon: const Icon(Icons.location_on_outlined, size: 20),
+            label: Text(hasStop ? 'Ver chegadas' : 'Buscar um ponto'),
+          ),
+        ),
+        const SizedBox(height: Space.sm),
+        const FootNote(
+          child: Text(
+            'Só ônibus com GPS informado pela RMTC podem ser acompanhados. '
+            'Horários programados não têm posição.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Medidas que o mapa recebe do layout.
+@immutable
+class _MapLayout {
+  const _MapLayout({
+    required this.cameraPadding,
+    required this.controlsPadding,
+    required this.attributionBottom,
+    required this.showControls,
+  });
+
+  final EdgeInsets cameraPadding;
+  final EdgeInsets controlsPadding;
+  final double attributionBottom;
+  final bool showControls;
+}
+
+typedef _MapData = ({
+  String? vehicleNumber,
+  GeoPosition? position,
+  bool stale,
+  double? heading,
+  List<GeoPosition> trail,
+});
+
+/// Liga o mapa ao Cubit expondo só o que o mapa precisa; o resto do estado
+/// não o reconstrói.
+class _MapBinding extends StatelessWidget {
+  const _MapBinding({
+    required this.mapBuilder,
+    required this.styleString,
+    required this.fallbackStyleString,
+    required this.followController,
+    required this.layout,
+    required this.onSecondaryTap,
+    required this.onMapTap,
+  });
+
+  final ValueChanged<String> onSecondaryTap;
+  final VoidCallback onMapTap;
+  final VehicleMapBuilder? mapBuilder;
+  final String styleString;
+  final String fallbackStyleString;
+  final MapFollowController followController;
+  final _MapLayout layout;
+
+  static _MapData _select(StopArrivalsState state) {
+    if (state is! StopArrivalsLoaded || state.tracking == null) {
+      return (
+        vehicleNumber: null,
+        position: null,
+        stale: false,
+        heading: null,
+        trail: const <GeoPosition>[],
+      );
+    }
+    final tracking = state.tracking!;
+    final snapshot = tracking.vehicle;
+    return (
+      vehicleNumber: tracking.vehicleNumber,
+      position: snapshot?.data?.position,
+      stale:
+          (snapshot?.stale ?? false) || tracking.phase != TrackingPhase.active,
+      heading: tracking.movement.observedHeading,
+      trail: tracking.movement.observedTrail,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<StopArrivalsCubit, StopArrivalsState, _MapData>(
+      selector: _select,
+      builder: (context, data) =>
+          BlocSelector<MapVehiclesCubit, MapVehiclesState, List<MapVehicle>>(
+            selector: (state) => state.secondaries,
+            builder: (context, secondaries) => TransitMap(
+              secondaryVehicles: secondaries,
+              onSecondaryTap: onSecondaryTap,
+              onMapTap: onMapTap,
+              vehicleNumber: data.vehicleNumber,
+              position: data.position,
+              stale: data.stale,
+              observedHeading: data.heading,
+              observedTrail: data.trail,
+              styleString: styleString,
+              fallbackStyleString: fallbackStyleString,
+              followController: followController,
+              cameraPadding: layout.cameraPadding,
+              controlsPadding: layout.controlsPadding,
+              attributionBottom: layout.attributionBottom,
+              showControls: layout.showControls,
+              mapBuilder: mapBuilder,
+            ),
+          ),
+    );
+  }
+}
+
+/// Bottom sheet flutuante (celular): vidro com cantos arredondados, alça e
+/// lista rolável ligada ao [DraggableScrollableSheet].
+class _SheetSurface extends StatelessWidget {
+  const _SheetSurface({required this.scrollController, required this.child});
+
+  final ScrollController scrollController;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassSurface(
+      radius: Radii.panel,
+      solid: true,
+      // No Web o padrão não arrasta com mouse; sem isso o sheet não abre
+      // nem recolhe num navegador de desktop estreito.
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+            PointerDeviceKind.stylus,
+          },
+        ),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, Space.md),
+          children: [const _SheetHandle(), child],
         ),
       ),
     );
   }
 }
 
-class _TrackedVehicleCard extends StatelessWidget {
-  const _TrackedVehicleCard({required this.vehicle, required this.stale});
-
-  final TrackedVehicle vehicle;
-  final bool stale;
-
-  String get _punctuality {
-    return switch (vehicle.punctuality) {
-      VehiclePunctuality.onTime => 'No horário',
-      VehiclePunctuality.delayed => 'Atrasado',
-      VehiclePunctuality.early => 'Adiantado',
-      VehiclePunctuality.unknown => 'Situação desconhecida',
-    };
-  }
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ônibus ${vehicle.vehicleNumber}',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              [
-                if (vehicle.routeId != null) 'Linha ${vehicle.routeId}',
-                if (vehicle.destination != null) vehicle.destination!,
-              ].join(' · '),
-            ),
-            const SizedBox(height: 8),
-            Text(_punctuality),
-            Text(
-              vehicle.accessible == true
-                  ? 'Acessível'
-                  : vehicle.accessible == false
-                  ? 'Acessibilidade não indicada'
-                  : 'Acessibilidade desconhecida',
-            ),
-            if (vehicle.position != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Posição: '
-                '${vehicle.position!.latitude.toStringAsFixed(6)}, '
-                '${vehicle.position!.longitude.toStringAsFixed(6)}',
-              ),
-            ],
-            if (stale)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Posição temporariamente desatualizada'),
-              ),
-          ],
+    return Semantics(
+      label: 'Painel. Arraste para expandir ou recolher',
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.only(top: 10, bottom: Space.sm),
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            color: context.tokens.strongText.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(Radii.pill),
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Painel da coluna central (tablet/desktop): cresce com o conteúdo até o
+/// espaço disponível e então rola.
+class _ColumnPanel extends StatelessWidget {
+  const _ColumnPanel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassSurface(
+      radius: Radii.panel,
+      solid: true,
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, Space.md),
+        children: [child],
+      ),
+    );
+  }
+}
+
+/// Informa a altura do filho após cada layout.
+class _SizeReporter extends StatefulWidget {
+  const _SizeReporter({required this.onHeight, required this.child});
+
+  final ValueChanged<double> onHeight;
+  final Widget child;
+
+  @override
+  State<_SizeReporter> createState() => _SizeReporterState();
+}
+
+class _SizeReporterState extends State<_SizeReporter> {
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<SizeChangedLayoutNotification>(
+      onNotification: (_) {
+        _report();
+        return true;
+      },
+      child: SizeChangedLayoutNotifier(
+        child: Builder(
+          builder: (context) {
+            _report();
+            return widget.child;
+          },
+        ),
+      ),
+    );
+  }
+
+  void _report() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject();
+      if (box is RenderBox && box.hasSize) widget.onHeight(box.size.height);
+    });
   }
 }
