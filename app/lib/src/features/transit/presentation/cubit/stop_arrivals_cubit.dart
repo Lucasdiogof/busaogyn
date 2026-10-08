@@ -147,6 +147,10 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   final DateTime Function() _clock;
 
   Timer? _trackingTimer;
+
+  /// App em segundo plano: nenhuma consulta que termine depois disso pode
+  /// religar o timer; só [resumeTracking] o faz.
+  bool _paused = false;
   String? _trackedVehicleNumber;
   String? _trackedStopId;
   bool _positionRequestInFlight = false;
@@ -180,6 +184,8 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     if (current is StopArrivalsLoaded) {
       emit(
         current.copyWith(
+          // Uma atualização em voo deste ponto perde para a busca nova.
+          refreshing: false,
           searchingStopId: () => stopId,
           searchError: () => null,
         ),
@@ -219,6 +225,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     if (current is StopArrivalsLoaded) {
       emit(
         current.copyWith(
+          refreshing: false,
           searchingStopId: () => null,
           searchError: () => feedback,
         ),
@@ -318,6 +325,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   }
 
   void pauseTracking() {
+    _paused = true;
     _trackingTimer?.cancel();
     _trackingTimer = null;
   }
@@ -325,6 +333,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   /// Ao voltar ao app: consulta na hora só se a última tentativa já tem
   /// [resumeRefreshAfter]; alternar janelas rapidamente não gera rajada.
   Future<void> resumeTracking() async {
+    _paused = false;
     if (_trackedVehicleNumber == null || _trackedStopId == null) return;
     final last = _lastPositionAttemptAt;
     if (last == null || _clock().difference(last) >= resumeRefreshAfter) {
@@ -335,7 +344,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
 
   void _startTrackingTimer() {
     final interval = trackingRefreshInterval;
-    if (interval == null || _trackedVehicleNumber == null) return;
+    if (interval == null || _paused || _trackedVehicleNumber == null) return;
 
     _trackingTimer?.cancel();
     _trackingTimer = Timer.periodic(interval, (_) {
@@ -441,6 +450,8 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
 
   @override
   Future<void> close() {
+    // Consultas de chegadas em voo não emitem depois de fechar.
+    _arrivalsGeneration++;
     _clearTracking();
     return super.close();
   }

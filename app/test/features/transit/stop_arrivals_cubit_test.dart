@@ -392,6 +392,142 @@ void main() {
 
       expect(flexLoaded().tracking, isNull);
     });
+
+    test(
+      'resposta que chega depois de parar não ressuscita o tracking',
+      () async {
+        await loadStop('30402');
+        final tracking = flexCubit.track('20529');
+        flexCubit.stopTracking();
+        flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+        await tracking;
+
+        expect(flexLoaded().tracking, isNull);
+      },
+    );
+
+    test('busca que falha durante um refresh não trava o refresh', () async {
+      await loadStop('30402');
+      final refreshing = flexCubit.refresh();
+      expect(flexLoaded().refreshing, isTrue);
+
+      final search = flexCubit.load('99999');
+      flex.arrivalRequests.last.reply.completeError(
+        const ApiException(
+          code: 'SOURCE_INVALID_RESPONSE',
+          message: 'x',
+          retryable: true,
+        ),
+      );
+      await search;
+      // A resposta do refresh superado é descartada.
+      flex.arrivalRequests[1].reply.complete(_groups('003'));
+      await refreshing;
+
+      expect(flexLoaded().stopId, '30402');
+      expect(flexLoaded().searchError?.kind, SearchFeedbackKind.notFound);
+      expect(flexLoaded().refreshing, isFalse);
+
+      final again = flexCubit.refresh();
+      expect(flex.arrivalRequests, hasLength(4));
+      flex.arrivalRequests.last.reply.complete(_groups('021'));
+      await again;
+      expect(flexLoaded().arrivals.data.single.routeId, '021');
+      expect(flexLoaded().refreshing, isFalse);
+    });
+
+    test('código inválido durante um refresh não trava o refresh', () async {
+      await loadStop('30402');
+      final refreshing = flexCubit.refresh();
+      await flexCubit.load('abc');
+      flex.arrivalRequests.last.reply.complete(_groups('003'));
+      await refreshing;
+
+      expect(flexLoaded().refreshing, isFalse);
+      expect(flexLoaded().arrivals.data.single.routeId, '020');
+      expect(flexLoaded().searchError?.kind, SearchFeedbackKind.invalidCode);
+    });
+  });
+
+  group('ciclo de vida do acompanhamento', () {
+    late _FlexibleRepository flex;
+
+    Future<StopArrivalsCubit> trackingCubit({
+      required DateTime Function() clock,
+    }) async {
+      final cubit = StopArrivalsCubit(
+        flex,
+        trackingRefreshInterval: const Duration(seconds: 15),
+        clock: clock,
+      );
+      final loading = cubit.load('30402');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+      return cubit;
+    }
+
+    setUp(() => flex = _FlexibleRepository());
+
+    testWidgets('ir para segundo plano durante a consulta inicial não liga o '
+        'timer', (tester) async {
+      final cubit = await trackingCubit(clock: DateTime.now);
+      final tracking = cubit.track('20529');
+      cubit.pauseTracking();
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      await tester.pump(const Duration(seconds: 45));
+      expect(flex.positionRequests, hasLength(1));
+      await cubit.close();
+    });
+
+    testWidgets('ir para segundo plano durante a consulta da retomada não '
+        'liga o timer', (tester) async {
+      var now = DateTime(2026, 10, 8, 12);
+      final cubit = await trackingCubit(clock: () => now);
+      final tracking = cubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      cubit.pauseTracking();
+      now = now.add(const Duration(minutes: 1));
+      final resumed = cubit.resumeTracking();
+      expect(flex.positionRequests, hasLength(2));
+      cubit.pauseTracking();
+      flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
+      await resumed;
+
+      await tester.pump(const Duration(seconds: 45));
+      expect(flex.positionRequests, hasLength(2));
+      await cubit.close();
+    });
+
+    testWidgets('alternar 5 vezes rápido mantém um só timer e não gera '
+        'rajada', (tester) async {
+      var now = DateTime(2026, 10, 8, 12);
+      final cubit = await trackingCubit(clock: () => now);
+      final tracking = cubit.track('20529');
+      flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
+      await tracking;
+
+      for (var i = 0; i < 5; i++) {
+        cubit.pauseTracking();
+        now = now.add(const Duration(seconds: 1));
+        await cubit.resumeTracking();
+      }
+      // Retomadas dentro de 10 s da última consulta: nenhuma consulta nova.
+      expect(flex.positionRequests, hasLength(1));
+
+      await tester.pump(const Duration(seconds: 15));
+      expect(flex.positionRequests, hasLength(2));
+      flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 15));
+      expect(flex.positionRequests, hasLength(3));
+      flex.positionRequests.last.reply.complete(_vehicle('20529', -16.5));
+      await tester.pump();
+      await cubit.close();
+    });
   });
 
   group('busca de ponto', () {
