@@ -104,9 +104,11 @@ void main() {
   });
 
   test('minutos', () {
-    expect(minutesLabel(null), '—');
-    expect(minutesLabel(0), '< 1 min');
-    expect(minutesLabel(8), '8 min');
+    expect(minutesSemantics(null), 'tempo não informado');
+    expect(minutesSemantics(-2), 'menos de 1 minuto');
+    expect(minutesSemantics(0), 'menos de 1 minuto');
+    expect(minutesSemantics(1), '1 minuto');
+    expect(minutesSemantics(8), '8 minutos');
   });
 
   group('frescor da posição', () {

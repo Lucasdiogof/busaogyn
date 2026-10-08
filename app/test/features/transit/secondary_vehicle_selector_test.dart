@@ -49,6 +49,25 @@ void main() {
       expect(result.first.minutes, 2);
     });
 
+    test('usa a mesma regra de tempo real do selo e do acompanhar', () {
+      // Qualidade realtime sem a flag realtime aparece como "Não
+      // confirmado" na lista; também não pode virar ônibus no mapa.
+      const unconfirmed = Arrival(
+        vehicleId: 'rmtc:20051',
+        vehicleNumber: '20051',
+        minutes: 3,
+        plannedArrival: null,
+        predictedArrival: null,
+        realtime: false,
+        quality: ArrivalQuality.realtime,
+      );
+      final result = selectSecondaryCandidates([
+        _group('003', unconfirmed, _arrival('20064')),
+      ]);
+
+      expect(_numbers(result), ['20064']);
+    });
+
     test('ignora previsão programada e desconhecida', () {
       final result = selectSecondaryCandidates([
         _group(

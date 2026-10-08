@@ -1,3 +1,5 @@
+import 'json_fields.dart';
+
 enum VehiclePunctuality {
   onTime,
   delayed,
@@ -17,10 +19,18 @@ enum VehiclePunctuality {
 class GeoPosition {
   const GeoPosition({required this.latitude, required this.longitude});
 
-  factory GeoPosition.fromJson(Map<String, dynamic> json) {
+  /// `null` quando falta coordenada ou ela está fora do intervalo válido:
+  /// sem posição não há marcador, nunca um ponto inventado.
+  static GeoPosition? tryFromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final latitude = json['latitude'];
+    final longitude = json['longitude'];
+    if (latitude is! num || longitude is! num) return null;
+    if (!latitude.isFinite || !longitude.isFinite) return null;
+    if (latitude.abs() > 90 || longitude.abs() > 180) return null;
     return GeoPosition(
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: latitude.toDouble(),
+      longitude: longitude.toDouble(),
     );
   }
 
@@ -40,20 +50,24 @@ class TrackedVehicle {
     required this.punctuality,
   });
 
+  /// Sem `id` ou número de veículo: [FormatException].
   factory TrackedVehicle.fromJson(Map<String, dynamic> json) {
-    final position = json['position'];
+    final id = jsonString(json['id']);
+    final vehicleNumber = jsonVehicleNumber(json['vehicleNumber']);
+    if (id == null || vehicleNumber == null) {
+      throw const FormatException('Tracked vehicle without id or number.');
+    }
     final punctuality = json['punctuality'];
+    final accessible = json['accessible'];
 
     return TrackedVehicle(
-      id: json['id'] as String,
-      vehicleNumber: json['vehicleNumber'] as String,
-      routeId: json['routeId'] as String?,
-      routeName: json['routeName'] as String?,
-      destination: json['destination'] as String?,
-      position: position is Map<String, dynamic>
-          ? GeoPosition.fromJson(position)
-          : null,
-      accessible: json['accessible'] as bool?,
+      id: id,
+      vehicleNumber: vehicleNumber,
+      routeId: jsonString(json['routeId']),
+      routeName: jsonString(json['routeName']),
+      destination: jsonString(json['destination']),
+      position: GeoPosition.tryFromJson(json['position']),
+      accessible: accessible is bool ? accessible : null,
       punctuality: punctuality is Map<String, dynamic>
           ? VehiclePunctuality.fromJson(punctuality['status'])
           : VehiclePunctuality.unknown,

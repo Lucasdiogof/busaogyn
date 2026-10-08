@@ -7,7 +7,8 @@ import '../cubit/stop_arrivals_cubit.dart';
 /// [ArrivalQuality.unknown], nunca realtime.
 ArrivalQuality displayQuality(Arrival arrival) {
   return switch (arrival.quality) {
-    ArrivalQuality.realtime when arrival.realtime => ArrivalQuality.realtime,
+    ArrivalQuality.realtime when arrival.isConfirmedRealtime =>
+      ArrivalQuality.realtime,
     ArrivalQuality.scheduled when !arrival.realtime => ArrivalQuality.scheduled,
     _ => ArrivalQuality.unknown,
   };
@@ -32,14 +33,7 @@ String qualityShortLabel(ArrivalQuality quality) {
 
 /// Acompanhar só faz sentido com GPS e identidade de veículo da fonte.
 bool canTrack(Arrival arrival) {
-  return displayQuality(arrival) == ArrivalQuality.realtime &&
-      arrival.vehicleNumber != null;
-}
-
-String minutesLabel(int? minutes) {
-  if (minutes == null) return '—';
-  if (minutes <= 0) return '< 1 min';
-  return '$minutes min';
+  return arrival.isConfirmedRealtime && arrival.vehicleNumber != null;
 }
 
 String minutesSemantics(int? minutes) {
