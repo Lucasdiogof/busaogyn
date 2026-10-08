@@ -23,8 +23,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Liberty noturno pré-derivado por tool/build_night_style.dart.
-    - assets/map/liberty-night.json
+    # Estilos do mapa gerados por tool/build_map_styles.dart.
+    - assets/map/busao-light.json
+    - assets/map/busao-dark.json
     # Licença OFL das fontes Geist, exibida na tela de licenças.
     - assets/fonts/geist/OFL.txt
 

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 abstract final class MapConfig {
   static const defaultStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 
-  /// Liberty noturno pré-derivado (ver `tool/build_night_style.dart`). Usa as
-  /// mesmas sources, fontes e sprites do Liberty; a atribuição continua vindo
-  /// das sources e é exibida pelo controle nativo do MapLibre.
-  static const nightStyleAsset = 'assets/map/liberty-night.json';
+  /// Estilos cartográficos do BusãoGyn, pré-gerados a partir do Liberty (ver
+  /// `tool/build_map_styles.dart`). Usam as mesmas sources, fontes e sprites do
+  /// Liberty; a atribuição continua vindo das sources e é exibida pelo
+  /// controle nativo do MapLibre.
+  static const lightStyleAsset = 'assets/map/busao-light.json';
+  static const nightStyleAsset = 'assets/map/busao-dark.json';
 
   static const styleUrl = String.fromEnvironment(
     'MAP_STYLE_URL',
@@ -29,27 +31,32 @@ class MapStyles {
     required this.fallback,
   });
 
-  /// - Padrão: Liberty de dia, Liberty noturno empacotado à noite.
+  /// - Padrão: estilos BusãoGyn empacotados (claro e escuro); se um deles não
+  ///   carregar, volta para o Liberty por URL.
   /// - MAP_STYLE_URL próprio: ele vale para os dois temas, a menos que
-  ///   MAP_STYLE_DARK_URL também seja informado (o derivado do Liberty não
-  ///   combina com outro estilo).
-  /// - Se o estilo noturno não carregar, volta para o estilo diurno.
+  ///   MAP_STYLE_DARK_URL também seja informado (os estilos empacotados não
+  ///   combinam com outro estilo) e é o próprio fallback.
   factory MapStyles.resolve({
     required String styleUrl,
     String darkStyleUrl = '',
   }) {
-    final light = styleUrl.trim().isEmpty
+    final custom = styleUrl.trim().isEmpty
         ? MapConfig.defaultStyleUrl
         : styleUrl.trim();
+    final bundled = custom == MapConfig.defaultStyleUrl;
     final String dark;
     if (darkStyleUrl.trim().isNotEmpty) {
       dark = darkStyleUrl.trim();
-    } else if (light == MapConfig.defaultStyleUrl) {
+    } else if (bundled) {
       dark = MapConfig.nightStyleAsset;
     } else {
-      dark = light;
+      dark = custom;
     }
-    return MapStyles(light: light, dark: dark, fallback: light);
+    return MapStyles(
+      light: bundled ? MapConfig.lightStyleAsset : custom,
+      dark: dark,
+      fallback: custom,
+    );
   }
 
   final String light;
