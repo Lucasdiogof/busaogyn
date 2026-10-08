@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,11 +6,22 @@ import 'package:http/http.dart' as http;
 import 'api_exception.dart';
 
 class ApiClient {
-  ApiClient({required this.baseUrl, http.Client? client})
-    : _client = client ?? http.Client();
+  ApiClient({
+    required this.baseUrl,
+    http.Client? client,
+    this.timeout = defaultTimeout,
+  }) : _client = client ?? http.Client();
+
+  /// O Worker espera até ~6 s por tentativa na RMTC e faz 1 retry; 20 s cobre
+  /// esse pior caso com folga de rede móvel sem prender a UI indefinidamente.
+  static const defaultTimeout = Duration(seconds: 20);
+
+  static const timeoutCode = 'CLIENT_TIMEOUT';
+  static const networkErrorCode = 'NETWORK_ERROR';
 
   final String baseUrl;
   final http.Client _client;
+  final Duration timeout;
 
   Future<Map<String, dynamic>> getJson(
     String path, {
@@ -20,10 +32,24 @@ class ApiClient {
       queryParameters: queryParameters.isEmpty ? null : queryParameters,
     );
 
-    final response = await _client.get(
-      uri,
-      headers: const {'Accept': 'application/json'},
-    );
+    final http.Response response;
+    try {
+      response = await _client
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(timeout);
+    } on TimeoutException {
+      throw const ApiException(
+        code: timeoutCode,
+        message: 'A consulta demorou mais que o esperado. Tente novamente.',
+        retryable: true,
+      );
+    } on http.ClientException {
+      throw const ApiException(
+        code: networkErrorCode,
+        message: 'Sem conexão com o BusãoGyn. Verifique sua internet.',
+        retryable: true,
+      );
+    }
 
     final Object? decoded;
     try {

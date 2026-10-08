@@ -120,6 +120,23 @@ Comportamento desejado:
 
 Isso evita a câmera disputar controle com o usuário.
 
+Implementação (maplibre_gl 0.27.1): o plugin não informa se um movimento de câmera veio de gesto (o Android envia `isGesture`, mas a camada Dart descarta; iOS/Web não enviam). Por isso todo movimento disparado pelo app (`animateCamera`, `updateContentInsets`) abre uma janela programática; início/movimento de câmera fora dela (`isCameraMoving`, `onCameraMove`) ou toque direto no mapa suspendem o follow. A lógica fica em `CameraFollow`, testada sem platform view.
+
+Câmera inicial: centro de Goiânia, apenas contexto. Nenhum marcador é desenhado sem posição real.
+
+### Atribuição
+
+Usa sempre o controle nativo do MapLibre, com os créditos e links definidos pelo estilo em uso (funciona para qualquer `MAP_STYLE_URL`). Nada de texto estático.
+
+- Celular: o controle fica no canto inferior direito do mapa, logo acima do bottom sheet, acompanhando sua altura. Android/iOS usam `attributionButtonMargins`; no Web o plugin ignora margens, então o app informa a altura coberta pelo painel na variável CSS `--busao-map-attribution-bottom`, lida pelo `web/index.html`.
+- O sheet expandido sempre deixa uma faixa de mapa abaixo do cabeçalho para a atribuição. O botão `Centralizar ônibus` só aparece quando cabe sem cobri-la.
+- `.maplibregl-map { isolation: isolate }` impede que os controles do MapLibre passem por cima dos painéis do Flutter no Web.
+- Telas largas (painel lateral): canto inferior direito do mapa, sem deslocamento.
+
+## Timeout
+
+O `ApiClient` usa timeout de 20 s (o Worker espera até ~6 s por tentativa na RMTC, com 1 retry). Ao expirar: `ApiException` com código `CLIENT_TIMEOUT`, `retryable: true`, sem retry automático. Mensagens técnicas do Worker nunca vão para a tela: códigos são mapeados para textos em português.
+
 ## Cartão do ônibus acompanhado
 
 Quando houver dados, pode mostrar:
@@ -162,13 +179,13 @@ Se houver snapshot stale permitido pela API:
 
 ## Recarregar
 
-Pull-to-refresh do ponto deve atualizar chegadas.
+Decidido em 07/10/2026:
 
-Decidir na rodada de implementação se refresh manual:
-- preserva o tracking atual quando o veículo ainda pertence ao resultado; ou
-- encerra tracking explicitamente.
-
-O comportamento não pode ser acidental.
+- **Atualizar chegadas** (botão no cabeçalho do ponto, ou buscar de novo o mesmo código) recarrega só as chegadas e **preserva o tracking**: o acompanhamento é por número do veículo e independe da lista.
+- **Buscar outro ponto** encerra o tracking.
+- **Acompanhar outro ônibus** troca o tracking, limpa a posição anterior e descarta respostas atrasadas do anterior.
+- Falha ao atualizar mantém as chegadas anteriores com aviso; respostas de buscas antigas nunca sobrescrevem a mais recente.
+- Pull-to-refresh foi removido: dentro do bottom sheet, puxar para baixo recolhe o painel e os dois gestos brigariam.
 
 ## Favoritos e recentes
 
