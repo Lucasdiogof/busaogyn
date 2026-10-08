@@ -176,15 +176,22 @@ class ArrivalCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        MinutesText(
-                          next.minutes,
-                          color: nextQuality == ArrivalQuality.scheduled
-                              ? tokens.softText
-                              : tokens.strongText,
+                        // Fontes maiores (acessibilidade) reduzem os minutos e
+                        // o selo em vez de empurrar a linha para fora da tela.
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 90),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: MinutesText(
+                              next.minutes,
+                              color: nextQuality == ArrivalQuality.scheduled
+                                  ? tokens.softText
+                                  : tokens.strongText,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 6),
-                        // Fontes maiores (acessibilidade) reduzem o selo em vez
-                        // de empurrar a linha para fora da tela.
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 90),
                           child: FittedBox(
