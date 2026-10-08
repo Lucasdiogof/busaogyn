@@ -52,7 +52,17 @@ class _Entry {
 ///   conjunto anterior e invalida respostas em voo.
 /// - Falha de um secundário não aparece na UI: mantém a última posição
 ///   válida, marcada como antiga, por até [maxStaleAge]; depois some.
+/// - A expiração não espera o polling: um único `Timer` de expiração,
+///   armado para o próximo prazo entre os secundários, remove quem passou do
+///   limite e se rearma para o seguinte (ver [_scheduleExpiry]). Ele só relê
+///   o estado local: nunca faz requisição, e o polling segue como estava.
 /// - Usa só o endpoint de posição existente da API BusãoGyn.
+///
+/// Fronteira do limite: a idade total é `ageAtReceipt` (segundos do Worker)
+/// mais os **segundos inteiros** locais desde a chegada, como sempre foi
+/// mostrado na UI. Idade total <= [maxStaleAge] permanece; > [maxStaleAge]
+/// some. Com limite de 90 s: 89 s e 90 s aparecem; o marcador sai quando o
+/// contador chega a 91 s.
 class MapVehiclesCubit extends Cubit<MapVehiclesState> {
   MapVehiclesCubit(
     this._repository, {
@@ -76,6 +86,10 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
   final DateTime Function() _clock;
 
   Timer? _timer;
+
+  /// Único timer de expiração (não há um por veículo). Fica ativo mesmo com
+  /// o polling pausado: só relê o estado local, não consulta a rede.
+  Timer? _expiryTimer;
   bool _paused = false;
   String? _stopId;
   List<SecondaryCandidate> _candidates = const [];
@@ -221,6 +235,9 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
     _trackedEntry = null;
     _timer?.cancel();
     _timer = null;
+    // O prazo do ponto anterior não vale para o novo.
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
     emit(MapVehiclesState(stopId: stopId));
   }
 
@@ -321,8 +338,7 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
       // Idade real da posição: o que ela já tinha no Worker ao chegar mais o
       // tempo local desde então. Um snapshot que chega velho não ganha uma
       // janela nova inteira.
-      final totalAgeSeconds =
-          entry.ageAtReceipt + now.difference(receivedAt).inSeconds;
+      final totalAgeSeconds = _totalAgeSeconds(entry, receivedAt, now);
       if (totalAgeSeconds > maxStaleAge.inSeconds) {
         // Posição velha demais para ser mostrada como se fosse atual.
         entry
@@ -343,11 +359,62 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
       );
     }
     emit(MapVehiclesState(stopId: _stopId, secondaries: vehicles));
+    _scheduleExpiry(now);
+  }
+
+  /// Idade total em segundos inteiros: o do Worker na chegada mais o tempo
+  /// local desde então.
+  int _totalAgeSeconds(_Entry entry, DateTime receivedAt, DateTime now) =>
+      entry.ageAtReceipt + now.difference(receivedAt).inSeconds;
+
+  /// Arma o único timer de expiração para o primeiro prazo entre os
+  /// secundários visíveis; o disparo recalcula tudo em [_emitState], que
+  /// remove quem passou do limite e chama este método de novo (próximo
+  /// prazo, se houver).
+  ///
+  /// Cada [_emitState] (posição nova, sync, troca de ponto, expiração) cancela
+  /// o timer anterior antes de armar outro: há no máximo um, e um prazo velho
+  /// nunca sobrevive a uma posição mais nova. O prazo de um veículo é o
+  /// instante em que sua idade total (segundos inteiros) chega a
+  /// `maxStaleAge + 1`: `receivedAt + (maxStaleAge + 1 - ageAtReceipt)`.
+  void _scheduleExpiry(DateTime now) {
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
+    if (isClosed) return;
+    DateTime? first;
+    for (final candidate in _candidates) {
+      final entry = _entries[candidate.vehicleNumber];
+      final receivedAt = entry?.receivedAt;
+      if (entry == null || entry.position == null || receivedAt == null) {
+        continue;
+      }
+      final deadline = receivedAt.add(
+        Duration(seconds: maxStaleAge.inSeconds + 1 - entry.ageAtReceipt),
+      );
+      if (first == null || deadline.isBefore(first)) first = deadline;
+    }
+    if (first == null) return;
+    // Quem já passou do prazo saiu no `_emitState` que chamou este método;
+    // o piso evita um disparo imediato em laço se o relógio recuar.
+    final wait = first.difference(now);
+    _expiryTimer = Timer(
+      wait < const Duration(milliseconds: 1)
+          ? const Duration(milliseconds: 1)
+          : wait,
+      _onExpiry,
+    );
+  }
+
+  void _onExpiry() {
+    _expiryTimer = null;
+    if (!isClosed) _emitState();
   }
 
   @override
   Future<void> close() {
     _timer?.cancel();
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
     _generation++;
     _queue.clear();
     _completeDrained();
