@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fundo do ícone adaptativo: cor de adaptive-background-1024.png.
+         Gerado por tool/generate_brand_assets.py. -->
+    <color name="ic_launcher_background">#F3F7EF</color>
+</resources>

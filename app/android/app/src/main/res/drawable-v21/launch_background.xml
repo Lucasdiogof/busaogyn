@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Splash até o primeiro frame do Flutter (API < 31): fundo do tema do
-     sistema com o selo BusãoGyn centralizado. -->
+     sistema com a logo BusãoGyn centralizada. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background" />
     <item>

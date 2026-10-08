@@ -26,6 +26,9 @@ flutter:
     # Estilos do mapa gerados por tool/build_map_styles.dart.
     - assets/map/busao-light.json
     - assets/map/busao-dark.json
+    # Símbolo da logo oficial (BrandMark), 1x/2x/3x gerados por
+    # tool/generate_brand_assets.py a partir de docs/brand/source.
+    - assets/brand/logo-mark.png
     # Licença OFL das fontes Geist, exibida na tela de licenças.
     - assets/fonts/geist/OFL.txt
 

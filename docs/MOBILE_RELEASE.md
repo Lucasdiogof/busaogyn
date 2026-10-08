@@ -9,7 +9,7 @@ Este documento reúne a configuração de release, o checklist de publicação e
 - Nome exibido: `BusãoGyn` (Android `android:label`, iOS `CFBundleDisplayName`/`CFBundleName`, Web `name`/`short_name`).
 - Android applicationId e namespace: `com.lucksrei.busaogyn`.
 - iOS Bundle Identifier: `com.lucksrei.busaogyn`.
-- Ícone e splash: selo do `BrandMark` (fundo `#0B0A08`, ônibus `#FFC53D`), gerados por `app/tool/generate_brand_assets.py` (ver [Ícones e splash](#ícones-e-splash)).
+- Ícone e splash: logo oficial (`docs/brand/source`), gerados por `app/tool/generate_brand_assets.py` (ver [Ícones e splash](#ícones-e-splash)).
 
 Nenhum target novo deve usar IDs antigos ou alternativos.
 
@@ -52,23 +52,28 @@ A versão vem de `version` em `app/pubspec.yaml` (`NOME+BUILD`):
 
 ## Ícones e splash
 
-Fonte única: o selo do `BrandMark` (`lib/src/core/ui/busao_components.dart`), que é um quadrado arredondado `#0B0A08` com o ícone Material `directions_bus_rounded` em âmbar, ocupando 56% do lado. Para regenerar tudo:
+Fonte única: os masters da logo oficial em [`docs/brand/source`](brand/README.md). Para regenerar tudo depois de trocar um master:
 
 ```bash
 cd app
-python3 tool/generate_brand_assets.py --flutter-root "$(dirname "$(dirname "$(which flutter)")")"
+python3 tool/generate_brand_assets.py          # gera
+python3 tool/generate_brand_assets.py --check  # só confere se está em dia
 ```
 
-O script precisa de Pillow e do SDK Flutter, de onde vem a fonte MaterialIcons (Apache 2.0). Ele gera:
+O script só precisa de Python 3 com Pillow (não usa o SDK Flutter). Ele gera:
 
 - **Android**:
-  - `mipmap-*/ic_launcher.png`: ícone legado, selo arredondado.
-  - `mipmap-*/ic_launcher_foreground.png`: foreground do ícone adaptativo (`mipmap-anydpi-v26/ic_launcher.xml`), que também é usado como ícone monocromático (themed icon, Android 13+). O fundo é `@color/ic_launcher_background`.
-  - `drawable-*/launch_mark.png`: selo do splash.
-- **iOS**: `AppIcon.appiconset` completo, opaco (sem canal alfa), mais o `LaunchImage` do LaunchScreen.
-- **Web**: `favicon.png`, `Icon-192/512` (selo), `Icon-maskable-192/512` (sangria total, zona segura de 80%) e `apple-touch-icon.png` (180 px, opaco).
+  - `mipmap-*/ic_launcher.png`: ícone legado (API < 26), símbolo da logo.
+  - `mipmap-*/ic_launcher_foreground.png`: foreground do ícone adaptativo (`mipmap-anydpi-v26/ic_launcher.xml`), a partir de `adaptive-foreground-1024.png` (símbolo dentro da zona segura de 66 dp).
+  - `mipmap-*/ic_launcher_monochrome.png`: ícone temático (themed icon, Android 13+). É monocromático de verdade: preto com transparência derivada da arte (ring, pin, vidros, faixa verde e detalhes escuros ficam; o claro some).
+  - `values/ic_launcher_background.xml`: cor do fundo adaptativo, lida de `adaptive-background-1024.png`.
+  - `drawable-*/launch_mark.png`: logo do splash (Android < 12), 144 dp.
+  - `drawable-*/splash_icon.png`: ícone do splash do Android 12+ (`windowSplashScreenAnimatedIcon`), canvas de 288 dp com o símbolo dentro do círculo seguro de 192 dp (diâmetro de 160 dp).
+- **iOS**: `AppIcon.appiconset` completo, opaco (sem canal alfa) e sem cantos desenhados (o iOS aplica a máscara), mais o `LaunchImage` do LaunchScreen (144 pt; o tamanho também está declarado em `LaunchScreen.storyboard`). Não há variantes escura/tinted: a marca é a mesma nos três modos.
+- **Web**: `favicon.ico` (16/32/48), `favicon.png`, `Icon-192/512` ("any", fundo transparente), `Icon-maskable-192/512` (opacos, símbolo em 76% do lado, dentro da zona segura de 80%) e `apple-touch-icon.png` (180 px, opaco).
+- **App**: `assets/brand/logo-mark.png` (1x/2x/3x), o símbolo usado pelo `BrandMark` no header.
 
-Splash, igual nas três plataformas: fundo do tema do sistema (claro `#FFFFFF`, noturno `#0B0A08`) com o selo no centro, sem animação e sem rede.
+Splash, igual nas três plataformas: fundo do tema do sistema (claro `#FFFFFF`, noturno `#0B0A08`) com a logo no centro, sem animação e sem rede.
 
 - **Android < 12**: `launch_background.xml`. As cores ficam em `values/colors.xml` e `values-night/colors.xml`.
 - **Android 12+**: SplashScreen do sistema com o ícone adaptativo (`values-v31`, `values-night-v31`).
@@ -285,7 +290,7 @@ As capturas devem ser reais, tiradas do app. Não use mockups artificiais.
 
 | Loja | Asset | Tamanho |
 | --- | --- | --- |
-| Google Play | Ícone | 512×512 PNG 32 bits (≤ 1 MB). Pode sair do selo, rodando o gerador em 512 |
+| Google Play | Ícone | 512×512 PNG 32 bits (≤ 1 MB). Pode sair de `docs/brand/source/app-icon-master-1024.png` reduzido a 512×512 |
 | Google Play | Gráfico de destaque | 1024×500 PNG/JPEG, sem transparência |
 | Google Play | Capturas de celular | 2 a 8, lado entre 320 e 3840 px, proporção até 2:1. Recomendado: 1080×1920 ou mais, retrato |
 | Google Play | Capturas de tablet 7" e 10" | Opcionais. Recomendadas, porque o app tem layout para telas largas |

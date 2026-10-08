@@ -86,7 +86,6 @@ class BusaoTokens extends ThemeExtension<BusaoTokens> {
     required this.softText,
     required this.mutedText,
     required this.shadow,
-    required this.brandTile,
   });
 
   /// Âmbar de destaque (preenchimentos e bordas).
@@ -131,7 +130,6 @@ class BusaoTokens extends ThemeExtension<BusaoTokens> {
   final Color softText;
   final Color mutedText;
   final Color shadow;
-  final Color brandTile;
 
   static const light = BusaoTokens(
     accent: Color(0xFFFFC53D),
@@ -156,7 +154,6 @@ class BusaoTokens extends ThemeExtension<BusaoTokens> {
     softText: Color(0xFF4A463D),
     mutedText: Color(0xFF5F5A4E),
     shadow: Color(0x2E0F172A),
-    brandTile: Color(0xFF0B0A08),
   );
 
   static const dark = BusaoTokens(
@@ -182,7 +179,6 @@ class BusaoTokens extends ThemeExtension<BusaoTokens> {
     softText: Color(0xFFD9D9D9),
     mutedText: Color(0xFFC2C1C1),
     shadow: Color(0x73000000),
-    brandTile: Color(0xFF0B0A08),
   );
 
   @override
@@ -218,7 +214,6 @@ class BusaoTokens extends ThemeExtension<BusaoTokens> {
       softText: mix(softText, other.softText),
       mutedText: mix(mutedText, other.mutedText),
       shadow: mix(shadow, other.shadow),
-      brandTile: mix(brandTile, other.brandTile),
     );
   }
 }
