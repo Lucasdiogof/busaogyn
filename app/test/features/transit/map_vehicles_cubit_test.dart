@@ -109,6 +109,46 @@ List<String> _numbers(MapVehiclesCubit cubit) =>
     cubit.state.secondaries.map((v) => v.vehicleNumber).toList()..sort();
 
 void main() {
+  testWidgets('um só timer, mesmo com vários sync e retomadas', (tester) async {
+    final repository = _FakeRepository();
+    for (final number in ['20051', '20064']) {
+      repository.instant[number] = _snapshot(number);
+    }
+    var now = DateTime(2026, 10, 7, 12);
+    final cubit = MapVehiclesCubit(
+      repository,
+      refreshInterval: const Duration(seconds: 30),
+      clock: () => now,
+    );
+    final groups = [_group('003', _arrival('20051'), _arrival('20064'))];
+
+    for (var i = 0; i < 4; i++) {
+      cubit.sync(stopId: 'A', groups: groups);
+    }
+    await tester.pump();
+    expect(repository.calls, hasLength(2));
+    for (var i = 0; i < 5; i++) {
+      cubit.pause();
+      // A página não espera a retomada; aqui o relógio é simulado.
+      unawaited(cubit.resume());
+      await tester.pump();
+    }
+    expect(repository.calls, hasLength(2));
+
+    // Um tique consulta cada veículo uma vez, não uma vez por sync/resume.
+    now = now.add(const Duration(seconds: 30));
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pump();
+    expect(repository.calls, hasLength(4));
+
+    cubit.pause();
+    now = now.add(const Duration(seconds: 90));
+    await tester.pump(const Duration(seconds: 90));
+    expect(repository.calls, hasLength(4), reason: 'pausado não consulta');
+    unawaited(cubit.close());
+    await tester.pump();
+  });
+
   late _FakeRepository repository;
   late DateTime now;
   late MapVehiclesCubit cubit;
@@ -317,6 +357,79 @@ void main() {
     now = now.add(const Duration(seconds: 6));
     await cubit.refreshNow();
     expect(cubit.state.secondaries, isEmpty);
+  });
+
+  test('fronteira de idade total: 89 e 90 s aparecem, 91 s some', () async {
+    for (final (ageAtReceipt, visible) in [
+      (89, true),
+      (90, true),
+      (91, false),
+    ]) {
+      final fresh = _FakeRepository()
+        ..instant['20051'] = _snapshot('20051', ageSeconds: ageAtReceipt);
+      final boundary = MapVehiclesCubit(
+        fresh,
+        refreshInterval: null,
+        clock: () => now,
+      );
+      addTearDown(boundary.close);
+      boundary.sync(stopId: 'A', groups: [_group('003', _arrival('20051'))]);
+      await _settle();
+      expect(
+        boundary.state.byNumber('20051') != null,
+        visible,
+        reason: 'idade $ageAtReceipt s',
+      );
+    }
+  });
+
+  test('idade do Worker já acima do limite nunca vira marcador', () async {
+    repository.instant['20051'] = _snapshot('20051', ageSeconds: 600);
+    cubit.sync(stopId: 'A', groups: [_group('003', _arrival('20051'))]);
+    await _settle();
+    expect(cubit.state.secondaries, isEmpty);
+  });
+
+  test('timer, sync e retomada juntos respeitam o limite de 3', () async {
+    final numbers = [for (var i = 0; i < 6; i++) '4000$i'];
+    final groups = [for (final n in numbers) _group('L$n', _arrival(n))];
+
+    cubit.sync(stopId: 'A', groups: groups);
+    final refresh = cubit.refreshNow();
+    cubit.pause();
+    now = now.add(const Duration(seconds: 30));
+    final resumed = cubit.resume();
+    cubit.sync(stopId: 'A', groups: groups);
+    await _settle();
+    expect(repository.inFlight, 3);
+
+    // Cada veículo é consultado uma vez, três de cada vez.
+    while (repository.pending.isNotEmpty) {
+      final number = repository.pending.keys.first;
+      repository.pending.remove(number)!.complete(_snapshot(number));
+      await _settle();
+      expect(repository.maxInFlight, lessThanOrEqualTo(3));
+    }
+    await refresh;
+    await resumed;
+
+    expect(repository.calls..sort(), numbers);
+    expect(_numbers(cubit), numbers);
+  });
+
+  test('trocar de ponto libera as vagas na hora', () async {
+    cubit.sync(
+      stopId: 'A',
+      groups: [for (var i = 0; i < 3; i++) _group('L$i', _arrival('5000$i'))],
+    );
+    await _settle();
+    expect(repository.inFlight, 3);
+
+    // As três do ponto A continuam penduradas; o ponto B não espera por elas.
+    repository.instant['60001'] = _snapshot('60001');
+    cubit.sync(stopId: 'B', groups: [_group('020', _arrival('60001'))]);
+    await _settle();
+    expect(_numbers(cubit), ['60001']);
   });
 
   test('retomar o app logo depois não gera rajada de consultas', () async {
