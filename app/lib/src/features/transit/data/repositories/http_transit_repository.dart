@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import '../../../../core/network/api_client.dart';
 import '../../domain/entities/arrival.dart';
+import '../../domain/entities/json_fields.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../../domain/models/transit_snapshot.dart';
 import '../../domain/repositories/transit_repository.dart';
@@ -19,7 +22,7 @@ class HttpTransitRepository implements TransitRepository {
       data: data,
       fetchedAt: DateTime.tryParse(metadata['fetchedAt']?.toString() ?? ''),
       stale: metadata['stale'] == true,
-      ageSeconds: (metadata['ageSeconds'] as num?)?.toInt() ?? 0,
+      ageSeconds: math.max(0, jsonInt(metadata['ageSeconds']) ?? 0),
     );
   }
 
@@ -32,12 +35,21 @@ class HttpTransitRepository implements TransitRepository {
       throw const FormatException('Expected arrival list.');
     }
 
-    final arrivals = data
-        .whereType<Map<String, dynamic>>()
-        .map(ArrivalGroup.fromJson)
-        .toList(growable: false);
+    // Um grupo malformado é descartado sem derrubar as outras linhas.
+    final arrivals = <ArrivalGroup>[
+      for (final item in data.whereType<Map<String, dynamic>>())
+        ?_tryGroup(item),
+    ];
 
     return _snapshot(response, arrivals);
+  }
+
+  static ArrivalGroup? _tryGroup(Map<String, dynamic> json) {
+    try {
+      return ArrivalGroup.fromJson(json);
+    } on FormatException {
+      return null;
+    }
   }
 
   @override

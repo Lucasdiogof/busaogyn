@@ -1,3 +1,5 @@
+import 'json_fields.dart';
+
 enum ArrivalQuality {
   realtime,
   scheduled,
@@ -25,11 +27,11 @@ class Arrival {
 
   factory Arrival.fromJson(Map<String, dynamic> json) {
     return Arrival(
-      vehicleId: json['vehicleId'] as String?,
-      vehicleNumber: json['vehicleNumber'] as String?,
-      minutes: (json['minutes'] as num?)?.toInt(),
-      plannedArrival: json['plannedArrival'] as String?,
-      predictedArrival: json['predictedArrival'] as String?,
+      vehicleId: jsonString(json['vehicleId']),
+      vehicleNumber: jsonVehicleNumber(json['vehicleNumber']),
+      minutes: jsonInt(json['minutes']),
+      plannedArrival: jsonString(json['plannedArrival']),
+      predictedArrival: jsonString(json['predictedArrival']),
       realtime: json['realtime'] == true,
       quality: ArrivalQuality.fromJson(json['quality']),
     );
@@ -42,6 +44,12 @@ class Arrival {
   final String? predictedArrival;
   final bool realtime;
   final ArrivalQuality quality;
+
+  /// Tempo real confirmado: a API marca a chegada como realtime E a
+  /// qualidade como realtime. É a única regra para exibir "Tempo real",
+  /// permitir acompanhar e mostrar o ônibus no mapa.
+  bool get isConfirmedRealtime =>
+      realtime && quality == ArrivalQuality.realtime;
 }
 
 class ArrivalGroup {
@@ -52,13 +60,20 @@ class ArrivalGroup {
     required this.following,
   });
 
+  /// Sem `routeId` ou sem `next` o grupo não é exibível: [FormatException].
   factory ArrivalGroup.fromJson(Map<String, dynamic> json) {
+    final routeId = jsonString(json['routeId'])?.trim();
+    final next = json['next'];
+    if (routeId == null || routeId.isEmpty || next is! Map<String, dynamic>) {
+      throw const FormatException('Arrival group without routeId or next.');
+    }
+    final following = json['following'];
     return ArrivalGroup(
-      routeId: json['routeId'] as String,
-      destination: json['destination'] as String?,
-      next: Arrival.fromJson(json['next'] as Map<String, dynamic>),
-      following: json['following'] is Map<String, dynamic>
-          ? Arrival.fromJson(json['following'] as Map<String, dynamic>)
+      routeId: routeId,
+      destination: jsonString(json['destination']),
+      next: Arrival.fromJson(next),
+      following: following is Map<String, dynamic>
+          ? Arrival.fromJson(following)
           : null,
     );
   }

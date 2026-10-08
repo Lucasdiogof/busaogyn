@@ -21,7 +21,8 @@ class SecondaryCandidate {
 /// Monta o conjunto deduplicado de ônibus secundários a partir das chegadas.
 ///
 /// Só entram `next` e `following` com tempo real confirmado
-/// (`quality == realtime`) e `vehicleNumber` válido. O ônibus acompanhado é
+/// ([Arrival.isConfirmedRealtime], a mesma regra do selo "Tempo real" e do
+/// botão de acompanhar) e `vehicleNumber` válido. O ônibus acompanhado é
 /// excluído (ele tem o próprio marcador). Acima de [limit], vence o menor ETA
 /// (sem ETA por último); o desempate é o número do veículo, para a escolha
 /// ser estável entre atualizações.
@@ -33,7 +34,7 @@ List<SecondaryCandidate> selectSecondaryCandidates(
   final byNumber = <String, SecondaryCandidate>{};
 
   void consider(ArrivalGroup group, Arrival? arrival) {
-    if (arrival == null || arrival.quality != ArrivalQuality.realtime) return;
+    if (arrival == null || !arrival.isConfirmedRealtime) return;
     final number = arrival.vehicleNumber?.trim();
     if (number == null || number.isEmpty || number == trackedVehicleNumber) {
       return;

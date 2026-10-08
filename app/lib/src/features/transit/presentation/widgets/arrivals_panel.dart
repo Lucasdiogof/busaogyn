@@ -8,7 +8,7 @@ import 'arrival_card.dart';
 /// Exemplo da intro; é um ponto real da RMTC, não um favorito.
 const exampleStopId = '30402';
 
-/// Conteúdo da aba Ponto: intro, carregamento ou chegadas do ponto. Erros de
+/// Conteúdo da aba Chegadas: intro, carregamento ou chegadas do ponto. Erros de
 /// busca aparecem junto do campo (ver `SearchHeader`), não aqui.
 class ArrivalsPanel extends StatelessWidget {
   const ArrivalsPanel({
@@ -141,7 +141,7 @@ class ArrivalsPanel extends StatelessWidget {
   }
 }
 
-/// Lembra que há um ônibus acompanhado e leva à aba Acompanhando.
+/// Lembra que há um ônibus acompanhado e leva à aba Meu ônibus.
 class _TrackingBanner extends StatelessWidget {
   const _TrackingBanner({required this.tracking, required this.onOpen});
 

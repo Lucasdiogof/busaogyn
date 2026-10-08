@@ -9,6 +9,7 @@ import 'package:busaogyn/src/features/transit/domain/repositories/transit_reposi
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Sem platform view nativa no flutter_test.
@@ -454,6 +455,62 @@ void main() {
       );
     }
   }
+
+  for (final size in const [Size(390, 844), Size(1366, 768)]) {
+    testWidgets('fonte a 200% sem overflow em ${size.width.toInt()} px', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final repository = _FakeTransitRepository()
+        ..failures['99999'] = const ApiException(
+          code: 'SOURCE_INVALID_RESPONSE',
+          message: 'x',
+          retryable: true,
+        );
+      await _pumpApp(tester, repository, size: size);
+      await tester.pumpAndSettle();
+      await _search(tester, '99999');
+      expect(tester.takeException(), isNull);
+      await _search(tester, '30402');
+      expect(tester.takeException(), isNull);
+
+      // O número do ônibus é identidade: uma linha só, mesmo a 200%.
+      final number = tester.renderObject<RenderParagraph>(find.text('20529'));
+      expect(number.size.height, lessThan(11 * 2 * 1.5));
+
+      await _track(tester, '20529');
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Ajustes'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('chegadas se atualizam sozinhas só com a aba Chegadas', (
+    tester,
+  ) async {
+    final repository = _FakeTransitRepository();
+    await _pumpApp(tester, repository);
+    await _search(tester, '30402');
+    expect(repository.requestedStops, hasLength(1));
+
+    await tester.pump(const Duration(seconds: 30));
+    expect(repository.requestedStops, hasLength(2));
+
+    for (final tab in ['Meu ônibus', 'Ajustes']) {
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 90));
+      expect(repository.requestedStops, hasLength(2), reason: tab);
+    }
+
+    await tester.tap(find.text('Chegadas'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 30));
+    expect(repository.requestedStops, hasLength(3));
+    expect(repository.requestedStops.toSet(), {'30402'});
+  });
 
   testWidgets('no celular a atribuição fica acima do sheet', (tester) async {
     await _pumpApp(tester, _FakeTransitRepository());

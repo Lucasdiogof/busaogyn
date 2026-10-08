@@ -192,7 +192,7 @@ class _TransitMapState extends State<TransitMap>
     if (widget.styleString != oldWidget.styleString) {
       // O estilo novo apaga imagem, source e layers do ônibus; nada é
       // sincronizado até o próximo onStyleLoaded.
-      _styleReady = false;
+      _invalidateStyle();
       _armStyleWatchdog();
     }
 
@@ -256,8 +256,16 @@ class _TransitMapState extends State<TransitMap>
     _styleWatchdog = Timer(widget.styleLoadTimeout, () {
       if (!mounted || _activeStyle != style) return;
       debugPrint('BusãoGyn: estilo "$style" não carregou; usando o padrão.');
+      _invalidateStyle();
       setState(() => _failedStyles.add(style));
     });
+  }
+
+  /// O estilo vai mudar: a carga em curso deixa de valer já, antes de o
+  /// estilo novo existir, e não cria nada nele.
+  void _invalidateStyle() {
+    _styleReady = false;
+    _styleLoad++;
   }
 
   void _report() {
@@ -290,7 +298,7 @@ class _TransitMapState extends State<TransitMap>
     _controller?.onFeatureTapped.remove(_onFeatureTapped);
     _controller = controller;
     controller.onFeatureTapped.add(_onFeatureTapped);
-    _styleReady = false;
+    _invalidateStyle();
     _wasCameraMoving = false;
     controller.addListener(_onControllerChanged);
   }
@@ -331,119 +339,146 @@ class _TransitMapState extends State<TransitMap>
     bool superseded() =>
         !mounted || !identical(controller, _controller) || load != _styleLoad;
 
+    // Cada chamada nativa só sai se esta carga ainda vale. Uma carga
+    // anterior que continuasse criaria source/layer no estilo novo, e a
+    // carga nova falharia por id repetido, deixando o mapa sem ônibus.
+    Future<bool> step(Future<void> Function() call) async {
+      if (superseded()) return false;
+      await call();
+      return !superseded();
+    }
+
     final tokens = context.tokens;
     final brightness = Theme.of(context).brightness;
-    final images = <String, Uint8List>{};
-    for (final variant in MarkerVariant.values) {
-      images[busImageIds[variant]!] = await renderBusMarker(
-        busMarkerStyle(variant, tokens: tokens, brightness: brightness),
-      );
+    try {
+      final images = <String, Uint8List>{};
+      for (final variant in MarkerVariant.values) {
+        images[busImageIds[variant]!] = await renderBusMarker(
+          busMarkerStyle(variant, tokens: tokens, brightness: brightness),
+        );
+      }
+      for (final entry in images.entries) {
+        if (!await step(() => controller.addImage(entry.key, entry.value))) {
+          return;
+        }
+      }
+
+      // Rastro observado no fundo, depois os secundários; o acompanhado
+      // (halo + ônibus) sempre por cima.
+      if (!await step(
+            () => controller.addGeoJsonSource(
+              observedTrailSourceId,
+              observedTrailFeatureCollection(widget.observedTrail),
+            ),
+          ) ||
+          !await step(
+            () => controller.addLineLayer(
+              observedTrailSourceId,
+              observedTrailLayerId,
+              LineLayerProperties(
+                lineColor: _hex(_trailColor(tokens, brightness)),
+                lineWidth: 3,
+                lineOpacity: brightness == Brightness.dark ? 0.58 : 0.5,
+                lineCap: 'round',
+                lineJoin: 'round',
+              ),
+              enableInteraction: false,
+            ),
+          ) ||
+          !await step(
+            () => controller.addGeoJsonSource(
+              secondarySourceId,
+              secondaryFeatureCollection(
+                widget.secondaryVehicles,
+                (number) => _motion.shown(_secondaryKey(number)),
+              ),
+              promoteId: 'vehicleNumber',
+            ),
+          ) ||
+          !await step(
+            () => controller.addSymbolLayer(
+              secondarySourceId,
+              secondaryLayerId,
+              SymbolLayerProperties(
+                iconImage: _variantImageExpression,
+                iconSize: _secondaryIconSize,
+                iconAllowOverlap: true,
+                iconIgnorePlacement: true,
+                iconOpacity: const [
+                  'case',
+                  ['get', 'stale'],
+                  0.7,
+                  0.92,
+                ],
+              ),
+            ),
+          ) ||
+          !await step(
+            () => controller.addGeoJsonSource(
+              vehicleSourceId,
+              vehicleFeatureCollection(
+                _motion.shown(_trackedKey),
+                stale: widget.stale,
+                heading: _shownHeading,
+              ),
+            ),
+          ) ||
+          !await step(
+            () => controller.addCircleLayer(
+              vehicleSourceId,
+              vehicleHaloLayerId,
+              CircleLayerProperties(
+                circleRadius: 34,
+                circleColor: _hex(tokens.accent),
+                circleOpacity: const [
+                  'case',
+                  ['get', 'stale'],
+                  0.05,
+                  0.16,
+                ],
+                circleStrokeColor: _hex(tokens.accent),
+                circleStrokeWidth: 1.5,
+                circleStrokeOpacity: const [
+                  'case',
+                  ['get', 'stale'],
+                  0.25,
+                  0.55,
+                ],
+              ),
+              enableInteraction: false,
+            ),
+          ) ||
+          !await step(
+            () => controller.addSymbolLayer(
+              vehicleSourceId,
+              vehicleLayerId,
+              SymbolLayerProperties(
+                iconImage: _variantImageExpression,
+                iconSize: _trackedIconSize,
+                // Frente do desenho = topo da imagem = norte; gira pela
+                // direção observada, alinhado ao mapa.
+                iconRotate: const ['get', 'heading'],
+                iconRotationAlignment: 'map',
+                iconAllowOverlap: true,
+                iconIgnorePlacement: true,
+                iconOpacity: const [
+                  'case',
+                  ['get', 'stale'],
+                  0.75,
+                  1.0,
+                ],
+              ),
+              enableInteraction: false,
+            ),
+          )) {
+        return;
+      }
+    } catch (error) {
+      if (!superseded()) {
+        debugPrint('BusãoGyn: falha ao preparar o estilo do mapa: $error');
+      }
+      return;
     }
-    if (superseded()) return;
-
-    for (final entry in images.entries) {
-      await controller.addImage(entry.key, entry.value);
-    }
-    if (superseded()) return;
-
-    // Rastro observado no fundo, depois os secundários; o acompanhado (halo +
-    // ônibus) sempre por cima.
-    await controller.addGeoJsonSource(
-      observedTrailSourceId,
-      observedTrailFeatureCollection(widget.observedTrail),
-    );
-    await controller.addLineLayer(
-      observedTrailSourceId,
-      observedTrailLayerId,
-      LineLayerProperties(
-        lineColor: _hex(_trailColor(tokens, brightness)),
-        lineWidth: 3,
-        lineOpacity: brightness == Brightness.dark ? 0.58 : 0.5,
-        lineCap: 'round',
-        lineJoin: 'round',
-      ),
-      enableInteraction: false,
-    );
-    if (superseded()) return;
-
-    await controller.addGeoJsonSource(
-      secondarySourceId,
-      secondaryFeatureCollection(
-        widget.secondaryVehicles,
-        (number) => _motion.shown(_secondaryKey(number)),
-      ),
-      promoteId: 'vehicleNumber',
-    );
-    await controller.addSymbolLayer(
-      secondarySourceId,
-      secondaryLayerId,
-      SymbolLayerProperties(
-        iconImage: _variantImageExpression,
-        iconSize: _secondaryIconSize,
-        iconAllowOverlap: true,
-        iconIgnorePlacement: true,
-        iconOpacity: const [
-          'case',
-          ['get', 'stale'],
-          0.7,
-          0.92,
-        ],
-      ),
-    );
-
-    await controller.addGeoJsonSource(
-      vehicleSourceId,
-      vehicleFeatureCollection(
-        _motion.shown(_trackedKey),
-        stale: widget.stale,
-        heading: _shownHeading,
-      ),
-    );
-    await controller.addCircleLayer(
-      vehicleSourceId,
-      vehicleHaloLayerId,
-      CircleLayerProperties(
-        circleRadius: 34,
-        circleColor: _hex(tokens.accent),
-        circleOpacity: const [
-          'case',
-          ['get', 'stale'],
-          0.05,
-          0.16,
-        ],
-        circleStrokeColor: _hex(tokens.accent),
-        circleStrokeWidth: 1.5,
-        circleStrokeOpacity: const [
-          'case',
-          ['get', 'stale'],
-          0.25,
-          0.55,
-        ],
-      ),
-      enableInteraction: false,
-    );
-    await controller.addSymbolLayer(
-      vehicleSourceId,
-      vehicleLayerId,
-      SymbolLayerProperties(
-        iconImage: _variantImageExpression,
-        iconSize: _trackedIconSize,
-        // Frente do desenho = topo da imagem = norte; gira pela direção
-        // observada, alinhado ao mapa.
-        iconRotate: const ['get', 'heading'],
-        iconRotationAlignment: 'map',
-        iconAllowOverlap: true,
-        iconIgnorePlacement: true,
-        iconOpacity: const [
-          'case',
-          ['get', 'stale'],
-          0.75,
-          1.0,
-        ],
-      ),
-      enableInteraction: false,
-    );
-    if (superseded()) return;
     _styleReady = true;
     await _applyInsets();
     // As posições podem ter mudado enquanto o estilo carregava.
@@ -515,11 +550,9 @@ class _TransitMapState extends State<TransitMap>
     required bool tracked,
     required bool secondary,
   }) async {
-    final controller = _controller;
-    if (controller == null || !_styleReady) return;
     _lastPush = _clock.elapsed;
     if (tracked) {
-      await controller.setGeoJsonSource(
+      await _setSource(
         vehicleSourceId,
         vehicleFeatureCollection(
           _motion.shown(_trackedKey),
@@ -529,13 +562,28 @@ class _TransitMapState extends State<TransitMap>
       );
     }
     if (secondary) {
-      await controller.setGeoJsonSource(
+      await _setSource(
         secondarySourceId,
         secondaryFeatureCollection(
           widget.secondaryVehicles,
           (number) => _motion.shown(_secondaryKey(number)),
         ),
       );
+    }
+  }
+
+  /// Atualiza um source no lugar. Se o estilo trocou no meio da chamada, a
+  /// falha é esperada: o próximo `onStyleLoaded` recria tudo.
+  Future<void> _setSource(String id, Map<String, dynamic> data) async {
+    final controller = _controller;
+    if (controller == null || !_styleReady) return;
+    final load = _styleLoad;
+    try {
+      await controller.setGeoJsonSource(id, data);
+    } catch (error) {
+      if (mounted && load == _styleLoad && _styleReady) {
+        debugPrint('BusãoGyn: falha ao atualizar "$id" no mapa: $error');
+      }
     }
   }
 
@@ -571,14 +619,10 @@ class _TransitMapState extends State<TransitMap>
     return true;
   }
 
-  Future<void> _pushTrail() async {
-    final controller = _controller;
-    if (controller == null || !_styleReady) return;
-    await controller.setGeoJsonSource(
-      observedTrailSourceId,
-      observedTrailFeatureCollection(widget.observedTrail),
-    );
-  }
+  Future<void> _pushTrail() => _setSource(
+    observedTrailSourceId,
+    observedTrailFeatureCollection(widget.observedTrail),
+  );
 
   static Color _trailColor(BusaoTokens tokens, Brightness brightness) =>
       brightness == Brightness.dark

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -47,7 +46,8 @@ class _Entry {
 /// - Um só `Timer` (não há timer por marcador), com intervalo de
 ///   [refreshInterval] (~30 s; o acompanhado segue em ~15 s).
 /// - No máximo [limit] veículos (menor ETA primeiro) e [maxConcurrent]
-///   requisições em paralelo.
+///   requisições em paralelo no total: timer, `sync` e `resume` dividem a
+///   mesma fila.
 /// - Conjunto deduplicado por número de veículo; trocar de ponto descarta o
 ///   conjunto anterior e invalida respostas em voo.
 /// - Falha de um secundário não aparece na UI: mantém a última posição
@@ -81,6 +81,13 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
   List<SecondaryCandidate> _candidates = const [];
   final _entries = <String, _Entry>{};
   final _inFlight = <String>{};
+
+  /// Fila única de consultas e quantos consumidores dela estão ativos.
+  final _queue = Queue<SecondaryCandidate>();
+  int _workers = 0;
+
+  /// Completa quando a fila do ponto atual esvazia.
+  Completer<void>? _drained;
 
   /// Invalida respostas de um ponto anterior.
   int _generation = 0;
@@ -204,6 +211,11 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
     _stopId = stopId;
     _entries.clear();
     _inFlight.clear();
+    // Consultas do ponto anterior ainda em voo são descartadas pela geração
+    // e não ocupam vagas do ponto novo.
+    _queue.clear();
+    _workers = 0;
+    _completeDrained();
     _candidates = const [];
     _trackedNumber = null;
     _trackedEntry = null;
@@ -226,20 +238,33 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
     });
   }
 
-  Future<void> _fetch(List<SecondaryCandidate> targets) async {
+  /// Põe [targets] na fila única e completa quando ela esvazia.
+  Future<void> _fetch(List<SecondaryCandidate> targets) {
     final stopId = _stopId;
-    if (stopId == null) return;
-    final generation = _generation;
-    final queue = Queue<SecondaryCandidate>.of(
-      targets.where((c) => !_inFlight.contains(c.vehicleNumber)),
-    );
-    if (queue.isEmpty) return;
+    if (stopId == null || isClosed) return Future.value();
+    final queued = {for (final candidate in _queue) candidate.vehicleNumber};
+    for (final candidate in targets) {
+      final number = candidate.vehicleNumber;
+      if (_inFlight.contains(number) || !queued.add(number)) continue;
+      _queue.add(candidate);
+    }
+    if (_queue.isEmpty && _workers == 0) return Future.value();
 
-    Future<void> worker() async {
-      while (queue.isNotEmpty) {
-        final candidate = queue.removeFirst();
+    final drained = _drained ??= Completer<void>();
+    while (_workers < maxConcurrent && _queue.isNotEmpty) {
+      _workers++;
+      unawaited(_work(stopId, _generation));
+    }
+    return drained.future;
+  }
+
+  Future<void> _work(String stopId, int generation) async {
+    try {
+      while (generation == _generation && _queue.isNotEmpty) {
+        final candidate = _queue.removeFirst();
         final number = candidate.vehicleNumber;
-        if (!_inFlight.add(number)) continue;
+        // Saiu do conjunto enquanto esperava na fila: nada a consultar.
+        if (!_entries.containsKey(number) || !_inFlight.add(number)) continue;
         _entries[number]?.lastAttemptAt = _clock();
         try {
           final snapshot = await _repository.getVehiclePosition(
@@ -251,15 +276,12 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
           if (position == null) {
             _markFailing(number);
           } else {
-            final entry = _entries[number];
-            if (entry != null) {
-              entry
-                ..position = position
-                ..receivedAt = _clock()
-                ..ageAtReceipt = snapshot.ageSeconds
-                ..snapshotStale = snapshot.stale
-                ..failing = false;
-            }
+            _entries[number]
+              ?..position = position
+              ..receivedAt = _clock()
+              ..ageAtReceipt = snapshot.ageSeconds
+              ..snapshotStale = snapshot.stale
+              ..failing = false;
           }
         } catch (_) {
           if (generation != _generation) return;
@@ -268,12 +290,18 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
           if (generation == _generation) _inFlight.remove(number);
         }
       }
+    } finally {
+      if (generation == _generation && --_workers == 0) {
+        _emitState();
+        _completeDrained();
+      }
     }
+  }
 
-    await Future.wait([
-      for (var i = 0; i < math.min(maxConcurrent, queue.length); i++) worker(),
-    ]);
-    if (generation == _generation && !isClosed) _emitState();
+  void _completeDrained() {
+    final drained = _drained;
+    _drained = null;
+    drained?.complete();
   }
 
   void _markFailing(String number) {
@@ -321,6 +349,8 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
   Future<void> close() {
     _timer?.cancel();
     _generation++;
+    _queue.clear();
+    _completeDrained();
     return super.close();
   }
 }

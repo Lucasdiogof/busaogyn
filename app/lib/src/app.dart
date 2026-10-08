@@ -13,6 +13,7 @@ class BusaoGynApp extends StatelessWidget {
   const BusaoGynApp({
     required this.repository,
     this.trackingRefreshInterval = const Duration(seconds: 15),
+    this.arrivalsRefreshInterval = const Duration(seconds: 30),
     this.secondaryRefreshInterval = const Duration(seconds: 30),
     this.mapBuilder,
     this.clock,
@@ -22,6 +23,10 @@ class BusaoGynApp extends StatelessWidget {
 
   final TransitRepository repository;
   final Duration? trackingRefreshInterval;
+
+  /// Atualização automática das chegadas com a aba Chegadas à vista; `null`
+  /// desliga.
+  final Duration? arrivalsRefreshInterval;
 
   /// Atualização dos outros ônibus do ponto; `null` desliga o timer.
   final Duration? secondaryRefreshInterval;
@@ -45,6 +50,7 @@ class BusaoGynApp extends StatelessWidget {
             create: (_) => StopArrivalsCubit(
               repository,
               trackingRefreshInterval: trackingRefreshInterval,
+              arrivalsRefreshInterval: arrivalsRefreshInterval,
               clock: clock,
             ),
           ),

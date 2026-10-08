@@ -24,8 +24,8 @@ import '../widgets/tracking_card.dart';
 
 /// Home map-first: o mapa ocupa a tela inteira e tudo flutua sobre ele —
 /// marca e status no topo, cartão de contexto, painel (bottom sheet no
-/// celular, coluna central em telas largas) e o dock com Ponto,
-/// Acompanhando e Ajustes.
+/// celular, coluna central em telas largas) e o dock com Chegadas,
+/// Meu ônibus e Ajustes.
 class StopArrivalsPage extends StatefulWidget {
   const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
 
@@ -112,6 +112,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Chegadas só se atualizam sozinhas com a aba delas à vista.
+    context.read<StopArrivalsCubit>().setArrivalsVisible(_tab == HomeTab.stop);
   }
 
   @override
@@ -122,14 +124,14 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
     switch (state) {
       case AppLifecycleState.resumed:
-        cubit.resumeTracking();
+        cubit.resume();
         vehicles.resume();
         return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        cubit.pauseTracking();
+        cubit.pause();
         vehicles.pause();
         return;
     }
@@ -195,6 +197,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void _select(HomeTab tab) {
     if (tab != HomeTab.stop) FocusScope.of(context).unfocus();
     if (_tab != tab) setState(() => _tab = tab);
+    context.read<StopArrivalsCubit>().setArrivalsVisible(tab == HomeTab.stop);
     if (_sheetExtent.value < _sheetMid - 0.01) _animateSheet(_sheetMid);
   }
 

@@ -401,7 +401,17 @@ class VehicleTrackBox extends StatelessWidget {
               ? null
               : () => onTrack(number!),
           children: [
-            Text(number!, style: _numberStyle(tokens)),
+            // O número é a identidade do ônibus: nunca quebra em duas linhas
+            // ("2052/9"); com fonte grande ele reduz para caber na caixa.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                number!,
+                maxLines: 1,
+                softWrap: false,
+                style: _numberStyle(tokens),
+              ),
+            ),
             icon,
           ],
         ),

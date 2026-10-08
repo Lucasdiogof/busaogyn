@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import '../../domain/entities/tracked_vehicle.dart';
+import '../../domain/models/observed_movement.dart' show geoDistanceMeters;
 import 'vehicle_map_data.dart' show vehiclePositionChanged;
 
 /// Duração da transição visual entre duas posições reais consecutivas.
@@ -17,19 +16,9 @@ const maxAnimatedJumpMeters = 1000.0;
 /// Abaixo disto a diferença é ruído de GPS: troca direta, sem animar.
 const minAnimatedMoveMeters = 2.0;
 
-/// Distância aproximada entre duas coordenadas (haversine), em metros.
-double distanceMeters(GeoPosition a, GeoPosition b) {
-  const earthRadius = 6371000.0;
-  double rad(double degrees) => degrees * math.pi / 180;
-  final dLat = rad(b.latitude - a.latitude);
-  final dLon = rad(b.longitude - a.longitude);
-  final h =
-      math.pow(math.sin(dLat / 2), 2) +
-      math.cos(rad(a.latitude)) *
-          math.cos(rad(b.latitude)) *
-          math.pow(math.sin(dLon / 2), 2);
-  return 2 * earthRadius * math.asin(math.min(1, math.sqrt(h)));
-}
+/// Distância entre duas coordenadas, em metros (a mesma do movimento
+/// observado).
+double distanceMeters(GeoPosition a, GeoPosition b) => geoDistanceMeters(a, b);
 
 /// Se vale animar de [from] até [to].
 bool shouldAnimateMove(GeoPosition from, GeoPosition to) {
