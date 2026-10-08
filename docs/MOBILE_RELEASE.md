@@ -272,7 +272,7 @@ Medidos em 08/10/2026, versão `1.0.0+1`:
 | Artefato | Tamanho | Observação |
 | --- | --- | --- |
 | APK release | 81,9 MB (81.861.609 bytes) | APK universal com 3 ABIs (arm64-v8a, armeabi-v7a, x86_64). Não é o que o usuário baixa da Play |
-| AAB release | 55,1 MB (55.072.730 bytes) | A Play gera APKs por ABI e densidade. O download real aparece no App Bundle Explorer depois do upload |
+| AAB release | 55,1 MB (55.074.031 bytes) | A Play gera APKs por ABI e densidade. O download real aparece no App Bundle Explorer depois do upload |
 | iOS `Runner.app` release (sem assinatura) | 26,4 MB | Saída do `flutter build ios --release --no-codesign`. O tamanho na App Store só aparece depois do processamento |
 | Web `build/web` | 32 MB no disco | Cerca de 27 MB são as variantes do CanvasKit (`canvaskit/`); cada navegador baixa só uma |
 | Web, primeiro carregamento (Chromium) | ~10,0 MB do próprio host (16 arquivos), ~3,65 MB se servido com gzip | Medido com cache vazio: `canvaskit/chromium/canvaskit.wasm` 5,7 MB, `main.dart.js` 3,1 MB, fontes Geist ~1,1 MB. MapLibre GL JS (unpkg) e tiles vêm à parte e não entraram na medição |
