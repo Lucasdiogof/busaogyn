@@ -69,6 +69,15 @@ MONO_GREEN_SPAN = 70
 MONO_GREEN_ALPHA = 0.95
 # Maskable: o círculo seguro é 80% do lado; o símbolo ocupa 76%.
 MASKABLE_RATIO = 0.76
+# Splash. A logo precisa de presença, mas sem ocupar a tela.
+# - iOS (LaunchImage, em pt) e Android < 12 (launch_mark, em dp): mesmo tamanho.
+# - Android 12+: o sistema desenha o splash_icon num canvas de 288 dp e só mostra
+#   o círculo central de 192 dp (a arte fora dele é cortada). O símbolo fica
+#   dentro desse círculo, com folga, e centrado no ring.
+SPLASH_MARK_SIZE = 144
+SPLASH_A12_CANVAS_DP = 288
+SPLASH_A12_SAFE_CIRCLE_DP = 192
+SPLASH_A12_SYMBOL_DP = 160
 APP_MARK_BASE = 64  # lado em px a 1x do logo-mark do BrandMark (2x e 3x derivam)
 
 
@@ -169,6 +178,42 @@ def fit_symbol(m: Masters, size: int, margin: float = 0.0) -> Image.Image:
     return canvas
 
 
+def symbol_geometry(m: Masters) -> tuple[float, float, float]:
+    """Centro do ring (cx, cy) e raio que envolve todo o símbolo (pin incluso).
+
+    O centro é a linha mais larga do símbolo (equador do ring); o raio é a maior
+    distância dali até a borda do recorte (pin no topo, base do ring embaixo,
+    lados do ring).
+    """
+    mask = m.symbol.getchannel('A').point(lambda v: 255 if v > 5 else 0)
+    width, height = mask.size
+    widths = []
+    for y in range(height):
+        box = mask.crop((0, y, width, y + 1)).getbbox()
+        widths.append(0 if box is None else box[2] - box[0])
+    widest = max(widths)
+    rows = [y for y, w in enumerate(widths) if w >= widest - 2]
+    cy = sum(rows) / len(rows) + 0.5
+    cx = width / 2
+    return cx, cy, max(cy, height - cy, width / 2)
+
+
+def fit_in_circle(m: Masters, canvas: int, diameter: float) -> Image.Image:
+    """Símbolo num canvas quadrado, com todo o desenho dentro de um círculo de
+    [diameter] px centrado no canvas (o ring fica no centro exato)."""
+    cx, cy, radius = symbol_geometry(m)
+    scale = (diameter / 2) / radius
+    logo = m.symbol.resize(
+        (round(m.symbol.width * scale), round(m.symbol.height * scale)),
+        Image.LANCZOS,
+    )
+    out = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
+    out.alpha_composite(
+        logo, (round(canvas / 2 - cx * scale), round(canvas / 2 - cy * scale))
+    )
+    return out
+
+
 def monochrome(foreground: Image.Image) -> Image.Image:
     """Versão monocromática: preto com alfa derivado da arte (ver MONO_*)."""
     r, g, b, a = foreground.split()
@@ -201,10 +246,20 @@ def android(m: Masters, w: Writer) -> None:
         foreground = m.adaptive_fg.resize((size, size), Image.LANCZOS)
         w.png(foreground, mipmap / 'ic_launcher_foreground.png')
         w.png(monochrome(foreground), mipmap / 'ic_launcher_monochrome.png')
-        # Splash (API < 31), 96 dp.
+        # Splash (API < 31): mesma presença do iOS.
         w.png(
-            fit_symbol(m, round(96 * scale)),
+            fit_symbol(m, round(SPLASH_MARK_SIZE * scale)),
             ANDROID_RES / f'drawable-{name}' / 'launch_mark.png',
+        )
+        # Splash do Android 12+ (windowSplashScreenAnimatedIcon): canvas de
+        # 288 dp, símbolo dentro do círculo seguro de 192 dp.
+        w.png(
+            fit_in_circle(
+                m,
+                round(SPLASH_A12_CANVAS_DP * scale),
+                SPLASH_A12_SYMBOL_DP * scale,
+            ),
+            ANDROID_RES / f'drawable-{name}' / 'splash_icon.png',
         )
     w.text(
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -224,7 +279,7 @@ def ios(m: Masters, w: Writer) -> None:
         w.png(image, IOS_ASSETS / 'AppIcon.appiconset' / name, opaque=True)
     for suffix, scale in (('', 1), ('@2x', 2), ('@3x', 3)):
         w.png(
-            fit_symbol(m, 96 * scale),
+            fit_symbol(m, SPLASH_MARK_SIZE * scale),
             IOS_ASSETS / 'LaunchImage.imageset' / f'LaunchImage{suffix}.png',
         )
 

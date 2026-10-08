@@ -110,11 +110,38 @@ void main() {
         );
         _expectSquare(
           '$res/drawable-$name/launch_mark.png',
-          (96 * scale).round(),
+          (144 * scale).round(),
+          alpha: true,
+        );
+        // Android 12+: canvas de 288 dp.
+        _expectSquare(
+          '$res/drawable-$name/splash_icon.png',
+          (288 * scale).round(),
           alpha: true,
         );
       });
     });
+
+    test(
+      'splash do Android 12+ usa o splash_icon nos temas claro e escuro',
+      () {
+        for (final dir in const ['values-v31', 'values-night-v31']) {
+          final xml = File('$res/$dir/styles.xml').readAsStringSync();
+          expect(
+            xml,
+            contains(
+              'android:windowSplashScreenAnimatedIcon">@drawable/splash_icon',
+            ),
+          );
+          expect(
+            xml,
+            contains(
+              'android:windowSplashScreenBackground">@color/launch_background',
+            ),
+          );
+        }
+      },
+    );
 
     test('applicationId preservado', () {
       final gradle = File('android/app/build.gradle.kts').readAsStringSync();
@@ -144,11 +171,18 @@ void main() {
       expect(marketing, isTrue, reason: 'falta o ícone 1024×1024 da App Store');
     });
 
-    test('LaunchImage 1x/2x/3x com alfa', () {
+    test('LaunchImage 1x/2x/3x com alfa e tamanho declarado no storyboard', () {
       const launch = 'ios/Runner/Assets.xcassets/LaunchImage.imageset';
-      _expectSquare('$launch/LaunchImage.png', 96, alpha: true);
-      _expectSquare('$launch/LaunchImage@2x.png', 192, alpha: true);
-      _expectSquare('$launch/LaunchImage@3x.png', 288, alpha: true);
+      _expectSquare('$launch/LaunchImage.png', 144, alpha: true);
+      _expectSquare('$launch/LaunchImage@2x.png', 288, alpha: true);
+      _expectSquare('$launch/LaunchImage@3x.png', 432, alpha: true);
+      final storyboard = File(
+        'ios/Runner/Base.lproj/LaunchScreen.storyboard',
+      ).readAsStringSync();
+      expect(
+        storyboard,
+        contains('<image name="LaunchImage" width="144" height="144"/>'),
+      );
     });
 
     test('bundle id preservado', () {

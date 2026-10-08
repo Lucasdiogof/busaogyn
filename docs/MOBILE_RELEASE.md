@@ -67,8 +67,9 @@ O script só precisa de Python 3 com Pillow (não usa o SDK Flutter). Ele gera:
   - `mipmap-*/ic_launcher_foreground.png`: foreground do ícone adaptativo (`mipmap-anydpi-v26/ic_launcher.xml`), a partir de `adaptive-foreground-1024.png` (símbolo dentro da zona segura de 66 dp).
   - `mipmap-*/ic_launcher_monochrome.png`: ícone temático (themed icon, Android 13+). É monocromático de verdade: preto com transparência derivada da arte (ring, pin, vidros, faixa verde e detalhes escuros ficam; o claro some).
   - `values/ic_launcher_background.xml`: cor do fundo adaptativo, lida de `adaptive-background-1024.png`.
-  - `drawable-*/launch_mark.png`: logo do splash.
-- **iOS**: `AppIcon.appiconset` completo, opaco (sem canal alfa) e sem cantos desenhados (o iOS aplica a máscara), mais o `LaunchImage` do LaunchScreen. Não há variantes escura/tinted: a marca é a mesma nos três modos.
+  - `drawable-*/launch_mark.png`: logo do splash (Android < 12), 144 dp.
+  - `drawable-*/splash_icon.png`: ícone do splash do Android 12+ (`windowSplashScreenAnimatedIcon`), canvas de 288 dp com o símbolo dentro do círculo seguro de 192 dp (diâmetro de 160 dp).
+- **iOS**: `AppIcon.appiconset` completo, opaco (sem canal alfa) e sem cantos desenhados (o iOS aplica a máscara), mais o `LaunchImage` do LaunchScreen (144 pt; o tamanho também está declarado em `LaunchScreen.storyboard`). Não há variantes escura/tinted: a marca é a mesma nos três modos.
 - **Web**: `favicon.ico` (16/32/48), `favicon.png`, `Icon-192/512` ("any", fundo transparente), `Icon-maskable-192/512` (opacos, símbolo em 76% do lado, dentro da zona segura de 80%) e `apple-touch-icon.png` (180 px, opaco).
 - **App**: `assets/brand/logo-mark.png` (1x/2x/3x), o símbolo usado pelo `BrandMark` no header.
 

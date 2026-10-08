@@ -30,7 +30,7 @@ Requer Python 3 com Pillow. Não precisa do SDK Flutter.
 
 - **Android** (`app/android/app/src/main/res`): `mipmap-*/ic_launcher.png` (legado),
   `ic_launcher_foreground.png` e `ic_launcher_monochrome.png` (adaptativo e
-  themed icon), `drawable-*/launch_mark.png` (splash) e
+  themed icon), `drawable-*/launch_mark.png` e `drawable-*/splash_icon.png` (splash) e
   `values/ic_launcher_background.xml`.
 - **iOS** (`app/ios/Runner/Assets.xcassets`): `AppIcon.appiconset` completo,
   opaco e sem cantos arredondados, e `LaunchImage.imageset`.
