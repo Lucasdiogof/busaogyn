@@ -2,6 +2,7 @@
 *.class
 *.lock
 !app/pubspec.lock
+!app/ios/Podfile.lock
 *.log
 *.pyc
 *.swp
@@ -121,3 +122,12 @@ app.*.symbols
 # Worker: artefatos locais (npm ci / wrangler dev)
 worker/node_modules/
 worker/.wrangler/
+
+# Credenciais de assinatura (Android/iOS): nunca versionar.
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+**/android/key.properties

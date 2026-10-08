@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -19,12 +19,14 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="BusãoGyn — saiba onde seu ônibus está.">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0B0A08" media="(prefers-color-scheme: dark)">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="BusãoGyn">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
@@ -32,6 +34,20 @@
   <title>BusãoGyn</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    /* Splash até o primeiro frame do Flutter: fundo do tema do sistema e o
+       selo BusãoGyn, sem depender de rede. */
+    html, body { margin: 0; height: 100%; background: #FFFFFF; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #0B0A08; }
+    }
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #splash img { width: 96px; height: 96px; }
     /* Os controles do MapLibre têm z-index; sem um contexto de empilhamento
        próprio eles passam por cima dos painéis do Flutter. */
     .maplibregl-map { isolation: isolate; }
@@ -45,6 +61,10 @@
   </style>
 </head>
 <body>
+  <div id="splash" aria-hidden="true">
+    <img src="icons/Icon-192.png" alt="">
+  </div>
+  <noscript>O BusãoGyn precisa de JavaScript habilitado.</noscript>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
