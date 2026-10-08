@@ -139,6 +139,7 @@ Future<void> _pumpApp(
   _FakeTransitRepository repository, {
   Size size = const Size(390, 844),
   ThemePreferenceStore? themeStore,
+  DateTime Function()? clock,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -149,7 +150,7 @@ Future<void> _pumpApp(
       repository: repository,
       trackingRefreshInterval: null,
       mapBuilder: _fakeMap,
-      clock: () => _now,
+      clock: clock ?? () => _now,
       themeStore: themeStore,
     ),
   );
@@ -705,6 +706,38 @@ void main() {
       expect(find.text('min até o ponto 30402'), findsOneWidget);
       expect(find.text('Conexão instável'), findsNothing);
       expect(_map(tester).position, isNull);
+    });
+
+    testWidgets('aos 91 s sem posição nova o marcador sai e a ficha fica', (
+      tester,
+    ) async {
+      var now = _now;
+      await _pumpApp(tester, _FakeTransitRepository(), clock: () => now);
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+      expect(_map(tester).position, isNotNull);
+
+      now = now.add(const Duration(seconds: 89));
+      await tester.pump(const Duration(seconds: 89));
+      expect(_map(tester).position, isNotNull);
+      now = now.add(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+
+      expect(_map(tester).position, isNull);
+      expect(_map(tester).vehicleNumber, '20529');
+      expect(find.text('Posição temporariamente indisponível'), findsOneWidget);
+      expect(
+        find.textContaining('A previsão de chegada continua disponível'),
+        findsOneWidget,
+      );
+      expect(find.text('Conexão instável'), findsNothing);
+      expect(find.text('Ao vivo'), findsNothing);
+      expect(find.text('Linha 020'), findsOneWidget);
+      expect(find.textContaining('Indo para T.'), findsNWidgets(2));
+      expect(find.text('min até o ponto 30402'), findsOneWidget);
+      expect(find.text('No horário'), findsOneWidget);
+      expect(find.text('Acessível'), findsOneWidget);
     });
 
     testWidgets('detalhes mostram só dados reais e lotação indisponível', (
