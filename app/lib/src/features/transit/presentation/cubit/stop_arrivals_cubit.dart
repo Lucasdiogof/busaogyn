@@ -134,6 +134,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   StopArrivalsCubit(
     this._repository, {
     this.trackingRefreshInterval = const Duration(seconds: 15),
+    this.arrivalsRefreshInterval = const Duration(seconds: 30),
     this.resumeRefreshAfter = const Duration(seconds: 10),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
@@ -142,6 +143,10 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   final TransitRepository _repository;
   final Duration? trackingRefreshInterval;
 
+  /// Atualização automática das chegadas, só com a aba Chegadas visível e o
+  /// app em primeiro plano; `null` desliga.
+  final Duration? arrivalsRefreshInterval;
+
   /// Intervalo mínimo para uma consulta imediata ao retomar o app.
   final Duration resumeRefreshAfter;
   final DateTime Function() _clock;
@@ -149,7 +154,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   Timer? _trackingTimer;
 
   /// App em segundo plano: nenhuma consulta que termine depois disso pode
-  /// religar o timer; só [resumeTracking] o faz.
+  /// religar um timer; só [resume] o faz.
   bool _paused = false;
   String? _trackedVehicleNumber;
   String? _trackedStopId;
@@ -163,6 +168,24 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   /// Incrementado a cada consulta de chegadas; só a mais recente é aplicada.
   int _arrivalsGeneration = 0;
 
+  /// Único timer das chegadas: um disparo agendado para
+  /// [arrivalsRefreshInterval] depois da última consulta concluída. Não
+  /// existe enquanto uma consulta está em voo.
+  Timer? _arrivalsTimer;
+
+  /// Aba Chegadas visível (informado pela página).
+  bool _arrivalsVisible = false;
+
+  /// Fim da última consulta de chegadas (sucesso ou falha), no relógio local.
+  DateTime? _arrivalsCycleAt;
+
+  /// Consulta de atualização em voo, compartilhada por automático e manual.
+  Future<void>? _refreshInFlight;
+  Object? _refreshToken;
+
+  /// O usuário pediu (ou entrou na) atualização em voo: falha vira aviso.
+  bool _refreshManual = false;
+
   /// Busca um ponto. Repetir o ponto já exibido equivale a [refresh] e
   /// preserva o acompanhamento. Outro ponto só substitui o atual (e encerra
   /// o tracking) quando a busca dá certo; uma falha vira [SearchFeedback]
@@ -171,7 +194,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     final stopId = rawStopId.trim();
     if (!RegExp(r'^\d+$').hasMatch(stopId)) {
       _arrivalsGeneration++;
+      _forgetRefresh();
       _emitSearchError(SearchFeedback.invalidCode);
+      _armArrivals();
       return;
     }
 
@@ -181,6 +206,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     }
 
     final generation = ++_arrivalsGeneration;
+    _forgetRefresh();
     if (current is StopArrivalsLoaded) {
       emit(
         current.copyWith(
@@ -193,20 +219,26 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     } else {
       emit(StopArrivalsLoading(stopId: stopId));
     }
+    // Durante a busca o ponto atual não se atualiza sozinho.
+    _armArrivals();
     try {
       final arrivals = await _repository.getArrivals(stopId);
       if (generation != _arrivalsGeneration) return;
       _clearTracking();
+      _arrivalsCycleAt = _clock();
       emit(
         StopArrivalsLoaded(
           stopId: stopId,
           arrivals: arrivals,
-          arrivalsReceivedAt: _clock(),
+          arrivalsReceivedAt: _arrivalsCycleAt,
         ),
       );
+      _armArrivals();
     } catch (error) {
       if (generation != _arrivalsGeneration) return;
       _emitSearchError(SearchFeedback.fromError(error, stopId));
+      // O ponto anterior (se houver) retoma o próprio ciclo.
+      _armArrivals();
     }
   }
 
@@ -236,49 +268,129 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   }
 
   /// Atualiza as chegadas do ponto atual sem mexer no acompanhamento.
-  Future<void> refresh() async {
-    final current = state;
-    if (current is! StopArrivalsLoaded || current.refreshing) return;
+  /// Pedido do usuário: mostra "atualizando" e, se falhar, um aviso. Se a
+  /// atualização automática já está em voo, reaproveita a mesma consulta.
+  Future<void> refresh() => _refreshArrivals(manual: true);
 
+  /// Aba Chegadas visível ou não. Ao voltar para ela, dado com mais de
+  /// [arrivalsRefreshInterval] é atualizado na hora.
+  void setArrivalsVisible(bool visible) {
+    if (_arrivalsVisible == visible) return;
+    _arrivalsVisible = visible;
+    _armArrivals();
+  }
+
+  Future<void> _refreshArrivals({required bool manual}) {
+    final current = state;
+    if (current is! StopArrivalsLoaded) return Future.value();
+    if (manual) {
+      _refreshManual = true;
+      emit(
+        current.copyWith(
+          refreshing: true,
+          refreshError: () => null,
+          searchingStopId: () => null,
+          searchError: () => null,
+        ),
+      );
+    } else if (!_autoRefreshAllowed) {
+      return Future.value();
+    }
+
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+
+    _arrivalsTimer?.cancel();
+    _arrivalsTimer = null;
     final stopId = current.stopId;
     final generation = ++_arrivalsGeneration;
-    emit(
-      current.copyWith(
-        refreshing: true,
-        refreshError: () => null,
-        searchingStopId: () => null,
-        searchError: () => null,
-      ),
-    );
-    try {
-      final arrivals = await _repository.getArrivals(stopId);
-      final latest = state;
-      if (generation != _arrivalsGeneration ||
-          latest is! StopArrivalsLoaded ||
-          latest.stopId != stopId) {
-        return;
+    final token = _refreshToken = Object();
+
+    Future<void> run() async {
+      try {
+        final arrivals = await _repository.getArrivals(stopId);
+        final latest = state;
+        if (generation != _arrivalsGeneration ||
+            latest is! StopArrivalsLoaded ||
+            latest.stopId != stopId) {
+          return;
+        }
+        emit(
+          latest.copyWith(
+            arrivals: arrivals,
+            arrivalsReceivedAt: _clock(),
+            refreshing: false,
+            refreshError: () => null,
+          ),
+        );
+      } catch (error) {
+        final latest = state;
+        if (generation != _arrivalsGeneration ||
+            latest is! StopArrivalsLoaded ||
+            latest.stopId != stopId) {
+          return;
+        }
+        // Falha isolada do automático: os dados anteriores ficam, sem aviso;
+        // a próxima tentativa é só no intervalo normal.
+        if (_refreshManual) {
+          emit(
+            latest.copyWith(
+              refreshing: false,
+              refreshError: () => _arrivalsMessage(error),
+            ),
+          );
+        }
+      } finally {
+        if (identical(_refreshToken, token)) {
+          _forgetRefresh();
+          _arrivalsCycleAt = _clock();
+          _armArrivals();
+        }
       }
-      emit(
-        latest.copyWith(
-          arrivals: arrivals,
-          arrivalsReceivedAt: _clock(),
-          refreshing: false,
-        ),
-      );
-    } catch (error) {
-      final latest = state;
-      if (generation != _arrivalsGeneration ||
-          latest is! StopArrivalsLoaded ||
-          latest.stopId != stopId) {
-        return;
-      }
-      emit(
-        latest.copyWith(
-          refreshing: false,
-          refreshError: () => _arrivalsMessage(error),
-        ),
-      );
     }
+
+    final future = run();
+    // Se a consulta já terminou (erro síncrono), não fica marcada em voo.
+    if (identical(_refreshToken, token)) _refreshInFlight = future;
+    return future;
+  }
+
+  bool get _autoRefreshAllowed {
+    final current = state;
+    return arrivalsRefreshInterval != null &&
+        _arrivalsVisible &&
+        !_paused &&
+        current is StopArrivalsLoaded &&
+        current.searchingStopId == null;
+  }
+
+  /// (Re)agenda o único timer das chegadas, ou atualiza na hora se o dado
+  /// já passou do intervalo. Sem condição para rodar, só cancela.
+  void _armArrivals() {
+    _arrivalsTimer?.cancel();
+    _arrivalsTimer = null;
+    final interval = arrivalsRefreshInterval;
+    if (interval == null || !_autoRefreshAllowed || _refreshInFlight != null) {
+      return;
+    }
+    final now = _clock();
+    final last = _arrivalsCycleAt ?? now;
+    final wait = interval - now.difference(last);
+    if (wait <= Duration.zero) {
+      unawaited(_refreshArrivals(manual: false));
+      return;
+    }
+    _arrivalsTimer = Timer(wait, () {
+      _arrivalsTimer = null;
+      unawaited(_refreshArrivals(manual: false));
+    });
+  }
+
+  /// A atualização em voo deixa de valer (a geração já foi trocada).
+  void _forgetRefresh() {
+    _refreshInFlight = null;
+    _refreshToken = null;
+    _refreshManual = false;
   }
 
   Future<void> track(String vehicleNumber) async {
@@ -324,16 +436,20 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
     }
   }
 
-  void pauseTracking() {
+  /// App em segundo plano: para os timers do acompanhamento e das chegadas.
+  void pause() {
     _paused = true;
     _trackingTimer?.cancel();
     _trackingTimer = null;
+    _armArrivals();
   }
 
-  /// Ao voltar ao app: consulta na hora só se a última tentativa já tem
-  /// [resumeRefreshAfter]; alternar janelas rapidamente não gera rajada.
-  Future<void> resumeTracking() async {
+  /// Ao voltar ao app: o acompanhamento consulta na hora só se a última
+  /// tentativa já tem [resumeRefreshAfter], e as chegadas só se passaram de
+  /// [arrivalsRefreshInterval]; alternar janelas rapidamente não gera rajada.
+  Future<void> resume() async {
     _paused = false;
+    _armArrivals();
     if (_trackedVehicleNumber == null || _trackedStopId == null) return;
     final last = _lastPositionAttemptAt;
     if (last == null || _clock().difference(last) >= resumeRefreshAfter) {
@@ -452,6 +568,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
   Future<void> close() {
     // Consultas de chegadas em voo não emitem depois de fechar.
     _arrivalsGeneration++;
+    _arrivalsTimer?.cancel();
+    _arrivalsTimer = null;
+    _forgetRefresh();
     _clearTracking();
     return super.close();
   }

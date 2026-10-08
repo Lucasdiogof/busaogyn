@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:busaogyn/src/core/network/api_client.dart';
 import 'package:busaogyn/src/core/network/api_exception.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
@@ -61,7 +62,7 @@ void main() {
 
   setUp(() async {
     repository = _ControlledRepository();
-    // Sem intervalo mínimo: aqui resumeTracking serve de gatilho de consulta.
+    // Sem intervalo mínimo: aqui resume serve de gatilho de consulta.
     cubit = StopArrivalsCubit(
       repository,
       trackingRefreshInterval: null,
@@ -90,7 +91,7 @@ void main() {
     repository.requests.single.reply.complete(_vehicle('20529', -16.7));
     await tracking;
 
-    final refresh = cubit.resumeTracking();
+    final refresh = cubit.resume();
     repository.requests.last.reply.completeError(_transientError);
     await refresh;
 
@@ -298,13 +299,13 @@ void main() {
       await tracking;
 
       clockNow = clockNow.add(const Duration(seconds: 3));
-      timed.pauseTracking();
-      await timed.resumeTracking();
+      timed.pause();
+      await timed.resume();
       expect(flex.positionRequests, hasLength(1));
 
       clockNow = clockNow.add(const Duration(seconds: 10));
-      timed.pauseTracking();
-      final resumed = timed.resumeTracking();
+      timed.pause();
+      final resumed = timed.resume();
       expect(flex.positionRequests, hasLength(2));
       flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
       await resumed;
@@ -348,7 +349,7 @@ void main() {
       expect(tracking.movement.observedHeading, isNull);
       expect(tracking.movement.observedTrail, hasLength(1));
 
-      await timed.resumeTracking();
+      await timed.resume();
       tracking = (timed.state as StopArrivalsLoaded).tracking!;
       // ~53 m para o leste.
       expect(tracking.movement.observedHeading, closeTo(90, 1));
@@ -373,7 +374,7 @@ void main() {
       await tracking;
       final before = flexLoaded().tracking!.movement;
 
-      final refresh = flexCubit.resumeTracking();
+      final refresh = flexCubit.resume();
       flex.positionRequests.last.reply.completeError(_transientError);
       await refresh;
 
@@ -472,7 +473,7 @@ void main() {
         'timer', (tester) async {
       final cubit = await trackingCubit(clock: DateTime.now);
       final tracking = cubit.track('20529');
-      cubit.pauseTracking();
+      cubit.pause();
       flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
       await tracking;
 
@@ -489,11 +490,11 @@ void main() {
       flex.positionRequests.single.reply.complete(_vehicle('20529', -16.7));
       await tracking;
 
-      cubit.pauseTracking();
+      cubit.pause();
       now = now.add(const Duration(minutes: 1));
-      final resumed = cubit.resumeTracking();
+      final resumed = cubit.resume();
       expect(flex.positionRequests, hasLength(2));
-      cubit.pauseTracking();
+      cubit.pause();
       flex.positionRequests.last.reply.complete(_vehicle('20529', -16.6));
       await resumed;
 
@@ -511,9 +512,9 @@ void main() {
       await tracking;
 
       for (var i = 0; i < 5; i++) {
-        cubit.pauseTracking();
+        cubit.pause();
         now = now.add(const Duration(seconds: 1));
-        await cubit.resumeTracking();
+        await cubit.resume();
       }
       // Retomadas dentro de 10 s da última consulta: nenhuma consulta nova.
       expect(flex.positionRequests, hasLength(1));
@@ -527,6 +528,259 @@ void main() {
       flex.positionRequests.last.reply.complete(_vehicle('20529', -16.5));
       await tester.pump();
       await cubit.close();
+    });
+  });
+
+  group('atualização automática das chegadas', () {
+    late _FlexibleRepository flex;
+    late DateTime now;
+    late StopArrivalsCubit auto;
+
+    StopArrivalsLoaded autoLoaded() => auto.state as StopArrivalsLoaded;
+    int requests() => flex.arrivalRequests.length;
+
+    Future<void> advance(WidgetTester tester, Duration duration) async {
+      now = now.add(duration);
+      await tester.pump(duration);
+    }
+
+    Future<void> reply(
+      WidgetTester tester,
+      TransitSnapshot<List<ArrivalGroup>> groups,
+    ) async {
+      flex.arrivalRequests.last.reply.complete(groups);
+      await tester.pump();
+    }
+
+    /// Ponto 30402 carregado, aba Chegadas visível, app em primeiro plano.
+    Future<void> start(WidgetTester tester) async {
+      flex = _FlexibleRepository();
+      now = DateTime(2026, 10, 8, 12);
+      auto = StopArrivalsCubit(
+        flex,
+        trackingRefreshInterval: null,
+        clock: () => now,
+      );
+      auto.setArrivalsVisible(true);
+      unawaited(auto.load('30402'));
+      await reply(tester, _groups('020'));
+      expect(requests(), 1);
+    }
+
+    Future<void> finish() => auto.close();
+
+    testWidgets('Chegadas à vista: atualiza aos 30 s, não antes', (
+      tester,
+    ) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 29));
+      expect(requests(), 1);
+      await advance(tester, const Duration(seconds: 1));
+      expect(requests(), 2);
+      expect(flex.arrivalRequests.last.stopId, '30402');
+      // Sem spinner nem "atualizando": a lista continua na tela.
+      expect(autoLoaded().refreshing, isFalse);
+      expect(autoLoaded().arrivals.data.single.routeId, '020');
+
+      await reply(tester, _groups('021'));
+      expect(autoLoaded().arrivals.data.single.routeId, '021');
+      await advance(tester, const Duration(seconds: 30));
+      expect(requests(), 3);
+      await reply(tester, _groups('021'));
+      await finish();
+    });
+
+    testWidgets('outra aba à vista (Meu ônibus ou Ajustes) não atualiza', (
+      tester,
+    ) async {
+      await start(tester);
+      auto.setArrivalsVisible(false);
+      await advance(tester, const Duration(seconds: 120));
+      expect(requests(), 1);
+      await finish();
+    });
+
+    testWidgets('voltar para Chegadas: dado recente não consulta, velho '
+        'consulta na hora', (tester) async {
+      await start(tester);
+      auto.setArrivalsVisible(false);
+      await advance(tester, const Duration(seconds: 10));
+      auto.setArrivalsVisible(true);
+      expect(requests(), 1);
+      // Segue o ciclo original: 30 s depois da consulta, não da volta.
+      await advance(tester, const Duration(seconds: 20));
+      expect(requests(), 2);
+      await reply(tester, _groups('020'));
+
+      auto.setArrivalsVisible(false);
+      await advance(tester, const Duration(seconds: 45));
+      auto.setArrivalsVisible(true);
+      expect(requests(), 3);
+      await reply(tester, _groups('020'));
+      await finish();
+    });
+
+    testWidgets('segundo plano não atualiza; a volta com dado velho '
+        'atualiza uma vez', (tester) async {
+      await start(tester);
+      auto.pause();
+      await advance(tester, const Duration(seconds: 90));
+      expect(requests(), 1);
+
+      unawaited(auto.resume());
+      expect(requests(), 2);
+      unawaited(auto.resume());
+      expect(requests(), 2, reason: 'consulta em voo não duplica');
+      await reply(tester, _groups('020'));
+      await advance(tester, const Duration(seconds: 29));
+      expect(requests(), 2);
+      await advance(tester, const Duration(seconds: 1));
+      expect(requests(), 3);
+      await reply(tester, _groups('020'));
+      await finish();
+    });
+
+    testWidgets('cinco alternâncias rápidas mantêm um só ciclo', (
+      tester,
+    ) async {
+      await start(tester);
+      for (var i = 0; i < 5; i++) {
+        auto.pause();
+        await advance(tester, const Duration(seconds: 1));
+        unawaited(auto.resume());
+      }
+      expect(requests(), 1);
+      await advance(tester, const Duration(seconds: 25));
+      expect(requests(), 2);
+      await reply(tester, _groups('020'));
+      await advance(tester, const Duration(seconds: 29));
+      expect(requests(), 2);
+      await finish();
+    });
+
+    testWidgets('refresh manual durante o automático usa a mesma consulta', (
+      tester,
+    ) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 30));
+      expect(requests(), 2);
+
+      final manual = auto.refresh();
+      expect(requests(), 2);
+      expect(autoLoaded().refreshing, isTrue);
+      await reply(tester, _groups('021'));
+      await manual;
+      expect(autoLoaded().refreshing, isFalse);
+      expect(autoLoaded().arrivals.data.single.routeId, '021');
+
+      // Manual pouco antes do automático: o ciclo recomeça dele.
+      await advance(tester, const Duration(seconds: 29));
+      unawaited(auto.refresh());
+      expect(requests(), 3);
+      await advance(tester, const Duration(seconds: 1));
+      expect(requests(), 3);
+      await reply(tester, _groups('020'));
+      expect(autoLoaded().refreshing, isFalse);
+      await advance(tester, const Duration(seconds: 30));
+      expect(requests(), 4);
+      await reply(tester, _groups('020'));
+      await finish();
+    });
+
+    testWidgets('trocar de ponto: o ciclo antigo não consulta o anterior', (
+      tester,
+    ) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 20));
+      unawaited(auto.load('30100'));
+      expect(requests(), 2);
+      await advance(tester, const Duration(seconds: 15));
+      expect(requests(), 2, reason: 'nada do 30402 durante a busca');
+
+      await reply(tester, _groups('003'));
+      expect(autoLoaded().stopId, '30100');
+      await advance(tester, const Duration(seconds: 30));
+      expect(requests(), 3);
+      expect(flex.arrivalRequests.last.stopId, '30100');
+      await reply(tester, _groups('003'));
+      await finish();
+    });
+
+    testWidgets('busca que falha mantém o ponto anterior e o ciclo dele', (
+      tester,
+    ) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 20));
+      unawaited(auto.load('99999'));
+      await advance(tester, const Duration(seconds: 15));
+      flex.arrivalRequests.last.reply.completeError(
+        const ApiException(
+          code: 'SOURCE_INVALID_RESPONSE',
+          message: 'x',
+          retryable: true,
+        ),
+      );
+      await tester.pump();
+
+      expect(autoLoaded().stopId, '30402');
+      expect(autoLoaded().searchError?.kind, SearchFeedbackKind.notFound);
+      // O 30402 já passou dos 30 s durante a busca: atualiza agora.
+      expect(requests(), 3);
+      expect(flex.arrivalRequests.last.stopId, '30402');
+      await reply(tester, _groups('020'));
+      expect(autoLoaded().searchError?.kind, SearchFeedbackKind.notFound);
+      await finish();
+    });
+
+    testWidgets('falha do automático mantém os dados, sem aviso nem '
+        'retry imediato', (tester) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 30));
+      flex.arrivalRequests.last.reply.completeError(
+        const ApiException(
+          code: ApiClient.timeoutCode,
+          message: 'x',
+          retryable: true,
+        ),
+      );
+      await tester.pump();
+
+      expect(autoLoaded().stopId, '30402');
+      expect(autoLoaded().arrivals.data.single.routeId, '020');
+      expect(autoLoaded().refreshError, isNull);
+      expect(autoLoaded().searchError, isNull);
+      expect(autoLoaded().refreshing, isFalse);
+
+      await advance(tester, const Duration(seconds: 29));
+      expect(requests(), 2);
+      await advance(tester, const Duration(seconds: 1));
+      expect(requests(), 3);
+      await reply(tester, _groups('020'));
+      await finish();
+    });
+
+    testWidgets('fechar cancela o timer', (tester) async {
+      await start(tester);
+      await finish();
+      await advance(tester, const Duration(seconds: 120));
+      expect(requests(), 1);
+    });
+
+    testWidgets('resposta atrasada da atualização anterior é ignorada', (
+      tester,
+    ) async {
+      await start(tester);
+      await advance(tester, const Duration(seconds: 30));
+      final stale = flex.arrivalRequests.last;
+      unawaited(auto.load('30100'));
+      await reply(tester, _groups('003'));
+      expect(autoLoaded().stopId, '30100');
+
+      stale.reply.complete(_groups('021'));
+      await tester.pump();
+      expect(autoLoaded().stopId, '30100');
+      expect(autoLoaded().arrivals.data.single.routeId, '003');
+      await finish();
     });
   });
 

@@ -487,6 +487,31 @@ void main() {
     });
   }
 
+  testWidgets('chegadas se atualizam sozinhas só com a aba Chegadas', (
+    tester,
+  ) async {
+    final repository = _FakeTransitRepository();
+    await _pumpApp(tester, repository);
+    await _search(tester, '30402');
+    expect(repository.requestedStops, hasLength(1));
+
+    await tester.pump(const Duration(seconds: 30));
+    expect(repository.requestedStops, hasLength(2));
+
+    for (final tab in ['Meu ônibus', 'Ajustes']) {
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 90));
+      expect(repository.requestedStops, hasLength(2), reason: tab);
+    }
+
+    await tester.tap(find.text('Chegadas'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 30));
+    expect(repository.requestedStops, hasLength(3));
+    expect(repository.requestedStops.toSet(), {'30402'});
+  });
+
   testWidgets('no celular a atribuição fica acima do sheet', (tester) async {
     await _pumpApp(tester, _FakeTransitRepository());
     await tester.pumpAndSettle();
