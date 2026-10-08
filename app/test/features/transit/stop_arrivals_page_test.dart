@@ -87,9 +87,13 @@ class _FakeTransitRepository implements TransitRepository {
     this.withPosition = true,
     this.groups = _realtimeGroups,
     this.staleArrivals = false,
+    this.vehicleFor,
   });
 
   final bool withPosition;
+
+  /// Dados do ônibus por número; sem isto, sempre o 20529.
+  final TrackedVehicle Function(String vehicleNumber)? vehicleFor;
   final List<ArrivalGroup> groups;
   final bool staleArrivals;
   final requestedStops = <String>[];
@@ -111,6 +115,10 @@ class _FakeTransitRepository implements TransitRepository {
     required String stopId,
   }) async {
     if (!withPosition) return _snapshot<TrackedVehicle?>(null);
+    final custom = vehicleFor;
+    if (custom != null) {
+      return _snapshot<TrackedVehicle?>(custom(vehicleNumber));
+    }
     return _snapshot<TrackedVehicle?>(
       const TrackedVehicle(
         id: 'rmtc:20529',
@@ -258,7 +266,7 @@ void main() {
     expect(find.text('min até o ponto 30402'), findsOneWidget);
     expect(find.textContaining('deslocamento observado'), findsOneWidget);
     expect(find.textContaining('rota'), findsNothing);
-    expect(find.text('Dados atualizados recentemente'), findsOneWidget);
+    expect(find.text('Ao vivo · há 0 s'), findsOneWidget);
     // No painel e no status do topo.
     expect(find.text('posição há 0 s'), findsOneWidget);
     expect(find.text('há 0 s'), findsOneWidget);
@@ -319,8 +327,8 @@ void main() {
     await _track(tester, '20529');
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('POSIÇÃO INDISPONÍVEL'), findsOneWidget);
-    expect(find.text('Sem posição'), findsOneWidget);
+    expect(find.text('Posição temporariamente indisponível'), findsOneWidget);
+    expect(find.text('Localizando'), findsOneWidget);
     expect(find.text('Ao vivo'), findsNothing);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
     expect(find.widgetWithText(OutlinedButton, 'Centralizar'), findsOneWidget);
@@ -661,6 +669,222 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Acompanhar este ônibus'), findsNothing);
     expect(_map(tester).showControls, isTrue);
+  });
+
+  group('ficha do ônibus', () {
+    Future<void> openDetails(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Detalhes do ônibus'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detalhes do ônibus'));
+      await tester.pumpAndSettle();
+    }
+
+    /// Valor de uma linha da ficha (rótulo + valor no mesmo bloco).
+    Finder row(String label, String value) => find.ancestor(
+      of: find.text(value),
+      matching: find.ancestor(
+        of: find.text(label),
+        matching: find.byType(Column),
+      ),
+    );
+
+    testWidgets('sem posição: linha, destino e previsão continuam', (
+      tester,
+    ) async {
+      await _pumpApp(tester, _FakeTransitRepository(withPosition: false));
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+
+      expect(find.text('Posição temporariamente indisponível'), findsOneWidget);
+      expect(
+        find.textContaining('A previsão de chegada continua disponível'),
+        findsOneWidget,
+      );
+      expect(find.text('Linha 020'), findsOneWidget);
+      expect(find.textContaining('Indo para T.'), findsNWidgets(2));
+      expect(find.text('min até o ponto 30402'), findsOneWidget);
+      expect(find.text('Conexão instável'), findsNothing);
+      expect(_map(tester).position, isNull);
+    });
+
+    testWidgets('detalhes mostram só dados reais e lotação indisponível', (
+      tester,
+    ) async {
+      await _pumpApp(tester, _FakeTransitRepository());
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+      expect(find.text('Lotação'), findsNothing, reason: 'compacto');
+
+      await openDetails(tester);
+      expect(row('Ônibus', '20529'), findsWidgets);
+      expect(row('Linha', '020'), findsWidgets);
+      expect(row('Ponto de referência', 'Ponto 30402'), findsWidgets);
+      expect(row('Pontualidade', 'No horário'), findsWidgets);
+      expect(row('Acessibilidade', 'Acessível'), findsWidgets);
+      expect(row('Lotação', 'Informação não disponível'), findsWidgets);
+      for (final invented in ['baixa', 'média', 'alta', 'lotado', 'Lotado']) {
+        expect(find.textContaining(invented), findsNothing, reason: invented);
+      }
+      expect(
+        find.textContaining('Trajeto oficial ainda não disponível'),
+        findsOneWidget,
+      );
+      // Uma posição só: sem direção observada, sem seta.
+      expect(row('Movimento', 'Direção ainda não observada'), findsWidgets);
+    });
+
+    testWidgets('destino, pontualidade e acessibilidade ausentes não '
+        'viram selo', (tester) async {
+      await _pumpApp(
+        tester,
+        _FakeTransitRepository(
+          groups: const [
+            ArrivalGroup(
+              routeId: '020',
+              destination: null,
+              next: Arrival(
+                vehicleId: 'rmtc:20529',
+                vehicleNumber: '20529',
+                minutes: null,
+                plannedArrival: null,
+                predictedArrival: null,
+                realtime: true,
+                quality: ArrivalQuality.realtime,
+              ),
+              following: null,
+            ),
+          ],
+          vehicleFor: (number) => TrackedVehicle(
+            id: 'rmtc:$number',
+            vehicleNumber: number,
+            routeId: '020',
+            routeName: null,
+            destination: null,
+            position: const GeoPosition(latitude: -16.7, longitude: -49.2),
+            accessible: null,
+            punctuality: VehiclePunctuality.unknown,
+          ),
+        ),
+      );
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+
+      expect(find.text('Destino não informado'), findsWidgets);
+      expect(find.text('Pontualidade não informada'), findsNothing);
+      expect(find.text('Acessibilidade não informada'), findsNothing);
+      expect(find.text('Acessível'), findsNothing);
+      // Sem minutos não aparece "0 min".
+      expect(find.text('0'), findsNothing);
+      expect(find.text('previsão até o ponto 30402'), findsOneWidget);
+
+      await openDetails(tester);
+      expect(row('Destino', 'Não informado'), findsWidgets);
+      expect(row('Pontualidade', 'Não informada'), findsWidgets);
+      expect(row('Acessibilidade', 'Não informada'), findsWidgets);
+    });
+
+    testWidgets('secundário → acompanhar → ficha do ônibus certo', (
+      tester,
+    ) async {
+      const groups = [
+        ArrivalGroup(
+          routeId: '020',
+          destination: 'T. BIBLIA',
+          next: Arrival(
+            vehicleId: 'rmtc:20529',
+            vehicleNumber: '20529',
+            minutes: 2,
+            plannedArrival: null,
+            predictedArrival: null,
+            realtime: true,
+            quality: ArrivalQuality.realtime,
+          ),
+          following: null,
+        ),
+        ArrivalGroup(
+          routeId: '003',
+          destination: 'T PAULO GARCIA',
+          next: Arrival(
+            vehicleId: 'rmtc:20693',
+            vehicleNumber: '20693',
+            minutes: 3,
+            plannedArrival: null,
+            predictedArrival: null,
+            realtime: true,
+            quality: ArrivalQuality.realtime,
+          ),
+          following: null,
+        ),
+      ];
+      await _pumpApp(
+        tester,
+        _FakeTransitRepository(
+          groups: groups,
+          vehicleFor: (number) => TrackedVehicle(
+            id: 'rmtc:$number',
+            vehicleNumber: number,
+            routeId: number == '20693' ? '003' : '020',
+            routeName: null,
+            destination: number == '20693' ? 'T PAULO GARCIA' : 'T. BIBLIA',
+            position: GeoPosition(
+              latitude: number == '20693' ? -16.71 : -16.7,
+              longitude: -49.2,
+            ),
+            accessible: number == '20693' ? true : null,
+            punctuality: VehiclePunctuality.unknown,
+          ),
+        ),
+      );
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+      await openDetails(tester);
+      expect(_map(tester).secondaryVehicles.single.vehicleNumber, '20693');
+
+      _map(tester).onSecondaryTap!('20693');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Acompanhar este ônibus'));
+      await tester.pumpAndSettle();
+
+      expect(_map(tester).vehicleNumber, '20693');
+      expect(find.text('Ônibus 20693'), findsOneWidget);
+      expect(find.text('Linha 003'), findsOneWidget);
+      expect(find.text('min até o ponto 30402'), findsOneWidget);
+      // Ônibus novo: a ficha recomeça compacta e com os dados dele.
+      expect(find.text('Lotação'), findsNothing);
+      await openDetails(tester);
+      expect(row('Ônibus', '20693'), findsWidgets);
+      expect(row('Acessibilidade', 'Acessível'), findsWidgets);
+    });
+
+    testWidgets('tocar no ônibus acompanhado abre a ficha dele', (
+      tester,
+    ) async {
+      await _pumpApp(tester, _FakeTransitRepository());
+      await _search(tester, '30402');
+      await _track(tester, '20529');
+      await tester.tap(find.text('Chegadas'));
+      await tester.pumpAndSettle();
+
+      _map(tester).onTrackedTap!();
+      await tester.pumpAndSettle();
+      expect(find.text('Lotação'), findsOneWidget);
+      expect(row('Ônibus', '20529'), findsWidgets);
+    });
+
+    for (final size in const [Size(390, 844), Size(1366, 768)]) {
+      testWidgets('ficha aberta a 200% sem overflow em '
+          '${size.width.toInt()} px', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await _pumpApp(tester, _FakeTransitRepository(), size: size);
+        await _search(tester, '30402');
+        await _track(tester, '20529');
+        await openDetails(tester);
+        expect(tester.takeException(), isNull);
+        final number = tester.renderObject<RenderParagraph>(find.text('20529'));
+        expect(number.size.height, lessThan(14 * 2 * 1.5));
+      });
+    }
   });
 
   testWidgets('Meu ônibus vazio com ponto carregado leva às chegadas', (

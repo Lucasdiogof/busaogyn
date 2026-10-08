@@ -784,6 +784,61 @@ void main() {
     });
   });
 
+  group('falha da posição: conexão x dado ausente', () {
+    Future<StopArrivalsLoaded> trackFailing(Object error) async {
+      final flex = _FlexibleRepository();
+      final cubit = StopArrivalsCubit(flex, trackingRefreshInterval: null);
+      addTearDown(cubit.close);
+      final loading = cubit.load('30402');
+      flex.arrivalRequests.last.reply.complete(_groups('020'));
+      await loading;
+      final tracking = cubit.track('20529');
+      flex.positionRequests.single.reply.completeError(error);
+      await tracking;
+      return cubit.state as StopArrivalsLoaded;
+    }
+
+    test('timeout e rede viram conexão instável (failing)', () async {
+      for (final code in [ApiClient.timeoutCode, ApiClient.networkErrorCode]) {
+        final state = await trackFailing(
+          ApiException(code: code, message: 'x', retryable: true),
+        );
+        expect(state.trackingPhase, TrackingPhase.failing, reason: code);
+      }
+      final unavailable = await trackFailing(
+        const ApiException(
+          code: 'SOURCE_UNAVAILABLE',
+          message: 'x',
+          retryable: true,
+          statusCode: 503,
+        ),
+      );
+      expect(unavailable.trackingPhase, TrackingPhase.failing);
+    });
+
+    test('resposta sem dado do ônibus não é falha de conexão', () async {
+      for (final error in <Object>[
+        const ApiException(
+          code: 'SOURCE_INVALID_RESPONSE',
+          message: 'RMTC individual vehicle payload has an unexpected shape.',
+          retryable: true,
+          statusCode: 502,
+        ),
+        const FormatException('x'),
+      ]) {
+        final state = await trackFailing(error);
+        expect(
+          state.trackingPhase,
+          TrackingPhase.unavailable,
+          reason: '$error',
+        );
+        expect(state.trackingVehicleNumber, '20529');
+        // As chegadas do ponto (e a previsão) seguem intactas.
+        expect(state.arrivals.data.single.routeId, '020');
+      }
+    });
+  });
+
   group('busca de ponto', () {
     late _FlexibleRepository flex;
     late StopArrivalsCubit searchCubit;

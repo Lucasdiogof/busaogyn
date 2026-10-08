@@ -39,10 +39,12 @@ enum TrackingPhase {
   /// Última consulta trouxe uma posição.
   active,
 
-  /// A fonte respondeu, mas sem posição para o ônibus.
+  /// A fonte respondeu sem posição utilizável para o ônibus (sem
+  /// coordenada ou com dado inválido): não é falha de conexão.
   unavailable,
 
-  /// A última consulta falhou; a última posição válida (se houver) é mantida.
+  /// Falha de conexão ou serviço; a última posição válida (se houver) é
+  /// mantida.
   failing,
 }
 
@@ -521,7 +523,11 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
         );
       }
     } catch (error) {
-      final message = showInitialError
+      // Resposta sem dado utilizável do ônibus não é "conexão instável".
+      final connectivity = isConnectivityError(error);
+      final message = !connectivity
+          ? 'A fonte não informou a posição deste ônibus agora.'
+          : showInitialError
           ? friendlyErrorMessage(error, ErrorSubject.position)
           : 'Posição temporariamente indisponível.';
       _emitTracking(
@@ -529,7 +535,9 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
         (previous) => TrackingInfo(
           vehicleNumber: vehicleNumber,
           // Mantém a última posição válida do mesmo ônibus.
-          phase: TrackingPhase.failing,
+          phase: connectivity
+              ? TrackingPhase.failing
+              : TrackingPhase.unavailable,
           vehicle: previous?.vehicle,
           receivedAt: previous?.receivedAt,
           message: message,

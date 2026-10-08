@@ -40,3 +40,22 @@ String friendlyErrorMessage(Object error, ErrorSubject subject) {
     _ => 'Não foi possível concluir a consulta.',
   };
 }
+
+/// Falha de conexão ou serviço fora do ar (vale tentar de novo), em oposição
+/// a uma resposta que chegou sem dado utilizável para o ônibus. Só o
+/// primeiro caso é "conexão instável"; o segundo é posição indisponível.
+bool isConnectivityError(Object error) {
+  if (error is FormatException) return false;
+  if (error is! ApiException) return true;
+  return switch (error.code) {
+    ApiClient.timeoutCode ||
+    ApiClient.networkErrorCode ||
+    'SOURCE_TIMEOUT' ||
+    'SOURCE_UNAVAILABLE' ||
+    'SOURCE_ACCESS_RESTRICTED' => true,
+    'SOURCE_INVALID_RESPONSE' ||
+    'INVALID_RESPONSE' ||
+    'INVALID_VEHICLE' => false,
+    _ => error.retryable && error.statusCode != 404,
+  };
+}

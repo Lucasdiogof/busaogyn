@@ -99,6 +99,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// Ônibus secundário tocado no mapa (mostra o callout).
   String? _selectedSecondary;
 
+  /// Detalhes do ônibus acompanhado abertos no painel Meu ônibus.
+  bool _vehicleDetails = false;
+
   /// Campo de busca aberto por cima de um ponto já exibido.
   bool _searching = false;
 
@@ -180,7 +183,23 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   }
 
   void _track(String vehicleNumber) {
-    context.read<StopArrivalsCubit>().track(vehicleNumber);
+    final cubit = context.read<StopArrivalsCubit>();
+    final current = cubit.state;
+    // Outro ônibus: a ficha começa compacta.
+    if (current is! StopArrivalsLoaded ||
+        current.tracking?.vehicleNumber != vehicleNumber) {
+      setState(() => _vehicleDetails = false);
+    }
+    cubit.track(vehicleNumber);
+    _select(HomeTab.tracking);
+  }
+
+  /// Toque no próprio ônibus acompanhado: abre a ficha dele.
+  void _showTrackedDetails() {
+    setState(() {
+      _selectedSecondary = null;
+      _vehicleDetails = true;
+    });
     _select(HomeTab.tracking);
   }
 
@@ -285,6 +304,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   layout: _mapLayout(geometry),
                   onSecondaryTap: (number) =>
                       setState(() => _selectedSecondary = number),
+                  onTrackedTap: _showTrackedDetails,
                   onMapTap: () {
                     if (_selectedSecondary != null) {
                       setState(() => _selectedSecondary = null);
@@ -620,6 +640,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               onStop: _stopTracking,
               clock: _clock,
               followController: _follow,
+              detailsExpanded: _vehicleDetails,
+              onToggleDetails: () =>
+                  setState(() => _vehicleDetails = !_vehicleDetails),
             ),
             _ => _TrackingEmpty(
               hasStop: state is StopArrivalsLoaded,
@@ -720,10 +743,12 @@ class _MapBinding extends StatelessWidget {
     required this.followController,
     required this.layout,
     required this.onSecondaryTap,
+    required this.onTrackedTap,
     required this.onMapTap,
   });
 
   final ValueChanged<String> onSecondaryTap;
+  final VoidCallback onTrackedTap;
   final VoidCallback onMapTap;
   final VehicleMapBuilder? mapBuilder;
   final String styleString;
@@ -763,6 +788,7 @@ class _MapBinding extends StatelessWidget {
             builder: (context, secondaries) => TransitMap(
               secondaryVehicles: secondaries,
               onSecondaryTap: onSecondaryTap,
+              onTrackedTap: onTrackedTap,
               onMapTap: onMapTap,
               vehicleNumber: data.vehicleNumber,
               position: data.position,

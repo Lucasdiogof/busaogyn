@@ -111,19 +111,20 @@ void main() {
     expect(minutesSemantics(8), '8 minutos');
   });
 
-  group('frescor da posição', () {
+  group('estado da posição', () {
     final now = DateTime(2026, 10, 7, 8);
 
-    test('recente', () {
-      final text = positionFreshness(
+    test('recente é ao vivo', () {
+      final status = positionStatus(
         _tracking(phase: TrackingPhase.active, receivedAt: now),
         now,
-      ).text;
-      expect(text, 'Dados atualizados recentemente');
+      );
+      expect(status.text, 'Ao vivo · há 0 s');
+      expect(status.state, PositionState.live);
     });
 
     test('envelhece com ageSeconds da API + tempo local', () {
-      final freshness = positionFreshness(
+      final status = positionStatus(
         _tracking(
           phase: TrackingPhase.active,
           ageSeconds: 20,
@@ -131,41 +132,48 @@ void main() {
         ),
         now,
       );
-      expect(freshness.text, 'Última posição consultada há 40 s');
-      expect(freshness.tone, FreshnessTone.aging);
+      expect(status.text, 'Última posição há 40 s');
+      expect(status.tone, FreshnessTone.aging);
     });
 
-    test('stale da API ou falha mostram desatualizada', () {
+    test('stale da API ou falha com posição anterior: desatualizada', () {
       expect(
-        positionFreshness(
+        positionStatus(
           _tracking(phase: TrackingPhase.active, stale: true, receivedAt: now),
           now,
-        ).tone,
-        FreshnessTone.stale,
+        ).state,
+        PositionState.stale,
       );
       expect(
-        positionFreshness(
+        positionStatus(
           _tracking(phase: TrackingPhase.failing, receivedAt: now),
           now,
         ).text,
-        startsWith('Posição temporariamente desatualizada'),
+        'Posição desatualizada · há 0 s',
       );
     });
 
-    test('sem posição', () {
+    test('sem posição: indisponível, conexão ou buscando, nunca ao vivo', () {
       expect(
-        positionFreshness(
+        positionStatus(
           _tracking(phase: TrackingPhase.unavailable, withPosition: false),
           now,
         ).text,
-        'Posição indisponível',
+        'Posição temporariamente indisponível',
       );
       expect(
-        positionFreshness(
+        positionStatus(
+          _tracking(phase: TrackingPhase.failing, withPosition: false),
+          now,
+        ).text,
+        'Conexão instável',
+      );
+      expect(
+        positionStatus(
           _tracking(phase: TrackingPhase.searching, withPosition: false),
           now,
         ).text,
-        'Buscando posição',
+        'Buscando posição do ônibus',
       );
     });
   });
@@ -340,7 +348,7 @@ void main() {
           ),
           now,
         )!.label,
-        'Sem posição',
+        'Localizando',
       );
       expect(
         liveStatus(
