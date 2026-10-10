@@ -60,6 +60,16 @@ São sugestões factuais, a confirmar junto com a política final: os formulári
 - **Google Play — Segurança dos dados**: nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
 - **App Store — Privacidade do app**: "Data Not Collected". Tracking: não.
 
+## Mudanças planejadas (NÃO implementadas)
+
+Esta seção descreve intenção para a v2 ([plano](v2/PLANO_BUSAOGYN_V2.md)). **Nada abaixo existe no app atual**, e todas as seções acima continuam sendo a descrição correta do comportamento da versão `1.0.0+1`.
+
+- **Favoritos e recentes (planejado):** o app passará a guardar **localmente** (`shared_preferences`) os pontos e os pares ponto‑linha que o usuário favoritar, e uma lista curta de pontos recentes: códigos, data de inclusão e, no máximo, um rótulo opcional. Não saem do aparelho (os códigos só são enviados à API BusãoGyn quando o usuário consulta chegadas, como hoje). Sem conta e sem sincronização.
+- **Efeito sobre este documento:** quando isso for implementado, o resumo deixará de afirmar que o app “não guarda histórico de buscas ou de pontos consultados” e que o “único dado persistido é a preferência de tema”; o mesmo vale para a tabela da seção 1 e para as respostas das lojas (seção 5). Esta revisão é pré‑requisito para publicar a funcionalidade.
+- **Catálogo de linhas e pontos (planejado):** quando houver autorização, o aparelho poderá guardar uma cópia local do catálogo oficial (dados públicos de transporte, sem dado pessoal). Até lá, apenas dados sintéticos em desenvolvimento e testes.
+- **Localização do usuário:** continua **não usada** e **não prevista para o próximo release**. Se algum dia entrar (por exemplo, “pontos perto de mim”), será pedida apenas no momento do uso, processada no aparelho e este documento, o CI de permissões e os formulários das lojas serão revistos antes.
+- **Telemetria e crash reporting:** nenhum previsto.
+
 ## Pendências
 
 - **Política de privacidade publicada**: as duas lojas exigem uma URL pública. É preciso redigir a política a partir deste documento e hospedá-la, de preferência no mesmo domínio do app Web.

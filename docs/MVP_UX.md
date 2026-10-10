@@ -4,6 +4,8 @@ Atualizado em 06/10/2026.
 
 Este documento define o comportamento do MVP enquanto a rede estática/GTFS oficial ainda não foi recebida.
 
+> **Navegação v2 (aprovada em 10/10/2026, ainda não implementada):** quatro destinos — **Linhas, Pontos, Favoritos e Meu ônibus** —, com **Ajustes na TopBar** e **Chegadas como detalhe do ponto**. Entra de forma gradual, por feature flag desligada em release até a validação (PR‑6). Até lá, **tudo neste documento continua valendo** (dock Chegadas / Meu ônibus / Ajustes). Detalhes: [ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md) e [contrato do PR‑6](v2/PR-6-home-shell-aceite.md).
+
 ## Proposta central
 
 O MVP precisa tornar simples e confiável este fluxo:
@@ -195,6 +197,8 @@ Primeira versão aceitável:
 - pontos recentes;
 - pontos favoritos;
 - persistência local.
+
+Na v2 isso evolui para o destino **Favoritos** (favoritos de ponto e de par ponto‑linha, mais recentes, só no aparelho, sem conta), planejado nos PRs 5 e 7 e **ainda não implementado**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo. Ao entrar em produção, `PRIVACY.md` deixa de dizer que o app não guarda pontos consultados.
 
 Não persistir amostras GPS do ônibus no Supabase.
 
