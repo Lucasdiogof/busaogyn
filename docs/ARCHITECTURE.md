@@ -90,3 +90,16 @@ Ou seja, o ponto é obrigatório no contrato da fonte, embora a posição não d
 Destrava quando houver: endpoint/autorização da RMTC para posição por veículo, feed de frota (`cconaweb`) liberado, ou GTFS-RT.
 
 O rastro de posições observadas ("Posições recentes") fica para depois. Ele depende só do tracking existente, não da busca por ônibus.
+
+## Direção da v2 (planejada — nada implementado)
+
+Decisões registradas em [`docs/adr/`](adr/README.md); escopo e backlog em [`docs/v2/PLANO_BUSAOGYN_V2.md`](v2/PLANO_BUSAOGYN_V2.md). Esta seção descreve intenção, não o estado atual do código.
+
+- **Navegação:** Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar e Chegadas como detalhe do ponto ([ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md)). Entra por feature flag de compilação, desligada em release até a validação.
+- **Dados confiáveis:** código de linha sempre `String` (`003`, `MGP1`, `NS1`); relação ponto‑linha não é ordem de percurso; sem inferir sentido, sequência, shape ou horário; sem usar o catálogo em massa da RMTC em produção sem autorização verificável; fixtures apenas sintéticas ([ADR‑0002](adr/0002-dados-confiaveis-e-nao-inferencia.md)).
+- **Preservação do realtime:** o mapa (índice 0 do `Stack`, nunca recriado), `StopArrivalsCubit`, `MapVehiclesCubit` e `TransitRepository` não são refatorados pela navegação; descarte por geração, expiração em 90 s e rótulos de “observado” seguem como hoje ([ADR‑0003](adr/0003-protecao-do-mapa-e-do-realtime.md)). O Flutter continua falando só com a API BusãoGyn.
+- **Gates de liberação:**
+  - **A** (sem dependência externa): navegação, favoritos/recentes locais, base do catálogo com dados sintéticos, observabilidade.
+  - **B** (depende de autorização/licença do catálogo): Linhas e Pontos navegáveis, busca, localização, atualização de catálogo em produção.
+  - **C** (depende de GTFS ou fonte equivalente licenciada): rotas, sequência de paradas, ida/volta, shapes e horários.
+- **Worker:** hoje só tem a Cache API como armazenamento; qualquer catálogo servido pelo Worker exige armazenamento durável e decisão própria (ver plano, D‑3).

@@ -13,6 +13,10 @@ O backend está em `worker/` e publicado em produção no Cloudflare Workers. O 
 - Rede estática / GTFS: `2026106554419306`
 - Lotação / SIRI / capacidade: `2026106602705606`
 
+## BusãoGyn v2 (planejamento)
+
+A navegação da v2 (Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar) está **aprovada e ainda não implementada**. Decisões em [`docs/adr/`](docs/adr/README.md); escopo, backlog e riscos em [`docs/v2/PLANO_BUSAOGYN_V2.md`](docs/v2/PLANO_BUSAOGYN_V2.md). O app atual e o realtime não mudam até o PR‑6.
+
 ## Worker
 
 ```bash
