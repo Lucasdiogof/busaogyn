@@ -17,6 +17,7 @@ class ArrivalsPanel extends StatelessWidget {
     required this.onTrack,
     required this.onOpenTracking,
     required this.onExample,
+    this.onRetrySearch,
     super.key,
   });
 
@@ -26,9 +27,15 @@ class ArrivalsPanel extends StatelessWidget {
   final VoidCallback onOpenTracking;
   final ValueChanged<String> onExample;
 
+  /// Repete a última busca que falhou por conexão ou fonte.
+  final VoidCallback? onRetrySearch;
+
   @override
   Widget build(BuildContext context) {
     final children = switch (state) {
+      StopArrivalsInitial(:final searchError?)
+          when searchError.isConnectivity =>
+        [_ConnectionProblem(feedback: searchError, onRetry: onRetrySearch)],
       StopArrivalsInitial() => [_Intro(onExample: onExample)],
       StopArrivalsLoading(:final stopId) => [_LoadingView(stopId: stopId)],
       final StopArrivalsLoaded loaded => _loaded(context, loaded),
@@ -87,7 +94,8 @@ class ArrivalsPanel extends StatelessWidget {
           icon: Icons.sync_problem_rounded,
           text:
               'Não foi possível atualizar agora. Mostrando a consulta '
-              'anterior. ${state.refreshError}',
+              '${_receivedLabel(state.arrivalsReceivedAt)}, que pode já '
+              'não valer. ${state.refreshError}',
         ),
       ],
       if (state.arrivals.stale) ...[
@@ -247,6 +255,58 @@ class _InlineNotice extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "das 17:57" quando há hora da última consulta bem-sucedida; senão,
+/// "anterior".
+String _receivedLabel(DateTime? at) {
+  if (at == null) return 'anterior';
+  final h = at.hour.toString().padLeft(2, '0');
+  final m = at.minute.toString().padLeft(2, '0');
+  return 'das $h:$m';
+}
+
+/// Busca que falhou por conexão ou pela fonte: nada de previsão antiga como
+/// se fosse atual. Explica o que continua funcionando e oferece tentar de
+/// novo, uma consulta por toque.
+class _ConnectionProblem extends StatelessWidget {
+  const _ConnectionProblem({required this.feedback, required this.onRetry});
+
+  final SearchFeedback feedback;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = feedback.kind == SearchFeedbackKind.offline;
+    final code = feedback.stopId;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MessageView(
+          icon: offline ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
+          title: offline
+              ? 'Chegadas precisam de internet'
+              : 'Não conseguimos consultar as chegadas',
+          body: offline
+              ? 'O mapa segue disponível, mas as próximas chegadas só '
+                    'aparecem com conexão. Nenhuma previsão antiga é mostrada '
+                    'como se fosse atual.'
+              : 'O código ${code ?? 'digitado'} não foi o problema: a '
+                    'consulta não foi concluída. Nenhuma previsão antiga é '
+                    'mostrada como se fosse atual.',
+          action: onRetry == null
+              ? null
+              : OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    code == null ? 'Tentar de novo' : 'Tentar o ponto $code',
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

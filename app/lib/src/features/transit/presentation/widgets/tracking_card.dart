@@ -153,8 +153,10 @@ class TrackingCard extends StatelessWidget {
         const FootNote(
           child: Text(
             'Posição informada pela RMTC, consultada a cada 15 s. Direção '
-            'baseada no deslocamento observado; o rastro mostra só posições '
-            'recebidas.',
+            'baseada no deslocamento observado; o rastro mostra só por onde '
+            'o ônibus já passou. A fonte não informa o trajeto à frente nem '
+            'a ordem dos próximos pontos, então o mapa não mostra percurso '
+            'futuro.',
           ),
         ),
       ],

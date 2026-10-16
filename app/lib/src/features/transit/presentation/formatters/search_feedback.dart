@@ -12,6 +12,13 @@ class SearchFeedback {
   final String title;
   final String message;
 
+  /// A falha é de conexão ou da fonte, não do código digitado: o campo não
+  /// ganha borda de erro e vale tentar de novo.
+  bool get isConnectivity =>
+      kind == SearchFeedbackKind.offline ||
+      kind == SearchFeedbackKind.timeout ||
+      kind == SearchFeedbackKind.unavailable;
+
   /// Código buscado, quando era um número válido.
   final String? stopId;
 
