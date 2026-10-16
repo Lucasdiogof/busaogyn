@@ -155,7 +155,8 @@ class TrackingCard extends StatelessWidget {
             'Posição informada pela RMTC, consultada a cada 15 s. Direção '
             'baseada no deslocamento observado; o rastro mostra só por onde '
             'o ônibus já passou. A fonte não informa o trajeto à frente nem '
-            'a ordem dos próximos pontos, então não desenhamos rota.',
+            'a ordem dos próximos pontos, então o mapa não mostra percurso '
+            'futuro.',
           ),
         ),
       ],
