@@ -2,6 +2,7 @@ import 'package:busaogyn/src/app.dart';
 import 'package:busaogyn/src/core/config/map_config.dart';
 import 'package:busaogyn/src/core/network/api_exception.dart';
 import 'package:busaogyn/src/core/settings/theme_mode_cubit.dart';
+import 'package:busaogyn/src/core/ui/busao_components.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
 import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dart';
@@ -624,6 +625,189 @@ void main() {
       expect(find.text('Ponto 30402'), findsOneWidget);
       expect(find.byType(SearchErrorNote), findsNothing);
     });
+  });
+
+  group('falhas de conexão e da fonte', () {
+    const offline = ApiException(
+      code: 'NETWORK_ERROR',
+      message: 'sem rede',
+      retryable: true,
+    );
+    const timeout = ApiException(
+      code: 'CLIENT_TIMEOUT',
+      message: 'demorou',
+      retryable: true,
+    );
+    const sourceDown = ApiException(
+      code: 'SOURCE_UNAVAILABLE',
+      message: 'RMTC arrivals source returned HTTP 502.',
+      retryable: true,
+      statusCode: 503,
+    );
+
+    /// Borda do campo de busca: null é a borda padrão do vidro.
+    Color? fieldBorder(WidgetTester tester) => tester
+        .widget<GlassSurface>(
+          find
+              .descendant(
+                of: find.byType(SearchHeader),
+                matching: find.byType(GlassSurface),
+              )
+              .first,
+        )
+        .borderColor;
+
+    testWidgets('sem internet: sem borda vermelha, aviso, painel e retry', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository()..failures['30402'] = offline;
+      await _pumpApp(tester, repository);
+      await _search(tester, '30402');
+
+      expect(find.textContaining('Sem conexão'), findsWidgets);
+      expect(fieldBorder(tester), isNull);
+      expect(find.text('Tentar de novo'), findsOneWidget);
+      expect(find.text('Chegadas precisam de internet'), findsOneWidget);
+      // Não é a tela de consulta normal e não promete previsão.
+      expect(find.text('Digite o código do ponto'), findsNothing);
+      expect(find.text('PRÓXIMOS ÔNIBUS'), findsNothing);
+      // O código digitado continua no campo e o mapa continua na tela.
+      expect(find.widgetWithText(TextField, '30402'), findsOneWidget);
+      expect(find.byKey(const Key('fake-map')), findsOneWidget);
+    });
+
+    testWidgets('retry só consulta quando tocado e preserva o código', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository()..failures['30402'] = offline;
+      await _pumpApp(tester, repository);
+      await _search(tester, '30402');
+      expect(repository.requestedStops, ['30402']);
+
+      // Sem laço automático: o tempo passa e nada é consultado de novo.
+      await tester.pump(const Duration(minutes: 5));
+      expect(repository.requestedStops, ['30402']);
+
+      // Uma falha de novo: uma consulta por toque, código preservado.
+      await tester.tap(find.text('Tentar de novo'));
+      await tester.pumpAndSettle();
+      expect(repository.requestedStops, ['30402', '30402']);
+      expect(find.widgetWithText(TextField, '30402'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 5));
+      expect(repository.requestedStops, hasLength(2));
+
+      // Conexão de volta: o mesmo toque carrega o ponto.
+      repository.failures.remove('30402');
+      await tester.tap(find.text('Tentar de novo'));
+      await tester.pumpAndSettle();
+      expect(repository.requestedStops, hasLength(3));
+      expect(find.text('Ponto 30402'), findsOneWidget);
+      expect(find.text('Tentar de novo'), findsNothing);
+      expect(find.byType(SearchErrorNote), findsNothing);
+    });
+
+    testWidgets('timeout e fonte fora do ar têm mensagens próprias', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository()
+        ..failures['11111'] = timeout
+        ..failures['22222'] = sourceDown;
+      await _pumpApp(tester, repository);
+
+      await _search(tester, '11111');
+      expect(find.textContaining('A consulta demorou demais'), findsWidgets);
+      expect(fieldBorder(tester), isNull);
+      expect(find.text('Tentar de novo'), findsOneWidget);
+      expect(find.text('Chegadas precisam de internet'), findsNothing);
+      expect(
+        find.text('Não conseguimos consultar as chegadas'),
+        findsOneWidget,
+      );
+
+      await _search(tester, '22222');
+      expect(
+        find.textContaining('Serviço temporariamente indisponível'),
+        findsWidgets,
+      );
+      expect(fieldBorder(tester), isNull);
+      expect(
+        find.textContaining('O código 22222 não foi o problema'),
+        findsOneWidget,
+      );
+      // A mensagem técnica do Worker nunca vai para a tela.
+      expect(find.textContaining('HTTP 502'), findsNothing);
+      expect(find.textContaining('RMTC arrivals'), findsNothing);
+    });
+
+    testWidgets('código inválido e ponto inexistente mantêm a borda de erro', (
+      tester,
+    ) async {
+      const notFound = ApiException(
+        code: 'SOURCE_INVALID_RESPONSE',
+        message: 'payload',
+        retryable: true,
+        statusCode: 502,
+      );
+      final repository = _FakeTransitRepository()..failures['99999'] = notFound;
+      await _pumpApp(tester, repository);
+
+      await _search(tester, 'abc');
+      expect(find.textContaining('Digite o código do ponto'), findsWidgets);
+      expect(fieldBorder(tester), isNotNull);
+      expect(find.text('Tentar de novo'), findsNothing);
+      expect(repository.requestedStops, isEmpty);
+
+      await _search(tester, '99999');
+      expect(find.textContaining('Ponto não encontrado'), findsWidgets);
+      expect(fieldBorder(tester), isNotNull);
+      expect(find.text('Tentar de novo'), findsNothing);
+      // Nada de estado de conexão: o painel segue convidando a conferir o código.
+      expect(find.text('Chegadas precisam de internet'), findsNothing);
+    });
+
+    testWidgets('atualização que falha mantém a consulta e diz a hora dela', (
+      tester,
+    ) async {
+      final repository = _FakeTransitRepository();
+      await _pumpApp(tester, repository);
+      await _search(tester, '30402');
+      expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
+
+      repository.failures['30402'] = offline;
+      await tester.tap(find.byTooltip('Atualizar chegadas'));
+      await tester.pumpAndSettle();
+
+      // A previsão anterior continua, mas rotulada como de uma hora passada.
+      expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
+      expect(
+        find.textContaining('Mostrando a consulta das 17:00'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('pode já não valer'), findsOneWidget);
+      // Uma consulta de atualização, sem laço automático.
+      final requests = repository.requestedStops.length;
+      await tester.pump(const Duration(seconds: 5));
+      expect(repository.requestedStops, hasLength(requests));
+      // Falha de atualização não é erro de busca nem pinta o campo.
+      expect(find.byType(SearchErrorNote), findsNothing);
+    });
+  });
+
+  testWidgets('Meu ônibus diz o que o rastro mostra e que não há rota futura', (
+    tester,
+  ) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await _search(tester, '30402');
+    await _track(tester, '20529');
+
+    expect(find.textContaining('por onde o ônibus já passou'), findsOneWidget);
+    expect(
+      find.textContaining('não informa o trajeto à frente'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('percurso futuro'), findsOneWidget);
+    // Só posições reais: uma posição, um ponto de rastro, nenhuma linha futura.
+    expect(_map(tester).observedTrail, hasLength(1));
   });
 
   testWidgets('callout de outro ônibus não divide o canto com o Centralizar', (
