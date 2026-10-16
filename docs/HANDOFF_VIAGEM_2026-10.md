@@ -106,9 +106,27 @@ Worker, API, mapa, polling, expiração e tracking não foram alterados.
 
 ## Verificação
 
-Nesta etapa **não foram rodados** `flutter analyze`, testes nem builds (regra
-do pacote). Apenas `dart format`. Os testes existentes não dependem dos
-textos alterados, mas **não há teste novo** cobrindo os estados novos.
+Flutter 3.38.5 (a mesma versão do CI), no repositório isolado da branch:
+
+- `dart format --set-exit-if-changed`: limpo.
+- `flutter analyze`: sem problemas.
+- `flutter test`: 305 testes passando (294 antes; 11 novos), em 3 execuções
+  seguidas, sem instabilidade.
+- `flutter build web --release`: ok. Builds Android e iOS ficam para o CI do PR.
+- Sem alteração em `pubspec.lock`, Gradle ou `analysis_options.yaml`.
+
+Testes novos: `search_feedback_test.dart` (classificação conexão × código) e
+um grupo em `stop_arrivals_page_test.dart` (sem internet sem borda vermelha,
+retry uma consulta por toque sem laço automático e com código preservado,
+timeout e fonte fora do ar, código inválido e ponto inexistente mantendo a
+borda, atualização que falha com a hora da consulta, e os textos do cartão
+Meu ônibus). Desfazer a borda condicional ou a hora da consulta faz exatamente
+esses testes falharem.
+
+Um teste existente (`acompanha um ônibus em tempo real…`) garante que nenhum
+texto da tela contenha "rota". O primeiro texto do cartão dizia "não
+desenhamos rota" e quebrou esse teste; o texto foi reescrito ("o mapa não
+mostra percurso futuro") em vez de alterar o teste.
 
 ## Checklist manual em aparelho
 
