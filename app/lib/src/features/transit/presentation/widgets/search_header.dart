@@ -16,6 +16,7 @@ class SearchHeader extends StatefulWidget {
     this.onCancel,
     this.error,
     this.onEdited,
+    this.onRetry,
     super.key,
   });
 
@@ -32,6 +33,9 @@ class SearchHeader extends StatefulWidget {
 
   /// O código foi editado (o aviso de erro deixa de valer).
   final VoidCallback? onEdited;
+
+  /// Repete a busca do código digitado (falha de conexão ou da fonte).
+  final VoidCallback? onRetry;
 
   @override
   State<SearchHeader> createState() => _SearchHeaderState();
@@ -78,7 +82,8 @@ class _SearchHeaderState extends State<SearchHeader> {
 
     final field = GlassSurface(
       radius: Radii.field,
-      borderColor: error == null ? null : tokens.danger,
+      // Falha de conexão não é culpa do código: sem borda de erro.
+      borderColor: error == null || error.isConnectivity ? null : tokens.danger,
       child: SizedBox(
         height: 56,
         child: Row(
@@ -176,7 +181,10 @@ class _SearchHeaderState extends State<SearchHeader> {
       children: [
         field,
         const SizedBox(height: Space.xs),
-        SearchErrorNote(error),
+        SearchErrorNote(
+          error,
+          onRetry: error.isConnectivity ? widget.onRetry : null,
+        ),
       ],
     );
   }
@@ -184,9 +192,12 @@ class _SearchHeaderState extends State<SearchHeader> {
 
 /// Aviso compacto de busca que falhou: ícone, título e uma linha de ajuda.
 class SearchErrorNote extends StatelessWidget {
-  const SearchErrorNote(this.feedback, {super.key});
+  const SearchErrorNote(this.feedback, {this.onRetry, super.key});
 
   final SearchFeedback feedback;
+
+  /// Uma consulta por toque; nunca repete sozinha.
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +243,15 @@ class SearchErrorNote extends StatelessWidget {
                   style: const TextStyle(fontSize: 13, height: 1.3),
                 ),
               ),
+              if (onRetry != null)
+                TextButton(
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                  ),
+                  child: const Text('Tentar de novo'),
+                ),
             ],
           ),
         ),

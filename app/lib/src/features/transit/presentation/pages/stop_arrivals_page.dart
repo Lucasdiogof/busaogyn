@@ -534,6 +534,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           loading: state is StopArrivalsLoading || searchingOther,
           error: searchError,
           onEdited: context.read<StopArrivalsCubit>().clearSearchError,
+          onRetry: _search,
           onSearch: _search,
           onCancel: state is StopArrivalsLoaded && !searchingOther
               ? _cancelSearch
@@ -637,6 +638,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             onTrack: _track,
             onOpenTracking: () => _select(HomeTab.tracking),
             onExample: _searchExample,
+            onRetrySearch: _search,
           ),
           HomeTab.tracking => switch (state) {
             StopArrivalsLoaded(:final tracking?) => TrackingCard(
