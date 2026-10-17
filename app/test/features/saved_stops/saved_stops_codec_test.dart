@@ -42,7 +42,7 @@ void main() {
     final json =
         jsonDecode(encodeSavedStops(SavedStopsData(favorites: [stop('1')])))
             as Map;
-    expect(json.keys.toSet(), {'schema', 'favorites', 'recents'});
+    expect(json.keys.toSet(), {'schema', 'favorites', 'recents', 'lines'});
     expect((json['favorites'] as List).single.keys.toSet(), {
       'code',
       'name',
@@ -60,7 +60,7 @@ void main() {
       '123',
       'null',
       '{"favorites": []}', // sem schema
-      '{"schema": 2, "favorites": [], "recents": []}', // formato novo
+      '{"schema": 3, "favorites": [], "recents": []}', // formato novo
       '{"schema": "1"}',
     ]) {
       test(raw.isEmpty ? 'texto vazio' : raw, () {
@@ -70,6 +70,92 @@ void main() {
         expect(load.data.recents, isEmpty);
       });
     }
+  });
+
+  group('linhas favoritas (par ponto + linha)', () {
+    test('o formato antigo (versão 1) continua legível, sem linhas', () {
+      final load = decodeSavedStops(
+        jsonEncode({
+          'schema': 1,
+          'favorites': [_item('30402')],
+          'recents': <Object?>[],
+        }),
+      );
+      expect(load.unreadable, isFalse);
+      expect(codes(load.data.favorites), ['30402']);
+      expect(load.data.lines, isEmpty);
+    });
+
+    test('grava e lê de volta só ponto, linha e hora', () {
+      final at = DateTime.utc(2026, 10, 17, 12);
+      final raw = encodeSavedStops(
+        SavedStopsData(
+          lines: [SavedLine(stopCode: '30402', routeId: '003', at: at)],
+        ),
+      );
+      final json = jsonDecode(raw) as Map;
+      expect((json['lines'] as List).single.keys.toSet(), {
+        'stop',
+        'route',
+        'at',
+      });
+      final back = decodeSavedStops(raw).data.lines.single;
+      expect(back.stopCode, '30402');
+      expect(back.routeId, '003');
+      expect(back.at, at);
+    });
+
+    test('a linha é texto opaco: zeros e letras preservados', () {
+      final lines = decodeSavedStops(
+        jsonEncode({
+          'schema': 2,
+          'favorites': <Object?>[],
+          'recents': <Object?>[],
+          'lines': [
+            {'stop': '30402', 'route': '003', 'at': '2026-10-17T12:00:00Z'},
+            {'stop': '30402', 'route': 'MGP1', 'at': '2026-10-17T12:00:00Z'},
+          ],
+        }),
+      ).data.lines;
+      expect([for (final l in lines) l.routeId], ['003', 'MGP1']);
+    });
+
+    test('descarta inválidas e repetidas sem lançar', () {
+      final lines = decodeSavedStops(
+        jsonEncode({
+          'schema': 2,
+          'favorites': <Object?>[],
+          'recents': <Object?>[],
+          'lines': [
+            {'stop': '30402', 'route': '003'},
+            {'stop': '30402', 'route': '003'},
+            {'stop': 'abc', 'route': '003'},
+            {'stop': '30402', 'route': ''},
+            {'stop': '30402', 'route': 'a b'},
+            {'stop': '30402', 'route': 'ABCDEFGHI'},
+            {'stop': 30402, 'route': '003'},
+            'lixo',
+            null,
+          ],
+        }),
+      ).data.lines;
+      expect(lines, hasLength(1));
+    });
+
+    test('respeita o limite', () {
+      final lines = decodeSavedStops(
+        jsonEncode({
+          'schema': 2,
+          'favorites': <Object?>[],
+          'recents': <Object?>[],
+          'lines': [
+            for (var i = 0; i < 5; i++) {'stop': '$i', 'route': '003'},
+          ],
+        }),
+        lineLimit: 3,
+      ).data.lines;
+      expect(lines, hasLength(3));
+    });
   });
 
   test('listas ausentes ou de tipo errado viram vazias, sem lançar', () {

@@ -17,6 +17,7 @@ class SavedStopsState {
     this.status = SavedStopsStatus.loading,
     this.favorites = const [],
     this.recents = const [],
+    this.lines = const [],
     this.persistent = true,
     this.readFailed = false,
     this.writeFailed = false,
@@ -27,6 +28,9 @@ class SavedStopsState {
   /// Do mais novo ao mais antigo, sem códigos repetidos.
   final List<SavedStop> favorites;
   final List<SavedStop> recents;
+
+  /// Linhas favoritas por ponto, da mais nova à mais antiga.
+  final List<SavedLine> lines;
 
   /// `false`: o aparelho não guarda; o que foi salvo vale até fechar o app.
   final bool persistent;
@@ -42,10 +46,14 @@ class SavedStopsState {
   bool isFavorite(String? code) =>
       code != null && favorites.any((stop) => stop.code == code);
 
+  bool isFavoriteLine(String? stop, String? route) =>
+      lines.any((line) => line.matches(stop ?? '', route ?? ''));
+
   SavedStopsState copyWith({
     SavedStopsStatus? status,
     List<SavedStop>? favorites,
     List<SavedStop>? recents,
+    List<SavedLine>? lines,
     bool? persistent,
     bool? readFailed,
     bool? writeFailed,
@@ -53,6 +61,7 @@ class SavedStopsState {
     status: status ?? this.status,
     favorites: favorites ?? this.favorites,
     recents: recents ?? this.recents,
+    lines: lines ?? this.lines,
     persistent: persistent ?? this.persistent,
     readFailed: readFailed ?? this.readFailed,
     writeFailed: writeFailed ?? this.writeFailed,
@@ -75,6 +84,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
     this._store, {
     this.favoriteLimit = defaultFavoriteStopsLimit,
     this.recentLimit = defaultRecentStopsLimit,
+    this.lineLimit = defaultFavoriteLinesLimit,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(SavedStopsState(persistent: _store.persistent)) {
@@ -84,6 +94,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
   final SavedStopsStore _store;
   final int favoriteLimit;
   final int recentLimit;
+  final int lineLimit;
   final DateTime Function() _clock;
 
   final _loaded = Completer<void>();
@@ -107,6 +118,9 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
           status: SavedStopsStatus.ready,
           favorites: _capped(data.favorites, favoriteLimit),
           recents: _capped(data.recents, recentLimit),
+          lines: data.lines.length <= lineLimit
+              ? data.lines
+              : data.lines.sublist(0, lineLimit),
           readFailed: unreadable,
         ),
       );
@@ -143,6 +157,52 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
       ],
     );
     return FavoriteResult.added;
+  }
+
+  /// Favorita a linha **neste ponto**, ou desfavorita se já era. Código de
+  /// ponto ou de linha inválido nunca é salvo; passou do limite, nada é
+  /// removido sozinho.
+  Future<FavoriteResult> toggleFavoriteLine(
+    String? rawStop,
+    String? rawRoute,
+  ) async {
+    final stop = canonicalStopCode(rawStop);
+    final route = canonicalRouteCode(rawRoute);
+    if (stop == null || route == null) return FavoriteResult.invalidCode;
+    await _loaded.future;
+    if (isClosed) return FavoriteResult.invalidCode;
+
+    if (state.isFavoriteLine(stop, route)) {
+      _apply(
+        lines: [
+          for (final line in state.lines)
+            if (!line.matches(stop, route)) line,
+        ],
+      );
+      return FavoriteResult.removed;
+    }
+    if (state.lines.length >= lineLimit) return FavoriteResult.limitReached;
+    _apply(
+      lines: [
+        SavedLine(stopCode: stop, routeId: route, at: _clock()),
+        ...state.lines,
+      ],
+    );
+    return FavoriteResult.added;
+  }
+
+  Future<void> removeFavoriteLine(String? rawStop, String? rawRoute) async {
+    final stop = canonicalStopCode(rawStop);
+    final route = canonicalRouteCode(rawRoute);
+    if (stop == null || route == null) return;
+    await _loaded.future;
+    if (isClosed || !state.isFavoriteLine(stop, route)) return;
+    _apply(
+      lines: [
+        for (final line in state.lines)
+          if (!line.matches(stop, route)) line,
+      ],
+    );
   }
 
   Future<void> removeFavorite(String? rawCode) async {
@@ -198,8 +258,12 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
   }
 
   /// Aplica a mudança na hora e agenda a gravação.
-  void _apply({List<SavedStop>? favorites, List<SavedStop>? recents}) {
-    emit(state.copyWith(favorites: favorites, recents: recents));
+  void _apply({
+    List<SavedStop>? favorites,
+    List<SavedStop>? recents,
+    List<SavedLine>? lines,
+  }) {
+    emit(state.copyWith(favorites: favorites, recents: recents, lines: lines));
     _dirty = true;
     if (!_writing) _flushing = _flush();
   }
@@ -214,6 +278,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
         final snapshot = SavedStopsData(
           favorites: state.favorites,
           recents: state.recents,
+          lines: state.lines,
         );
         try {
           await _store.save(snapshot);

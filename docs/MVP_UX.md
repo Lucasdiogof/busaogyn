@@ -198,7 +198,7 @@ Primeira versão aceitável:
 - pontos favoritos;
 - persistência local.
 
-Na v2 isso evolui para o destino **Favoritos** e uma seção **Recentes** em Pontos, só no aparelho, sem conta. **Favoritos e recentes de pontos já existem** ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)): estrela no cabeçalho do ponto, lista na aba Favoritos (toque consulta o ponto), até 50 favoritos e 10 recentes, remover item e limpar recentes com confirmação, e nenhuma previsão guardada. Favoritos de par ponto‑linha seguem **não implementados**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo.
+Na v2 isso evolui para o destino **Favoritos** e uma seção **Recentes** em Pontos, só no aparelho, sem conta. **Favoritos e recentes de pontos já existem** ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)): estrela no cabeçalho do ponto, lista na aba Favoritos (toque consulta o ponto), até 50 favoritos e 10 recentes, remover item e limpar recentes com confirmação, e nenhuma previsão guardada. **Linhas favoritas por ponto** (par ponto + linha) também existem: botão "Favoritar esta linha" no cartão de cada linha do ponto e seção "Linhas favoritas" na aba Favoritos (toque consulta o ponto; até 50). Elas guardam só os códigos, nunca destino, sentido ou previsão. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo.
 
 Não persistir amostras GPS do ônibus no Supabase.
 

@@ -49,6 +49,96 @@ class FavoriteToggleButton extends StatelessWidget {
   }
 }
 
+/// Favoritar a linha **neste ponto** (par ponto + linha). Fica no pé do
+/// cartão da linha; estado cheio ou vazio, não só cor. Alvo de 48 dp.
+class LineFavoriteButton extends StatelessWidget {
+  const LineFavoriteButton({
+    required this.stopCode,
+    required this.routeId,
+    super.key,
+  });
+
+  final String stopCode;
+  final String routeId;
+
+  Future<void> _toggle(BuildContext context) async {
+    final result = await context.read<SavedStopsCubit>().toggleFavoriteLine(
+      stopCode,
+      routeId,
+    );
+    if (!context.mounted || result != FavoriteResult.limitReached) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Limite de $defaultFavoriteLinesLimit linhas favoritas. Remova '
+            'uma para adicionar outra.',
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return BlocSelector<SavedStopsCubit, SavedStopsState, bool>(
+      selector: (state) => state.isFavoriteLine(stopCode, routeId),
+      builder: (context, favorite) {
+        final label = favorite
+            ? 'Remover a linha $routeId do ponto $stopCode dos favoritos'
+            : 'Favoritar a linha $routeId neste ponto';
+        return Semantics(
+          button: true,
+          selected: favorite,
+          label: label,
+          excludeSemantics: true,
+          child: Tooltip(
+            message: label,
+            excludeFromSemantics: true,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(Radii.card),
+              onTap: () => _toggle(context),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: Space.xs),
+                    Icon(
+                      favorite
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      size: 20,
+                      color: favorite ? tokens.accentText : tokens.mutedText,
+                    ),
+                    const SizedBox(width: Space.xs),
+                    Flexible(
+                      child: Text(
+                        favorite ? 'Linha favorita' : 'Favoritar esta linha',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: favorite
+                              ? tokens.accentText
+                              : tokens.mutedText,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Space.xs),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Aviso curto dentro das listas.
 class _Notice extends StatelessWidget {
   const _Notice({required this.icon, required this.text});
@@ -239,6 +329,96 @@ class _StopTile extends StatelessWidget {
   }
 }
 
+/// Linha favorita num ponto: toque consulta o ponto; o botão remove.
+class _LineTile extends StatelessWidget {
+  const _LineTile({
+    required this.line,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final SavedLine line;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(Radii.card),
+        border: Border.all(color: tokens.hairline),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              button: true,
+              label:
+                  'Consultar as chegadas da linha ${line.routeId} no ponto '
+                  '${line.stopCode}',
+              excludeSemantics: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(Radii.card),
+                onTap: onOpen,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Space.sm,
+                      Space.xs,
+                      Space.xs,
+                      Space.xs,
+                    ),
+                    child: Row(
+                      children: [
+                        RoutePlate(line.routeId),
+                        const SizedBox(width: Space.sm),
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'no ponto ',
+                                  style: TextStyle(color: tokens.mutedText),
+                                ),
+                                TextSpan(
+                                  text: line.stopCode,
+                                  style: monoStyle(
+                                    TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: tokens.strongText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox.square(
+            dimension: 48,
+            child: IconButton(
+              tooltip:
+                  'Remover a linha ${line.routeId} do ponto ${line.stopCode} '
+                  'dos favoritos',
+              onPressed: onRemove,
+              icon: const Icon(Icons.close_rounded, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 const _offlineHint =
     'Toque num ponto para consultar as chegadas. A consulta precisa de '
     'internet e nenhuma previsão fica salva no aparelho.';
@@ -275,7 +455,7 @@ class FavoritesPanel extends StatelessWidget {
         ];
         if (state.loading) {
           children.add(const _LoadingRows());
-        } else if (state.favorites.isEmpty) {
+        } else if (state.favorites.isEmpty && state.lines.isEmpty) {
           children.add(
             MessageView(
               icon: Icons.star_outline_rounded,
@@ -291,33 +471,64 @@ class FavoritesPanel extends StatelessWidget {
             ),
           );
         } else {
-          children
-            ..add(
-              SectionLabel(
-                icon: Icons.star_rounded,
-                label: 'Pontos favoritos',
-                trailing: Text(
-                  '${state.favorites.length}',
-                  style: monoStyle(
-                    TextStyle(fontSize: 12, color: context.tokens.mutedText),
-                  ),
-                ),
-              ),
-            )
-            ..add(const SizedBox(height: Space.xs));
-          for (final stop in state.favorites) {
+          Widget count(int n) => Text(
+            '$n',
+            style: monoStyle(
+              TextStyle(fontSize: 12, color: context.tokens.mutedText),
+            ),
+          );
+          if (state.favorites.isNotEmpty) {
             children
               ..add(
-                _StopTile(
-                  stop: stop,
+                SectionLabel(
                   icon: Icons.star_rounded,
-                  removeTooltip: 'Remover o ponto ${stop.code} dos favoritos',
-                  onOpen: () => onOpen(stop.code),
-                  onRemove: () =>
-                      context.read<SavedStopsCubit>().removeFavorite(stop.code),
+                  label: 'Pontos favoritos',
+                  trailing: count(state.favorites.length),
                 ),
               )
               ..add(const SizedBox(height: Space.xs));
+            for (final stop in state.favorites) {
+              children
+                ..add(
+                  _StopTile(
+                    stop: stop,
+                    icon: Icons.star_rounded,
+                    removeTooltip: 'Remover o ponto ${stop.code} dos favoritos',
+                    onOpen: () => onOpen(stop.code),
+                    onRemove: () => context
+                        .read<SavedStopsCubit>()
+                        .removeFavorite(stop.code),
+                  ),
+                )
+                ..add(const SizedBox(height: Space.xs));
+            }
+          }
+          if (state.lines.isNotEmpty) {
+            if (state.favorites.isNotEmpty) {
+              children.add(const SizedBox(height: Space.xs));
+            }
+            children
+              ..add(
+                SectionLabel(
+                  icon: Icons.directions_bus_outlined,
+                  label: 'Linhas favoritas',
+                  trailing: count(state.lines.length),
+                ),
+              )
+              ..add(const SizedBox(height: Space.xs));
+            for (final line in state.lines) {
+              children
+                ..add(
+                  _LineTile(
+                    line: line,
+                    onOpen: () => onOpen(line.stopCode),
+                    onRemove: () => context
+                        .read<SavedStopsCubit>()
+                        .removeFavoriteLine(line.stopCode, line.routeId),
+                  ),
+                )
+                ..add(const SizedBox(height: Space.xs));
+            }
           }
           children.add(const FootNote(child: Text(_offlineHint)));
         }

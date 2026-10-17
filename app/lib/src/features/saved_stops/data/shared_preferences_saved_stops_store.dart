@@ -11,6 +11,7 @@ class SharedPreferencesSavedStopsStore implements SavedStopsStore {
     this._preferences, {
     this.favoriteLimit = defaultFavoriteStopsLimit,
     this.recentLimit = defaultRecentStopsLimit,
+    this.lineLimit = defaultFavoriteLinesLimit,
   });
 
   static const key = 'busaogyn.saved_stops.v1';
@@ -18,6 +19,7 @@ class SharedPreferencesSavedStopsStore implements SavedStopsStore {
   final SharedPreferences _preferences;
   final int favoriteLimit;
   final int recentLimit;
+  final int lineLimit;
 
   @override
   bool get persistent => true;
@@ -35,6 +37,7 @@ class SharedPreferencesSavedStopsStore implements SavedStopsStore {
       raw,
       favoriteLimit: favoriteLimit,
       recentLimit: recentLimit,
+      lineLimit: lineLimit,
     );
   }
 

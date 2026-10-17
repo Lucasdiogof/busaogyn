@@ -128,7 +128,12 @@ class ArrivalsPanel extends StatelessWidget {
         )
       else
         for (final group in arrivals) ...[
-          ArrivalCard(group: group, tracking: tracking, onTrack: onTrack),
+          ArrivalCard(
+            group: group,
+            tracking: tracking,
+            onTrack: onTrack,
+            stopId: state.stopId,
+          ),
           const SizedBox(height: Space.xs),
         ],
       const SizedBox(height: Space.xxs),

@@ -367,6 +367,72 @@ void main() {
     });
   });
 
+  group('linhas favoritas', () {
+    Finder lineStar(String route, String stop) =>
+        find.byTooltip('Favoritar a linha $route neste ponto');
+    Finder lineUnstar(String route, String stop) =>
+        find.byTooltip('Remover a linha $route do ponto $stop dos favoritos');
+
+    testWidgets('favorita a linha no ponto, lista em Favoritos e remove', (
+      tester,
+    ) async {
+      final store = FakeStore();
+      await _pump(tester, store: store);
+      await _search(tester, '30402');
+
+      await _tap(tester, lineStar('020', '30402').first);
+      expect(store.data.lines.single.stopCode, '30402');
+      expect(store.data.lines.single.routeId, '020');
+      expect(lineUnstar('020', '30402'), findsOneWidget);
+      // Favoritar a linha não favorita o ponto.
+      expect(store.data.favorites, isEmpty);
+
+      await _openTab(tester, 'Favoritos');
+      expect(find.text('LINHAS FAVORITAS'), findsOneWidget);
+      expect(
+        find.byTooltip('Remover a linha 020 do ponto 30402 dos favoritos'),
+        findsOneWidget,
+      );
+      // Só linha favorita: não cai no estado vazio.
+      expect(find.text('Seus pontos favoritos aparecerão aqui.'), findsNothing);
+
+      await tester.tap(
+        find.byTooltip('Remover a linha 020 do ponto 30402 dos favoritos'),
+      );
+      await tester.pumpAndSettle();
+      expect(store.data.lines, isEmpty);
+      expect(
+        find.text('Seus pontos favoritos aparecerão aqui.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('tocar na linha favorita consulta o ponto', (tester) async {
+      final repository = _Repository();
+      final store = FakeStore(
+        initial: SavedStopsData(
+          lines: [
+            SavedLine(
+              stopCode: '30100',
+              routeId: '020',
+              at: DateTime.utc(2026, 10, 17),
+            ),
+          ],
+        ),
+      );
+      await _pump(tester, repository: repository, store: store);
+      await _openTab(tester, 'Favoritos');
+
+      await tester.tap(
+        find.bySemanticsLabel(
+          'Consultar as chegadas da linha 020 no ponto 30100',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(repository.requested, ['30100']);
+    });
+  });
+
   group('recentes', () {
     testWidgets('registra consultas com sucesso, do mais novo ao mais antigo', (
       tester,

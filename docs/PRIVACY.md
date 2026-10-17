@@ -10,7 +10,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 - O app **não usa a localização do usuário**: não há permissão de localização no Android, nem chave `NSLocation*` no iOS.
 - Não acessa contatos, fotos, câmera, microfone, arquivos ou calendário.
 - Não tem analytics, crash reporting, publicidade nem SDK de rastreamento.
-- O app guarda **no aparelho**, e só nele, a preferência de tema (claro, noturno ou sistema), os pontos favoritos e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta. Não guarda histórico de buscas, previsões de chegada nem posições.
+- O app guarda **no aparelho**, e só nele, a preferência de tema (claro, noturno ou sistema), os pontos favoritos, as linhas favoritas em cada ponto e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta. Não guarda histórico de buscas, previsões de chegada nem posições.
 
 ## 1. Dados do app
 
@@ -18,6 +18,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 | --- | --- | --- | --- |
 | Preferência de tema | `shared_preferences` (Android: SharedPreferences; iOS: NSUserDefaults; Web: `localStorage`) | Até o usuário trocar ou apagar os dados do app | Não |
 | Pontos favoritos | `shared_preferences`, chave `busaogyn.saved_stops.v1`: código do ponto, nome só se a fonte der um nome confiável (hoje nenhuma dá) e hora em que foi favoritado. Máximo de 50 | Até o usuário remover o favorito ou apagar os dados do app | Não |
+| Linhas favoritas num ponto | Mesma chave (`busaogyn.saved_stops.v1`): código do ponto, código da linha e hora em que foi favoritada. Nunca destino, sentido ou previsão. Máximo de 50 | Até o usuário remover a linha dos favoritos ou apagar os dados do app | Não |
 | Pontos recentes | Mesma chave: código do ponto e hora da última consulta bem-sucedida. Máximo de 10, sem repetição; só entram consultas que deram certo | Até o usuário remover o item, limpar o histórico (com confirmação) ou apagar os dados do app | Não |
 | Código do ponto digitado | Memória, durante a sessão | Até fechar o app | Sim, na consulta à API BusãoGyn |
 | Número do ônibus acompanhado | Memória, durante a sessão | Até parar o acompanhamento ou fechar o app | Sim, na consulta de posição à API BusãoGyn |
@@ -25,7 +26,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 
 As posições do rastro são do **ônibus**, recebidas da API, e não do usuário. Elas não são gravadas em disco.
 
-Favoritos e recentes guardam **só códigos de ponto e horas**. Nenhuma previsão de chegada, posição de ônibus, coordenada ou texto livre digitado pelo usuário é gravada. Os códigos só vão para a API BusãoGyn quando o usuário consulta as chegadas de um ponto, como sempre. Se o aparelho não permitir gravar, o app avisa e a lista vale até fechar o app.
+Favoritos, linhas favoritas e recentes guardam **só códigos de ponto, códigos de linha e horas**. Nenhuma previsão de chegada, posição de ônibus, coordenada ou texto livre digitado pelo usuário é gravada. Os códigos só vão para a API BusãoGyn quando o usuário consulta as chegadas de um ponto, como sempre. Se o aparelho não permitir gravar, o app avisa e a lista vale até fechar o app.
 
 ## 2. Dados técnicos de rede
 
@@ -60,15 +61,14 @@ Notas:
 
 São sugestões factuais, a confirmar junto com a política final: os formulários têm definições próprias, como "coleta" e "processamento efêmero". Elas valem para o comportamento atual e devem ser revistas se surgir login, analytics, crash reporting ou localização.
 
-- **Google Play — Segurança dos dados** (favoritos e recentes ficam só no aparelho): nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
+- **Google Play — Segurança dos dados** (favoritos, linhas favoritas e recentes ficam só no aparelho): nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
 - **App Store — Privacidade do app**: "Data Not Collected". Tracking: não.
 
 ## Mudanças planejadas (NÃO implementadas)
 
 Esta seção descreve intenção para as próximas versões ([plano](v2/PLANO_BUSAOGYN_V2.md)). **Nada abaixo, exceto o que está marcado como implementado, existe no app atual.**
 
-- **Favoritos e recentes de pontos (implementados):** descritos no resumo e na seção 1. Os dados ficam só no aparelho e não são transmitidos, mas a política publicada deve citar que o app guarda favoritos e recentes localmente.
-- **Favoritos de par ponto‑linha (planejado):** ainda não existem; se vierem, entram na mesma chave local, sem sair do aparelho.
+- **Favoritos, linhas favoritas e recentes (implementados):** descritos no resumo e na seção 1. Os dados ficam só no aparelho e não são transmitidos, mas a política publicada deve citar que o app guarda esses itens localmente.
 - **Catálogo de linhas e pontos (planejado):** quando houver autorização, o aparelho poderá guardar uma cópia local do catálogo oficial (dados públicos de transporte, sem dado pessoal). Até lá, apenas dados sintéticos em desenvolvimento e testes.
 - **Localização do usuário:** continua **não usada** e **não prevista para o próximo release**. Se algum dia entrar (por exemplo, “pontos perto de mim”), será pedida apenas no momento do uso, processada no aparelho e este documento, o CI de permissões e os formulários das lojas serão revistos antes.
 - **Telemetria e crash reporting:** nenhum previsto.

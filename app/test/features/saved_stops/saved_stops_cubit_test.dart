@@ -32,7 +32,85 @@ Future<SavedStopsCubit> _ready(
   return cubit;
 }
 
+Future<SavedStopsCubit> _readyWithLineLimit(FakeStore store, int limit) async {
+  final cubit = SavedStopsCubit(
+    store,
+    lineLimit: limit,
+    clock: TickClock().call,
+  );
+  await cubit.stream.firstWhere((s) => !s.loading);
+  return cubit;
+}
+
 void main() {
+  group('linhas favoritas', () {
+    test('favorita, desfavorita e grava só o par', () async {
+      final store = FakeStore();
+      final cubit = await _ready(store);
+
+      expect(
+        await cubit.toggleFavoriteLine('30402', '003'),
+        FavoriteResult.added,
+      );
+      expect(cubit.state.isFavoriteLine('30402', '003'), isTrue);
+      // A mesma linha em outro ponto é outro favorito.
+      expect(cubit.state.isFavoriteLine('30100', '003'), isFalse);
+      await cubit.whenSaved();
+      expect(store.data.lines.single.routeId, '003');
+
+      expect(
+        await cubit.toggleFavoriteLine('30402', '003'),
+        FavoriteResult.removed,
+      );
+      expect(cubit.state.lines, isEmpty);
+      await cubit.whenSaved();
+      expect(store.data.lines, isEmpty);
+      await cubit.close();
+    });
+
+    test('ponto ou linha inválidos nunca são salvos', () async {
+      final store = FakeStore();
+      final cubit = await _ready(store);
+      for (final (stop, route) in [
+        ('abc', '003'),
+        ('30402', ''),
+        ('30402', 'a b'),
+        (null, '003'),
+        ('30402', null),
+      ]) {
+        expect(
+          await cubit.toggleFavoriteLine(stop, route),
+          FavoriteResult.invalidCode,
+        );
+      }
+      expect(cubit.state.lines, isEmpty);
+      expect(store.saves, isEmpty);
+      await cubit.close();
+    });
+
+    test('passou do limite: avisa e não remove nada', () async {
+      final cubit = await _readyWithLineLimit(FakeStore(), 2);
+      await cubit.toggleFavoriteLine('1', '003');
+      await cubit.toggleFavoriteLine('2', '003');
+      expect(
+        await cubit.toggleFavoriteLine('3', '003'),
+        FavoriteResult.limitReached,
+      );
+      expect(cubit.state.lines.map((l) => l.stopCode), ['2', '1']);
+      await cubit.close();
+    });
+
+    test('remover não mexe nos pontos favoritos', () async {
+      final cubit = await _ready(FakeStore());
+      await cubit.toggleFavorite('30402');
+      await cubit.toggleFavoriteLine('30402', '003');
+      await cubit.removeFavoriteLine('30402', '003');
+      expect(cubit.state.lines, isEmpty);
+      expect(codes(cubit.state.favorites), ['30402']);
+      await cubit.close();
+    });
+  });
+
   group('leitura inicial', () {
     test('começa carregando e termina com o que estava guardado', () async {
       final gate = Completer<void>();

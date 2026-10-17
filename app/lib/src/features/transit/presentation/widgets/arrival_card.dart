@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
 import '../../domain/entities/arrival.dart';
 import '../cubit/stop_arrivals_cubit.dart';
 import '../formatters/transit_labels.dart';
@@ -97,12 +98,16 @@ class ArrivalCard extends StatelessWidget {
     required this.group,
     required this.tracking,
     required this.onTrack,
+    this.stopId,
     super.key,
   });
 
   final ArrivalGroup group;
   final TrackingInfo? tracking;
   final ValueChanged<String> onTrack;
+
+  /// Ponto consultado: habilita favoritar a linha neste ponto.
+  final String? stopId;
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +233,14 @@ class ArrivalCard extends StatelessWidget {
                 onTrack: onTrack,
               ),
             ],
+            if (stopId != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: LineFavoriteButton(
+                  stopCode: stopId!,
+                  routeId: group.routeId,
+                ),
+              ),
           ],
         ),
       ),

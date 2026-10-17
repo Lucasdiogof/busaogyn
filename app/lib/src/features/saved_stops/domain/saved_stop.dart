@@ -7,6 +7,10 @@ const defaultRecentStopsLimit = 10;
 /// automática: passou do limite, o usuário remove um para adicionar outro.
 const defaultFavoriteStopsLimit = 50;
 
+/// Máximo de linhas favoritas (par ponto + linha). Mesmo critério dos pontos:
+/// sem remoção automática.
+const defaultFavoriteLinesLimit = 50;
+
 /// Tamanho máximo de um código de ponto aceito no armazenamento.
 const maxStopCodeLength = 12;
 
@@ -22,6 +26,46 @@ String? canonicalStopCode(String? raw) {
     return null;
   }
   return RegExp(r'^\d+$').hasMatch(code) ? code : null;
+}
+
+/// Código de linha aceito no armazenamento. A linha é um texto opaco (`003`,
+/// `MGP1`): nunca vira número, não é reordenada nem derivada do itinerário
+/// (ADR-0002). Devolve `null` para vazio, longo demais ou com símbolos.
+String? canonicalRouteCode(String? raw) {
+  final code = raw?.trim();
+  if (code == null || code.isEmpty || code.length > 8) return null;
+  return RegExp(r'^[A-Za-z0-9]+$').hasMatch(code) ? code : null;
+}
+
+/// Uma linha favorita **num ponto específico** (par ponto + linha). Guarda só
+/// a intenção do usuário: nenhuma previsão, destino ou sentido.
+@immutable
+class SavedLine {
+  const SavedLine({
+    required this.stopCode,
+    required this.routeId,
+    required this.at,
+  });
+
+  final String stopCode;
+  final String routeId;
+  final DateTime at;
+
+  bool matches(String stop, String route) =>
+      stopCode == stop && routeId == route;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SavedLine &&
+      other.stopCode == stopCode &&
+      other.routeId == routeId &&
+      other.at == at;
+
+  @override
+  int get hashCode => Object.hash(stopCode, routeId, at);
+
+  @override
+  String toString() => 'SavedLine($stopCode, $routeId, $at)';
 }
 
 /// Um ponto guardado no aparelho (favorito ou recente).
@@ -65,12 +109,19 @@ class SavedStop {
 /// antigo, sem códigos repetidos dentro de cada lista.
 @immutable
 class SavedStopsData {
-  const SavedStopsData({this.favorites = const [], this.recents = const []});
+  const SavedStopsData({
+    this.favorites = const [],
+    this.recents = const [],
+    this.lines = const [],
+  });
 
   static const empty = SavedStopsData();
 
   final List<SavedStop> favorites;
   final List<SavedStop> recents;
+
+  /// Linhas favoritas por ponto, da mais nova à mais antiga.
+  final List<SavedLine> lines;
 }
 
 /// Resultado da leitura: [unreadable] indica armazenamento corrompido ou de um
