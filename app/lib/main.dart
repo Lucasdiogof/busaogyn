@@ -7,6 +7,9 @@ import 'src/app.dart';
 import 'src/core/config/api_config.dart';
 import 'src/core/network/api_client.dart';
 import 'src/core/settings/theme_mode_cubit.dart';
+import 'src/features/saved_stops/data/memory_saved_stops_store.dart';
+import 'src/features/saved_stops/data/shared_preferences_saved_stops_store.dart';
+import 'src/features/saved_stops/domain/saved_stops_store.dart';
 import 'src/features/transit/data/repositories/http_transit_repository.dart';
 
 Future<void> main() async {
@@ -16,16 +19,32 @@ Future<void> main() async {
   final apiClient = ApiClient(baseUrl: ApiConfig.baseUrl);
   final repository = HttpTransitRepository(apiClient);
 
-  runApp(BusaoGynApp(repository: repository, themeStore: await _themeStore()));
+  final preferences = await _preferences();
+  runApp(
+    BusaoGynApp(
+      repository: repository,
+      themeStore: preferences == null
+          ? MemoryThemePreferenceStore()
+          : SharedPreferencesThemeStore(preferences),
+      savedStopsStore: _savedStopsStore(preferences),
+    ),
+  );
 }
 
-Future<ThemePreferenceStore> _themeStore() async {
+Future<SharedPreferences?> _preferences() async {
   try {
-    return SharedPreferencesThemeStore(await SharedPreferences.getInstance());
+    return await SharedPreferences.getInstance();
   } catch (_) {
-    return MemoryThemePreferenceStore();
+    return null;
   }
 }
+
+/// Sem armazenamento do aparelho, favoritos e recentes valem só na sessão (e a
+/// tela avisa).
+SavedStopsStore _savedStopsStore(SharedPreferences? preferences) =>
+    preferences == null
+    ? MemorySavedStopsStore(volatile: true)
+    : SharedPreferencesSavedStopsStore(preferences);
 
 /// Geist e Geist Mono são distribuídas sob a SIL Open Font License 1.1; o
 /// texto da licença acompanha o app e aparece em Ajustes > Licenças.

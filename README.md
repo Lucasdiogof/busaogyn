@@ -17,7 +17,7 @@ App Flutter (Android, iOS e Web) + Cloudflare Worker para o transporte público 
 
 ## BusãoGyn v2 (planejamento)
 
-A navegação da v2 (Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar) está **implementada atrás da flag `BUSAOGYN_V2_NAV` (desligada por padrão)**; Linhas e Favoritos ainda não têm dados. Decisões em [`docs/adr/`](docs/adr/README.md); escopo, backlog e riscos em [`docs/v2/PLANO_BUSAOGYN_V2.md`](docs/v2/PLANO_BUSAOGYN_V2.md). Com a flag desligada, o app atual e o realtime são os de sempre.
+A navegação da v2 (Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar) está **implementada atrás da flag `BUSAOGYN_V2_NAV` (desligada por padrão)**; Favoritos e Recentes de pontos já funcionam nela (guardados só no aparelho); Linhas ainda não tem dados. Decisões em [`docs/adr/`](docs/adr/README.md); escopo, backlog e riscos em [`docs/v2/PLANO_BUSAOGYN_V2.md`](docs/v2/PLANO_BUSAOGYN_V2.md). Com a flag desligada, o app atual e o realtime são os de sempre.
 
 ## Estrutura
 

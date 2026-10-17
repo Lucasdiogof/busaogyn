@@ -18,6 +18,7 @@ class ArrivalsPanel extends StatelessWidget {
     required this.onOpenTracking,
     required this.onExample,
     this.onRetrySearch,
+    this.below,
     super.key,
   });
 
@@ -29,6 +30,9 @@ class ArrivalsPanel extends StatelessWidget {
 
   /// Repete a última busca que falhou por conexão ou fonte.
   final VoidCallback? onRetrySearch;
+
+  /// Conteúdo extra no fim do painel (v2: Recentes). `null` no dock atual.
+  final Widget? below;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,10 @@ class ArrivalsPanel extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+      children: [
+        ...children,
+        if (below != null && state is! StopArrivalsLoading) below!,
+      ],
     );
   }
 

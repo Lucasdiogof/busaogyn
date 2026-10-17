@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/nav_config.dart';
 import 'core/settings/theme_mode_cubit.dart';
 import 'core/theme/app_theme.dart';
+import 'features/saved_stops/data/memory_saved_stops_store.dart';
+import 'features/saved_stops/domain/saved_stops_store.dart';
+import 'features/saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import 'features/transit/domain/repositories/transit_repository.dart';
 import 'features/transit/presentation/cubit/map_vehicles_cubit.dart';
 import 'features/transit/presentation/cubit/stop_arrivals_cubit.dart';
@@ -20,6 +23,7 @@ class BusaoGynApp extends StatelessWidget {
     this.clock,
     this.themeStore,
     this.v2Nav = NavConfig.v2Nav,
+    this.savedStopsStore,
     super.key,
   });
 
@@ -41,6 +45,10 @@ class BusaoGynApp extends StatelessWidget {
   /// Navegação v2 (flag `BUSAOGYN_V2_NAV`); desligada por padrão.
   final bool v2Nav;
 
+  /// Onde favoritos e recentes ficam (só usados com [v2Nav]). Sem store, ficam
+  /// em memória.
+  final SavedStopsStore? savedStopsStore;
+
   @override
   Widget build(BuildContext context) {
     return RepositoryProvider<TransitRepository>.value(
@@ -56,6 +64,14 @@ class BusaoGynApp extends StatelessWidget {
               repository,
               trackingRefreshInterval: trackingRefreshInterval,
               arrivalsRefreshInterval: arrivalsRefreshInterval,
+              clock: clock,
+            ),
+          ),
+          // Criado só quando a navegação v2 o pede (lazy): sem a flag, nada é
+          // lido nem gravado.
+          BlocProvider(
+            create: (_) => SavedStopsCubit(
+              savedStopsStore ?? MemorySavedStopsStore(),
               clock: clock,
             ),
           ),

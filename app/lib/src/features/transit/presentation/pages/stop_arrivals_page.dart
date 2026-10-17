@@ -9,6 +9,9 @@ import '../../../../core/config/map_config.dart';
 import '../../../../core/config/nav_config.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../saved_stops/domain/saved_stop.dart';
+import '../../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
+import '../../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
 import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../cubit/map_vehicles_cubit.dart';
@@ -132,6 +135,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// certo.
   String? _pendingSearch;
 
+  /// Código da última busca ainda sem resultado, para registrar nos recentes
+  /// só quando ela der certo (v2).
+  String? _pendingRecord;
+
   DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
   @override
@@ -181,10 +188,79 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     // Com um ponto na tela, a busca só fecha quando der certo (ver
     // _onStateChanged); se falhar, o campo continua com o aviso.
     _pendingSearch = _stopController.text.trim();
+    if (widget.v2Nav) _pendingRecord = _pendingSearch;
     if (cubit.state is! StopArrivalsLoaded) {
       setState(() => _searching = false);
     }
     cubit.load(_stopController.text);
+  }
+
+  /// Favorito ou recente tocado: abre Pontos e consulta o código. Se a mesma
+  /// consulta já está em andamento, só mostra Pontos (nada de consulta em
+  /// duplicidade); a geração do cubit descarta respostas de buscas antigas.
+  void _openStop(String code) {
+    final state = context.read<StopArrivalsCubit>().state;
+    final inFlight =
+        (state is StopArrivalsLoading && state.stopId == code) ||
+        (state is StopArrivalsLoaded && state.searchingStopId == code);
+    _select(HomeTab.stop);
+    if (inFlight) return;
+    _stopController.text = code;
+    _search();
+  }
+
+  Future<void> _toggleFavorite(String code) async {
+    final result = await context.read<SavedStopsCubit>().toggleFavorite(code);
+    if (!mounted || result != FavoriteResult.limitReached) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Limite de $defaultFavoriteStopsLimit favoritos. Remova um para '
+            'adicionar outro.',
+          ),
+        ),
+      );
+  }
+
+  /// Aviso para as listas quando a última consulta falhou por conexão ou
+  /// pela fonte.
+  String? _connectionNotice(StopArrivalsState state) {
+    final feedback = switch (state) {
+      StopArrivalsInitial(:final searchError) => searchError,
+      StopArrivalsLoaded(:final searchError) => searchError,
+      _ => null,
+    };
+    if (feedback == null || !feedback.isConnectivity) return null;
+    return feedback.kind == SearchFeedbackKind.offline
+        ? 'Sem conexão. Você pode abrir seus pontos, mas as chegadas só '
+              'aparecem com internet.'
+        : 'A última consulta não foi concluída. Tente de novo em instantes.';
+  }
+
+  void _recordIfSucceeded(StopArrivalsState state) {
+    final pending = _pendingRecord;
+    if (pending == null) return;
+    final failed = switch (state) {
+      StopArrivalsInitial(:final searchError) => searchError != null,
+      StopArrivalsLoaded() =>
+        state.searchError != null ||
+            (state.stopId == pending && state.refreshError != null),
+      StopArrivalsLoading() => false,
+    };
+    if (failed) {
+      _pendingRecord = null;
+      return;
+    }
+    if (state is StopArrivalsLoaded &&
+        state.stopId == pending &&
+        state.searchingStopId == null &&
+        !state.refreshing &&
+        state.refreshError == null) {
+      _pendingRecord = null;
+      unawaited(context.read<SavedStopsCubit>().recordQuery(pending));
+    }
   }
 
   void _searchExample(String stopId) {
@@ -302,6 +378,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _onStateChanged(BuildContext context, StopArrivalsState state) {
     _syncMapVehicles(state);
+    if (widget.v2Nav) _recordIfSucceeded(state);
     if (state is StopArrivalsLoaded &&
         state.searchingStopId == null &&
         state.searchError == null &&
@@ -532,10 +609,26 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           ),
           HomeTab.favorites => (
             const ValueKey('header-favorites'),
-            const ContextHeader(
-              leading: HeaderTile(Icons.star_outline_rounded, filled: false),
+            ContextHeader(
+              leading: const HeaderTile(
+                Icons.star_outline_rounded,
+                filled: false,
+              ),
               title: 'Favoritos',
-              subtitle: Text('Nenhum ponto salvo'),
+              subtitle: BlocBuilder<SavedStopsCubit, SavedStopsState>(
+                builder: (context, saved) {
+                  final count = saved.favorites.length;
+                  return Text(
+                    saved.loading
+                        ? 'Carregando…'
+                        : count == 0
+                        ? 'Nenhum ponto salvo'
+                        : count == 1
+                        ? '1 ponto salvo'
+                        : '$count pontos salvos',
+                  );
+                },
+              ),
             ),
           ),
           HomeTab.settings => (
@@ -616,6 +709,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       );
     }
 
+    final searchButton = IconButton(
+      tooltip: 'Buscar outro ponto',
+      onPressed: _openSearch,
+      icon: const Icon(Icons.search_rounded),
+    );
     return (
       ValueKey('header-stop-$stopId'),
       ContextHeader(
@@ -646,11 +744,21 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 },
               )
             : const Text('consultando chegadas…'),
-        action: IconButton(
-          tooltip: 'Buscar outro ponto',
-          onPressed: _openSearch,
-          icon: const Icon(Icons.search_rounded),
-        ),
+        tallAction: widget.v2Nav,
+        action: widget.v2Nav
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FavoriteToggleButton(
+                    code: stopId,
+                    // Só um ponto já consultado com sucesso pode ser favorito.
+                    enabled: state is StopArrivalsLoaded,
+                    onPressed: () => _toggleFavorite(stopId),
+                  ),
+                  searchButton,
+                ],
+              )
+            : searchButton,
       ),
     );
   }
@@ -712,6 +820,15 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             onOpenTracking: () => _select(HomeTab.tracking),
             onExample: _searchExample,
             onRetrySearch: _search,
+            below: widget.v2Nav
+                ? RecentStopsSection(
+                    onOpen: _openStop,
+                    excludeCode: state is StopArrivalsLoaded
+                        ? state.stopId
+                        : null,
+                    showEmpty: state is StopArrivalsInitial,
+                  )
+                : null,
           ),
           HomeTab.tracking => switch (state) {
             StopArrivalsLoaded(:final tracking?) => TrackingCard(
@@ -735,11 +852,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             body: 'Por enquanto, consulte as chegadas pelo código do ponto.',
             onSearchStop: _goToStopSearch,
           ),
-          HomeTab.favorites => _EmptyDestination(
-            icon: Icons.star_outline_rounded,
-            title: 'Seus pontos favoritos aparecerão aqui.',
-            body: 'Por enquanto, consulte um ponto pelo código.',
+          HomeTab.favorites => FavoritesPanel(
+            onOpen: _openStop,
             onSearchStop: _goToStopSearch,
+            connectionNotice: _connectionNotice(state),
           ),
           HomeTab.settings => const SettingsPanel(),
         };
