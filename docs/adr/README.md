@@ -10,4 +10,4 @@ Registro curto das decisões que orientam o BusãoGyn v2. Cada ADR diz o context
 
 Escopo, backlog e estimativas da v2: [../v2/PLANO_BUSAOGYN_V2.md](../v2/PLANO_BUSAOGYN_V2.md). Contrato de aceite do próximo PR de interface: [../v2/PR-6-home-shell-aceite.md](../v2/PR-6-home-shell-aceite.md).
 
-**Status:** os ADRs registram decisões. Nenhuma funcionalidade da v2 está implementada; o app continua com Chegadas, Meu ônibus e Ajustes.
+**Status:** os ADRs registram decisões. Da v2, só a navegação (PR‑6) está implementada, atrás da flag `BUSAOGYN_V2_NAV`, desligada por padrão; com ela desligada o app continua com Chegadas, Meu ônibus e Ajustes.
