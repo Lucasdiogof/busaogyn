@@ -1,9 +1,9 @@
 # PR‑6 — HomeShell: contrato de aceite
 
-- **Status:** contrato aprovado como referência; **o PR‑6 ainda não foi implementado** e não faz parte do PR‑0.
+- **Status:** contrato aprovado; **HomeShell implementado atrás da flag `BUSAOGYN_V2_NAV` (desligada por padrão)**. Ver “Implementação” no fim deste documento.
 - **Decisões base:** [ADR‑0001](../adr/0001-navegacao-e-catalogo-v2.md) (navegação), [ADR‑0002](../adr/0002-dados-confiaveis-e-nao-inferencia.md) (dados), [ADR‑0003](../adr/0003-protecao-do-mapa-e-do-realtime.md) (mapa e realtime).
 - **Escopo do PR‑6:** trocar o dock de três destinos (Chegadas, Meu ônibus, Ajustes) por **Linhas, Pontos, Favoritos e Meu ônibus**, com **Ajustes na TopBar**, atrás de feature flag. Reaproveita as telas existentes; **não** implementa catálogo, favoritos persistentes nem localização.
-- **Implementação:** em PR separado, a partir da `main`. O PR‑6 não pode ser antecipado neste PR.
+- **Implementação:** em PR separado, a partir da `main` (feito em `feat/busaogyn-v2-home-shell`).
 
 ## Estado de referência (antes do PR‑6)
 
@@ -79,3 +79,27 @@ Catálogo, `LineCode`/`TransitStop`, favoritos persistentes, recentes, localiza�
 2. Confirmar o nome final da flag e o texto dos estados vazios.
 3. Decidir o destino padrão ao abrir o app com a flag ligada (proposta: **Pontos**).
 4. Resolver a base dos PRs (ver D‑12 do plano) e a divergência de `README.md` entre `main` e `docs/readme-current-state`.
+
+## Implementação (PR‑6)
+
+Flag `BUSAOGYN_V2_NAV` (`NavConfig.v2Nav`, `--dart-define`, padrão `false`), também injetável por `BusaoGynApp(v2Nav:)` e `StopArrivalsPage(v2Nav:)` para os testes.
+
+**Decisões do proprietário aplicadas**
+
+- Quatro destinos: Linhas, Pontos, Favoritos e Meu ônibus (`NavDock`); destino inicial **Pontos**.
+- Ajustes na TopBar (botão de 48 dp); ao fechar (ou tocar de novo) volta ao destino anterior.
+- Chegadas é o detalhe do ponto, dentro de Pontos (`ArrivalsPanel`, `SearchHeader` e `ContextHeader` existentes).
+- Linhas vazio: “As linhas estarão disponíveis em breve.” Favoritos vazio: “Seus pontos favoritos aparecerão aqui.” Os dois têm a ação **Buscar um ponto**, que leva a Pontos (com o foco no campo de código quando não há ponto na tela).
+- Sem catálogo nem favoritos persistentes neste PR.
+
+**O que não mudou:** `StopArrivalsCubit`, `MapVehiclesCubit`, `TransitRepository`, Worker, endpoints, permissões e `pubspec.lock`. Com a flag desligada o app é o de sempre (`AppDock`, três destinos).
+
+**Mudanças compartilhadas, sem efeito com a flag desligada:** `HomeTab` ganhou `lines` e `favorites`; `Chrome.dockLayout` ganhou o parâmetro `items` (padrão 3); `TopBar` ganhou `onSettings` opcional.
+
+**Testes:** `home_shell_v2_test.dart` (inicialização em Pontos, quatro destinos, Ajustes e retorno, uma única criação do widget do mapa por contador de `initState`/`dispose`, mapa no índice 0, tracking durante a navegação, estados vazios e ações, fonte a 130%/200%, layouts de 360 a 1366 px em claro e escuro, flag desligada, regressão dos estados offline do PR #33).
+
+**CI:** o job `flutter` falha se a flag aparecer ligada em workflows ou configs de build (`.github`, `app/android`, `app/ios`, `app/web`).
+
+**Achado fora do escopo (já existia):** o dock de três destinos (flag desligada) tem overflows de 1,5 a 2,8 px em algumas combinações de largura e fonte (por exemplo 320 px a 130%, 360 px a 150%, 390 px a 175%, 430 px a 200%), porque a altura é estimada por fórmula. Não foi alterado para manter o app atual idêntico. O dock de quatro destinos encolhe o conteúdo só quando não cabe e foi medido sem overflow em 35 combinações (320 a 768 px, 100% a 300%).
+
+**Pendente:** validação em aparelho e registro dela antes de ligar a flag em qualquer build de release.

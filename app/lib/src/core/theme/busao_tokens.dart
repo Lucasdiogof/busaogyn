@@ -74,13 +74,15 @@ abstract final class Chrome {
   /// rótulo mais longo ("Meu ônibus") não cabe numa linha na largura de cada
   /// aba, as palavras passam para linhas separadas e o dock cresce só o
   /// necessário. É uma estimativa por escala e largura (sem medir texto), de
-  /// modo que a geometria da página e o dock chegam à mesma altura.
+  /// modo que a geometria da página e o dock chegam à mesma altura. [items] é
+  /// o número de destinos (3 no dock atual, 4 na navegação v2).
   static ({int labelLines, double height}) dockLayout(
     double width,
-    TextScaler scaler,
-  ) {
+    TextScaler scaler, {
+    int items = 3,
+  }) {
     final scale = textScale(scaler);
-    final item = (width - _dockPadding * 2 - _dockGap * 2) / 3;
+    final item = (width - _dockPadding * 2 - _dockGap * (items - 1)) / items;
     final oneLine = _dockLabelSize * scale * _dockLabelChar * _dockLongestLabel;
     final lines = oneLine <= item - 8 ? 1 : 2;
     // Margens (12), folga (4), ícone (22), 3 px e as linhas do rótulo.

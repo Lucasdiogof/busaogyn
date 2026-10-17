@@ -4,7 +4,7 @@ Atualizado em 06/10/2026.
 
 Este documento define o comportamento do MVP enquanto a rede estática/GTFS oficial ainda não foi recebida.
 
-> **Navegação v2 (aprovada em 10/10/2026, ainda não implementada):** quatro destinos — **Linhas, Pontos, Favoritos e Meu ônibus** —, com **Ajustes na TopBar** e **Chegadas como detalhe do ponto**. Entra de forma gradual, por feature flag desligada em release até a validação (PR‑6). Até lá, **tudo neste documento continua valendo** (dock Chegadas / Meu ônibus / Ajustes). Detalhes: [ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md) e [contrato do PR‑6](v2/PR-6-home-shell-aceite.md).
+> **Navegação v2 (aprovada em 10/10/2026; implementada atrás da flag `BUSAOGYN_V2_NAV`, desligada por padrão):** quatro destinos — **Linhas, Pontos, Favoritos e Meu ônibus** —, com **Ajustes na TopBar** e **Chegadas como detalhe do ponto**. Entra de forma gradual, por feature flag desligada em release até a validação (PR‑6). Com a flag desligada, **tudo neste documento continua valendo** (dock Chegadas / Meu ônibus / Ajustes); Linhas e Favoritos ainda não têm dados. Detalhes: [ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md) e [contrato do PR‑6](v2/PR-6-home-shell-aceite.md).
 
 ## Proposta central
 
