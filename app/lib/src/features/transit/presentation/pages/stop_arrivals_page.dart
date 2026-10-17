@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/map_config.dart';
+import '../../../../core/config/nav_config.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../domain/entities/map_vehicle.dart';
@@ -26,11 +27,21 @@ import '../widgets/tracking_card.dart';
 /// marca e status no topo, cartão de contexto, painel (bottom sheet no
 /// celular, coluna central em telas largas) e o dock com Chegadas,
 /// Meu ônibus e Ajustes.
+///
+/// Com [v2Nav] (flag `BUSAOGYN_V2_NAV`, desligada por padrão) o dock passa a
+/// Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar. O mapa, o
+/// painel e os cubits são os mesmos nos dois modos.
 class StopArrivalsPage extends StatefulWidget {
-  const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
+  const StopArrivalsPage({
+    this.mapBuilder,
+    this.clock,
+    this.v2Nav = NavConfig.v2Nav,
+    super.key,
+  });
 
   final VehicleMapBuilder? mapBuilder;
   final DateTime Function()? clock;
+  final bool v2Nav;
 
   @override
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
@@ -38,7 +49,7 @@ class StopArrivalsPage extends StatefulWidget {
 
 /// Posições dos elementos flutuantes para um tamanho de tela.
 class _Geometry {
-  _Geometry(MediaQueryData media)
+  _Geometry(MediaQueryData media, {int dockItems = 3})
     : size = media.size,
       safe = media.padding,
       wide = media.size.width >= Breakpoints.panel {
@@ -49,7 +60,11 @@ class _Geometry {
     width = columnWidth;
     top = safe.top + Space.sm;
     headerHeight = Chrome.headerHeight(media.textScaler);
-    dockLayout = Chrome.dockLayout(columnWidth, media.textScaler);
+    dockLayout = Chrome.dockLayout(
+      columnWidth,
+      media.textScaler,
+      items: dockItems,
+    );
     headerTop = top + Chrome.pill + 10;
     headerBottom = headerTop + headerHeight;
     dockBottom = math.max(safe.bottom, Space.xs) + Space.xs;
@@ -98,7 +113,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   final _panelHeight = ValueNotifier<double>(0);
   final _follow = MapFollowController();
 
+  /// Pontos (ou Chegadas, no dock atual) é o destino inicial.
   HomeTab _tab = HomeTab.stop;
+
+  /// Destino a que Ajustes volta (navegação v2, onde abre pela TopBar).
+  HomeTab _tabBeforeSettings = HomeTab.stop;
 
   /// Ônibus secundário tocado no mapa (mostra o callout).
   String? _selectedSecondary;
@@ -217,7 +236,29 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     _select(HomeTab.stop);
   }
 
+  /// Ajustes pela TopBar (v2): abre e, tocando de novo, volta ao destino em
+  /// que o usuário estava.
+  void _toggleSettings() {
+    _select(_tab == HomeTab.settings ? _tabBeforeSettings : HomeTab.settings);
+  }
+
+  /// Fecha Ajustes: no dock atual vai para Chegadas; na v2, ao destino anterior.
+  void _closeSettings() =>
+      _select(widget.v2Nav ? _tabBeforeSettings : HomeTab.stop);
+
+  /// Linhas e Favoritos sem dados: leva à busca de pontos, que é o que
+  /// funciona hoje. Sem ponto na tela, o campo de código já recebe o foco.
+  void _goToStopSearch() {
+    _select(HomeTab.stop);
+    if (context.read<StopArrivalsCubit>().state is! StopArrivalsLoaded) {
+      _searchFocus.requestFocus();
+    }
+  }
+
   void _select(HomeTab tab) {
+    if (tab == HomeTab.settings && _tab != HomeTab.settings) {
+      _tabBeforeSettings = _tab;
+    }
     if (tab != HomeTab.stop) FocusScope.of(context).unfocus();
     if (_tab != tab) setState(() => _tab = tab);
     context.read<StopArrivalsCubit>().setArrivalsVisible(tab == HomeTab.stop);
@@ -284,7 +325,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   @override
   Widget build(BuildContext context) {
-    final geometry = _Geometry(MediaQuery.of(context));
+    final geometry = _Geometry(
+      MediaQuery.of(context),
+      dockItems: widget.v2Nav ? 4 : 3,
+    );
     final styles = MapConfig.styles;
     final brightness = Theme.of(context).brightness;
 
@@ -365,8 +409,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               top: geometry.top,
               child: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
                 builder: (context, state) => PeriodicRebuild(
-                  builder: (context) =>
-                      TopBar(status: liveStatus(state, _clock())),
+                  builder: (context) => TopBar(
+                    status: liveStatus(state, _clock()),
+                    onSettings: widget.v2Nav ? _toggleSettings : null,
+                    settingsSelected: _tab == HomeTab.settings,
+                  ),
                 ),
               ),
             ),
@@ -405,12 +452,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               child: BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
                 selector: (state) =>
                     state is StopArrivalsLoaded && state.tracking != null,
-                builder: (context, trackingActive) => AppDock(
-                  selected: _tab,
-                  onSelected: _select,
-                  trackingActive: trackingActive,
-                  layout: geometry.dockLayout,
-                ),
+                builder: (context, trackingActive) => widget.v2Nav
+                    ? NavDock(
+                        selected: _tab,
+                        onSelected: _select,
+                        trackingActive: trackingActive,
+                        layout: geometry.dockLayout,
+                      )
+                    : AppDock(
+                        selected: _tab,
+                        onSelected: _select,
+                        trackingActive: trackingActive,
+                        layout: geometry.dockLayout,
+                      ),
               ),
             ),
           ],
@@ -465,6 +519,25 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         final (Key key, Widget child) = switch (_tab) {
           HomeTab.stop => _stopHeader(state),
           HomeTab.tracking => _trackingHeader(state),
+          HomeTab.lines => (
+            const ValueKey('header-lines'),
+            const ContextHeader(
+              leading: HeaderTile(
+                Icons.format_list_bulleted_rounded,
+                filled: false,
+              ),
+              title: 'Linhas',
+              subtitle: Text('Em breve'),
+            ),
+          ),
+          HomeTab.favorites => (
+            const ValueKey('header-favorites'),
+            const ContextHeader(
+              leading: HeaderTile(Icons.star_outline_rounded, filled: false),
+              title: 'Favoritos',
+              subtitle: Text('Nenhum ponto salvo'),
+            ),
+          ),
           HomeTab.settings => (
             const ValueKey('header-settings'),
             ContextHeader(
@@ -473,7 +546,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               subtitle: const Text('Aparência e sobre'),
               action: IconButton(
                 tooltip: 'Fechar ajustes',
-                onPressed: () => _select(HomeTab.stop),
+                onPressed: _closeSettings,
                 icon: const Icon(Icons.close_rounded),
               ),
             ),
@@ -656,6 +729,18 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               onOpenStop: () => _select(HomeTab.stop),
             ),
           },
+          HomeTab.lines => _EmptyDestination(
+            icon: Icons.format_list_bulleted_rounded,
+            title: 'As linhas estarão disponíveis em breve.',
+            body: 'Por enquanto, consulte as chegadas pelo código do ponto.',
+            onSearchStop: _goToStopSearch,
+          ),
+          HomeTab.favorites => _EmptyDestination(
+            icon: Icons.star_outline_rounded,
+            title: 'Seus pontos favoritos aparecerão aqui.',
+            body: 'Por enquanto, consulte um ponto pelo código.',
+            onSearchStop: _goToStopSearch,
+          ),
           HomeTab.settings => const SettingsPanel(),
         };
         return AnimatedSwitcher(
@@ -679,6 +764,36 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           child: KeyedSubtree(key: ValueKey(_tab), child: child),
         );
       },
+    );
+  }
+}
+
+/// Linhas e Favoritos enquanto não há dados: explica o que virá e leva à
+/// busca de pontos, que funciona hoje.
+class _EmptyDestination extends StatelessWidget {
+  const _EmptyDestination({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.onSearchStop,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final VoidCallback onSearchStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return MessageView(
+      icon: icon,
+      title: title,
+      body: body,
+      action: FilledButton.icon(
+        onPressed: onSearchStop,
+        icon: const Icon(Icons.location_on_outlined, size: 20),
+        label: const Text('Buscar um ponto'),
+      ),
     );
   }
 }
