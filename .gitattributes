@@ -1,0 +1,2 @@
+*.sh text eol=lf
+app/web/_headers text eol=lf

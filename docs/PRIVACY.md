@@ -42,7 +42,7 @@ O app não envia identificadores próprios, cookies nem tokens.
 | OpenFreeMap (`tiles.openfreemap.org`) | Estilo, tiles, fontes e ícones do mapa | Área e zoom do mapa exibido, dados técnicos de rede | Todas |
 | unpkg (`unpkg.com`) | Biblioteca MapLibre GL JS 6.4.1 e seu CSS, carregados pelo plugin `maplibre_gl_web` | Dados técnicos de rede | Somente Web |
 | Google Fonts (`fonts.gstatic.com`) | Fontes de fallback do Flutter Web, baixadas só se a tela precisar de caracteres fora das fontes do app (por exemplo, emoji) | Dados técnicos de rede | Somente Web |
-| Hospedagem do site (a definir) | Arquivos do app Web | Dados técnicos de rede, conforme os logs do provedor escolhido | Somente Web |
+| Cloudflare Workers (Static Assets, Worker `busaogyn-web`, ainda não publicado) | Arquivos do app Web | Dados técnicos de rede, conforme os logs da plataforma | Somente Web |
 
 Notas:
 

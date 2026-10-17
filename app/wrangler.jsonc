@@ -1,0 +1,14 @@
+// Copy to the app repo root as wrangler.jsonc. Replace busaogyn-web and busaogyn.
+// Static assets only: no Worker script, so asset requests are free and unlimited
+// (https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
+{
+  "name": "busaogyn-web",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "build/web",
+    // Flutter is a SPA: unknown paths fall back to index.html (refresh on /route never 404s).
+    "not_found_handling": "single-page-application"
+  }
+  // Custom domain: ONLY after the owner authorises DNS changes. Uncomment, then deploy.
+  // "routes": [{ "pattern": "busaogyn.lucksrei.com", "custom_domain": true }]
+}

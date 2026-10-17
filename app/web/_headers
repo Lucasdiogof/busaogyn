@@ -1,0 +1,14 @@
+# Copy to web/_headers (Flutter copies it into build/web). Max 100 rules on the Free plan.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000
+  # Revalidate by default (ETag): Flutter's entry files are NOT content-hashed,
+  # so long caching would pin users to an old build. Cheap: asset requests are free.
+  Cache-Control: no-cache
+/assets/*
+  Cache-Control: public, max-age=3600
+/icons/*
+  Cache-Control: public, max-age=86400
