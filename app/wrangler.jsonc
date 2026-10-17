@@ -4,6 +4,7 @@
 {
   "name": "busaogyn-web",
   "compatibility_date": "2026-01-01",
+  "workers_dev": true,
   "assets": {
     "directory": "build/web",
     // Flutter is a SPA: unknown paths fall back to index.html (refresh on /route never 404s).

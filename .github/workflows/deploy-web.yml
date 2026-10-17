@@ -1,0 +1,47 @@
+# Copy to .github/workflows/deploy-web.yml and edit the env block.
+# Repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (the account that hosts the web app; the API worker uses the `production` environment secrets).
+# Safety switch: nothing runs on push until the repo VARIABLE AUTO_DEPLOY is "true"
+# (Settings > Secrets and variables > Actions > Variables). Manual runs always work.
+# Public domain: stays off until the `routes` block in wrangler.jsonc is uncommented (after QA approval).
+# Cost: public repos run Actions free; private repos use the 2,000 min/month quota (blocked, not billed, without a payment method).
+name: Deploy web to Cloudflare Workers
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+env:
+  FLUTTER_VERSION: "3.47.4"        # pin to the version the app is developed with
+  APP_DIR: "app"                    # folder with pubspec.yaml and wrangler.jsonc (OrbiJob: app)
+  FLUTTER_WEB_FLAGS: ""             # e.g. --no-web-resources-cdn
+  SMOKE_URLS: "https://busaogyn.lucksrei.com https://busaogyn-web.lucasdiogo1234.workers.dev"  # public URLs checked after every deploy (space separated)
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build web --release $FLUTTER_WEB_FLAGS
+      - run: bash scripts/check-bundle-secrets.sh build/web
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          wranglerVersion: "4"
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: ${{ env.APP_DIR }}
+          command: deploy
+      - name: Smoke test (public URLs, fails the workflow on a bad publish)
+        run: |
+          for u in $SMOKE_URLS; do bash scripts/smoke-test.sh "$u" || exit 1; done

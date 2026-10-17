@@ -1,0 +1,22 @@
+# Copy to .github/workflows/rollback-web.yml. Manual only.
+# Find ids: Actions log of a deploy, or `npx wrangler deployments list --name <worker>`.
+name: Rollback web Worker
+on:
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: "Worker name (as in wrangler.jsonc)"
+        required: true
+      version_id:
+        description: "Version id to restore (empty = previous version)"
+        required: false
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: rollback ${{ inputs.version_id }} --name ${{ inputs.worker }} --message "manual rollback" --yes
