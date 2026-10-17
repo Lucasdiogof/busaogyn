@@ -2,7 +2,6 @@ import 'dart:ui' show Tristate;
 
 import 'package:busaogyn/src/app.dart';
 import 'package:busaogyn/src/core/config/map_config.dart';
-import 'package:busaogyn/src/core/config/nav_config.dart';
 import 'package:busaogyn/src/core/network/api_exception.dart';
 import 'package:busaogyn/src/core/settings/theme_mode_cubit.dart';
 import 'package:busaogyn/src/core/theme/busao_tokens.dart';
@@ -107,7 +106,6 @@ class _Repository implements TransitRepository {
 Future<void> _pump(
   WidgetTester tester,
   _Repository repository, {
-  bool? v2,
   Size size = const Size(390, 844),
   ThemePreferenceStore? themeStore,
 }) async {
@@ -115,22 +113,13 @@ Future<void> _pump(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    v2 == null
-        ? BusaoGynApp(
-            repository: repository,
-            trackingRefreshInterval: null,
-            mapBuilder: _countingMap,
-            clock: () => _now,
-            themeStore: themeStore,
-          )
-        : BusaoGynApp(
-            repository: repository,
-            trackingRefreshInterval: null,
-            mapBuilder: _countingMap,
-            clock: () => _now,
-            themeStore: themeStore,
-            v2Nav: v2,
-          ),
+    BusaoGynApp(
+      repository: repository,
+      trackingRefreshInterval: null,
+      mapBuilder: _countingMap,
+      clock: () => _now,
+      themeStore: themeStore,
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -189,19 +178,12 @@ void main() {
     _CountingMap.disposed = 0;
   });
 
-  group('inicialização e flag', () {
-    testWidgets('a navegação v2 é a padrão', (tester) async {
-      expect(NavConfig.v2Nav, isTrue);
-    });
-
-    testWidgets('com a flag ligada abre em Pontos, com quatro destinos', (
-      tester,
-    ) async {
+  group('inicialização', () {
+    testWidgets('abre em Pontos, com quatro destinos', (tester) async {
       final semantics = tester.ensureSemantics();
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
 
       expect(find.byType(NavDock), findsOneWidget);
-      expect(find.byType(AppDock), findsNothing);
       // Ordem: Linhas, Pontos, Favoritos, Meu ônibus.
       final labels = ['Linhas', 'Pontos', 'Favoritos', 'Meu ônibus'];
       final xs = [for (final l in labels) tester.getCenter(_dock(l)).dx];
@@ -215,45 +197,13 @@ void main() {
       expect(_dock('Ajustes'), findsNothing);
       semantics.dispose();
     });
-
-    testWidgets('sem a flag a navegação antiga continua igual', (tester) async {
-      await _pump(tester, _Repository(), v2: false);
-
-      expect(find.byType(AppDock), findsOneWidget);
-      expect(find.byType(NavDock), findsNothing);
-      for (final label in ['Chegadas', 'Meu ônibus', 'Ajustes']) {
-        expect(
-          find.descendant(of: find.byType(AppDock), matching: find.text(label)),
-          findsOneWidget,
-        );
-      }
-      expect(find.text('Linhas'), findsNothing);
-      expect(find.text('Favoritos'), findsNothing);
-      // Ajustes continua no dock, sem botão na TopBar.
-      expect(find.byTooltip('Ajustes'), findsNothing);
-
-      await tester.tap(find.text('Ajustes'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Fechar ajustes'));
-      await tester.pumpAndSettle();
-      // Fechar volta para Chegadas, como sempre.
-      expect(find.byType(SearchHeader), findsOneWidget);
-    });
-
-    testWidgets('construir o app sem informar a flag usa o padrão (antigo)', (
-      tester,
-    ) async {
-      await _pump(tester, _Repository());
-      expect(find.byType(AppDock), findsOneWidget);
-      expect(find.byType(NavDock), findsNothing);
-    });
   });
 
   group('navegação entre os quatro destinos', () {
     testWidgets('alterna Linhas, Favoritos, Meu ônibus e volta a Pontos', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
 
       await _openTab(tester, 'Linhas');
       expect(
@@ -284,7 +234,7 @@ void main() {
       tester,
     ) async {
       final repository = _Repository();
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await tester.enterText(find.byType(TextField), '3040');
       await tester.pump();
 
@@ -306,7 +256,7 @@ void main() {
       tester,
     ) async {
       final repository = _Repository();
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await _search(tester, '30402');
       expect(repository.requestedStops, hasLength(1));
 
@@ -320,7 +270,7 @@ void main() {
     testWidgets('abre pela TopBar, com alvo de 48 dp, e volta ao destino', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       final size = tester.getSize(find.byTooltip('Ajustes'));
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
@@ -342,7 +292,7 @@ void main() {
     testWidgets('tocar em Ajustes de novo também volta à aba anterior', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       await _openTab(tester, 'Linhas');
       await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
@@ -358,7 +308,7 @@ void main() {
 
     testWidgets('sair de Ajustes por outro destino do dock', (tester) async {
       final semantics = tester.ensureSemantics();
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
       // Com Ajustes aberto, nenhum destino do dock aparece selecionado.
@@ -375,7 +325,7 @@ void main() {
 
     testWidgets('tema e fontes de dados continuam funcionando', (tester) async {
       final store = MemoryThemePreferenceStore();
-      await _pump(tester, _Repository(), v2: true, themeStore: store);
+      await _pump(tester, _Repository(), themeStore: store);
       await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
 
@@ -394,7 +344,7 @@ void main() {
     testWidgets('uma única criação ao percorrer tudo, e nenhum dispose', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       expect(_CountingMap.created, 1);
 
       await _search(tester, '30402');
@@ -425,7 +375,7 @@ void main() {
       tester,
     ) async {
       for (final size in const [Size(390, 844), Size(1366, 768)]) {
-        await _pump(tester, _Repository(), v2: true, size: size);
+        await _pump(tester, _Repository(), size: size);
         final stack = tester.widget<Stack>(
           find
               .ancestor(
@@ -453,7 +403,7 @@ void main() {
   group('tracking durante a navegação', () {
     testWidgets('trocar de aba não encerra o acompanhamento', (tester) async {
       final repository = _Repository();
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await _search(tester, '30402');
       await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
@@ -483,7 +433,7 @@ void main() {
     });
 
     testWidgets('parar o acompanhamento volta a Pontos', (tester) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       await _search(tester, '30402');
       await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
@@ -498,7 +448,7 @@ void main() {
 
   group('estados vazios e ações', () {
     testWidgets('Linhas e Favoritos levam à busca de pontos', (tester) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
 
       for (final tab in ['Linhas', 'Favoritos']) {
         await _openTab(tester, tab);
@@ -520,7 +470,7 @@ void main() {
     testWidgets('com um ponto carregado, a ação volta às chegadas dele', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       await _search(tester, '30402');
       await _openTab(tester, 'Linhas');
       await tester.tap(find.text('Buscar um ponto'));
@@ -532,7 +482,7 @@ void main() {
     testWidgets('Meu ônibus sem tracking tem estado vazio com ação', (
       tester,
     ) async {
-      await _pump(tester, _Repository(), v2: true);
+      await _pump(tester, _Repository());
       await _openTab(tester, 'Meu ônibus');
       expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
       await tester.tap(find.text('Buscar um ponto'));
@@ -552,7 +502,7 @@ void main() {
             addTearDown(
               tester.platformDispatcher.clearTextScaleFactorTestValue,
             );
-            await _pump(tester, _Repository(), v2: true, size: size);
+            await _pump(tester, _Repository(), size: size);
             expect(tester.takeException(), isNull);
 
             for (final label in [
@@ -631,7 +581,6 @@ void main() {
             await _pump(
               tester,
               _Repository(),
-              v2: true,
               size: size,
               themeStore: MemoryThemePreferenceStore(mode),
             );
@@ -669,7 +618,7 @@ void main() {
       tester,
     ) async {
       final repository = _Repository()..failures['30402'] = _offline;
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await _search(tester, '30402');
 
       expect(find.textContaining('Sem conexão'), findsWidgets);
@@ -699,7 +648,7 @@ void main() {
       tester,
     ) async {
       final repository = _Repository();
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await _search(tester, '30402');
 
       repository.failures['30402'] = _offline;
@@ -723,7 +672,7 @@ void main() {
           retryable: true,
           statusCode: 502,
         );
-      await _pump(tester, repository, v2: true);
+      await _pump(tester, repository);
       await _search(tester, 'abc');
       expect(_fieldBorder(tester), isNotNull);
       expect(find.text('Tentar de novo'), findsNothing);

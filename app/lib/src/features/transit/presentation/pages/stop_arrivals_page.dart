@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/map_config.dart';
-import '../../../../core/config/nav_config.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
@@ -28,23 +27,13 @@ import '../widgets/tracking_card.dart';
 
 /// Home map-first: o mapa ocupa a tela inteira e tudo flutua sobre ele —
 /// marca e status no topo, cartão de contexto, painel (bottom sheet no
-/// celular, coluna central em telas largas) e o dock com Chegadas,
-/// Meu ônibus e Ajustes.
-///
-/// Com [v2Nav] (flag `BUSAOGYN_V2_NAV`, ligada por padrão) o dock passa a
-/// Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar. O mapa, o
-/// painel e os cubits são os mesmos nos dois modos.
+/// celular, coluna central em telas largas) e o dock com Linhas, Pontos,
+/// Favoritos e Meu ônibus, com Ajustes na TopBar.
 class StopArrivalsPage extends StatefulWidget {
-  const StopArrivalsPage({
-    this.mapBuilder,
-    this.clock,
-    this.v2Nav = NavConfig.v2Nav,
-    super.key,
-  });
+  const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
 
   final VehicleMapBuilder? mapBuilder;
   final DateTime Function()? clock;
-  final bool v2Nav;
 
   @override
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
@@ -188,7 +177,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     // Com um ponto na tela, a busca só fecha quando der certo (ver
     // _onStateChanged); se falhar, o campo continua com o aviso.
     _pendingSearch = _stopController.text.trim();
-    if (widget.v2Nav) _pendingRecord = _pendingSearch;
+    _pendingRecord = _pendingSearch;
     if (cubit.state is! StopArrivalsLoaded) {
       setState(() => _searching = false);
     }
@@ -318,9 +307,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     _select(_tab == HomeTab.settings ? _tabBeforeSettings : HomeTab.settings);
   }
 
-  /// Fecha Ajustes: no dock atual vai para Chegadas; na v2, ao destino anterior.
-  void _closeSettings() =>
-      _select(widget.v2Nav ? _tabBeforeSettings : HomeTab.stop);
+  /// Fecha Ajustes: volta ao destino anterior.
+  void _closeSettings() => _select(_tabBeforeSettings);
 
   /// Linhas e Favoritos sem dados: leva à busca de pontos, que é o que
   /// funciona hoje. Sem ponto na tela, o campo de código já recebe o foco.
@@ -378,7 +366,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _onStateChanged(BuildContext context, StopArrivalsState state) {
     _syncMapVehicles(state);
-    if (widget.v2Nav) _recordIfSucceeded(state);
+    _recordIfSucceeded(state);
     if (state is StopArrivalsLoaded &&
         state.searchingStopId == null &&
         state.searchError == null &&
@@ -402,10 +390,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   @override
   Widget build(BuildContext context) {
-    final geometry = _Geometry(
-      MediaQuery.of(context),
-      dockItems: widget.v2Nav ? 4 : 3,
-    );
+    final geometry = _Geometry(MediaQuery.of(context), dockItems: 4);
     final styles = MapConfig.styles;
     final brightness = Theme.of(context).brightness;
 
@@ -488,7 +473,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 builder: (context, state) => PeriodicRebuild(
                   builder: (context) => TopBar(
                     status: liveStatus(state, _clock()),
-                    onSettings: widget.v2Nav ? _toggleSettings : null,
+                    onSettings: _toggleSettings,
                     settingsSelected: _tab == HomeTab.settings,
                   ),
                 ),
@@ -529,19 +514,12 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               child: BlocSelector<StopArrivalsCubit, StopArrivalsState, bool>(
                 selector: (state) =>
                     state is StopArrivalsLoaded && state.tracking != null,
-                builder: (context, trackingActive) => widget.v2Nav
-                    ? NavDock(
-                        selected: _tab,
-                        onSelected: _select,
-                        trackingActive: trackingActive,
-                        layout: geometry.dockLayout,
-                      )
-                    : AppDock(
-                        selected: _tab,
-                        onSelected: _select,
-                        trackingActive: trackingActive,
-                        layout: geometry.dockLayout,
-                      ),
+                builder: (context, trackingActive) => NavDock(
+                  selected: _tab,
+                  onSelected: _select,
+                  trackingActive: trackingActive,
+                  layout: geometry.dockLayout,
+                ),
               ),
             ),
           ],
@@ -744,21 +722,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 },
               )
             : const Text('consultando chegadas…'),
-        tallAction: widget.v2Nav,
-        action: widget.v2Nav
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FavoriteToggleButton(
-                    code: stopId,
-                    // Só um ponto já consultado com sucesso pode ser favorito.
-                    enabled: state is StopArrivalsLoaded,
-                    onPressed: () => _toggleFavorite(stopId),
-                  ),
-                  searchButton,
-                ],
-              )
-            : searchButton,
+        tallAction: true,
+        action: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FavoriteToggleButton(
+              code: stopId,
+              // Só um ponto já consultado com sucesso pode ser favorito.
+              enabled: state is StopArrivalsLoaded,
+              onPressed: () => _toggleFavorite(stopId),
+            ),
+            searchButton,
+          ],
+        ),
       ),
     );
   }
@@ -820,15 +796,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             onOpenTracking: () => _select(HomeTab.tracking),
             onExample: _searchExample,
             onRetrySearch: _search,
-            below: widget.v2Nav
-                ? RecentStopsSection(
-                    onOpen: _openStop,
-                    excludeCode: state is StopArrivalsLoaded
-                        ? state.stopId
-                        : null,
-                    showEmpty: state is StopArrivalsInitial,
-                  )
-                : null,
+            below: RecentStopsSection(
+              onOpen: _openStop,
+              excludeCode: state is StopArrivalsLoaded ? state.stopId : null,
+              showEmpty: state is StopArrivalsInitial,
+            ),
           ),
           HomeTab.tracking => switch (state) {
             StopArrivalsLoaded(:final tracking?) => TrackingCard(

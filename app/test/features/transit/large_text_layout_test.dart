@@ -81,7 +81,6 @@ Future<void> _pump(
       trackingRefreshInterval: null,
       mapBuilder: _fakeMap,
       clock: () => _now,
-      v2Nav: false,
       themeStore: MemoryThemePreferenceStore(
         dark ? ThemeMode.dark : ThemeMode.light,
       ),
@@ -180,35 +179,7 @@ void main() {
         await _track(tester);
         expect(tester.takeException(), isNull);
 
-        final dock = find.byType(AppDock);
-        final dockHeight = tester.getSize(dock).height;
-        final twoLines = find.descendant(
-          of: dock,
-          matching: find.text('ônibus'),
-        );
-        // Contrato: 200% em celular quebra "Meu ônibus" em duas linhas; até
-        // 150% (e em tela larga) o rótulo continua numa linha só.
-        if (size.width == 390 && scale == 2) {
-          expect(twoLines, findsOneWidget, reason: 'rótulo cortado a 200%');
-        } else {
-          expect(twoLines, findsNothing, reason: 'rótulo quebrou sem precisar');
-        }
-        if (twoLines.evaluate().isNotEmpty) {
-          // Fonte grande em tela estreita: palavras em linhas próprias.
-          expect(dockHeight, greaterThan(Chrome.dock));
-          expect(
-            find.descendant(of: dock, matching: find.text('Meu')),
-            findsOneWidget,
-          );
-        } else {
-          expect(
-            find.descendant(of: dock, matching: find.text('Meu ônibus')),
-            findsOneWidget,
-          );
-          // Sem fonte grande o dock não cresce para ninguém.
-          expect(dockHeight, Chrome.dock);
-        }
-        if (scale == 1) expect(dockHeight, Chrome.dock);
+        final dock = find.byType(NavDock);
 
         // Rótulos nunca cortados: o FittedBox só encolhe, não recorta.
         for (final box in tester.widgetList<FittedBox>(
@@ -218,7 +189,7 @@ void main() {
         }
 
         // Alvo de toque mínimo de 48 px em cada aba.
-        for (final tab in ['Chegadas', 'Ajustes']) {
+        for (final tab in ['Linhas', 'Pontos', 'Favoritos']) {
           final item = find.ancestor(
             of: find.descendant(of: dock, matching: find.text(tab)),
             matching: find.byType(InkWell),
@@ -226,14 +197,12 @@ void main() {
           expect(tester.getSize(item.first).height, greaterThanOrEqualTo(48));
         }
 
-        // Chegadas e Ajustes continuam funcionando.
-        await tester.tap(
-          find.descendant(of: dock, matching: find.text('Ajustes')),
-        );
+        // Ajustes (TopBar) e Pontos continuam funcionando.
+        await tester.tap(find.byTooltip('Ajustes'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await tester.tap(
-          find.descendant(of: dock, matching: find.text('Chegadas')),
+          find.descendant(of: dock, matching: find.text('Pontos')),
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

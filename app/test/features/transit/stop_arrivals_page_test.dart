@@ -153,7 +153,6 @@ Future<void> _pumpApp(
       mapBuilder: _fakeMap,
       clock: clock ?? () => _now,
       themeStore: themeStore,
-      v2Nav: false,
     ),
   );
 }
@@ -184,10 +183,12 @@ void main() {
     expect(find.byType(SearchHeader), findsOneWidget);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
     expect(find.text('Ao vivo'), findsNothing);
-    // Dock com os três destinos; "Ponto"/"Acompanhando" não são mais abas.
-    expect(find.text('Chegadas'), findsOneWidget);
+    // Dock com os quatro destinos e Ajustes na TopBar.
+    expect(find.text('Linhas'), findsOneWidget);
+    expect(find.text('Pontos'), findsOneWidget);
+    expect(find.text('Favoritos'), findsOneWidget);
     expect(find.text('Meu ônibus'), findsOneWidget);
-    expect(find.text('Ajustes'), findsOneWidget);
+    expect(find.byTooltip('Ajustes'), findsOneWidget);
     expect(find.text('Ponto'), findsNothing);
     expect(find.text('Acompanhando'), findsNothing);
   });
@@ -368,7 +369,7 @@ void main() {
     await _search(tester, '30402');
     await _track(tester, '20529');
 
-    await tester.tap(find.text('Chegadas'));
+    await tester.tap(find.text('Pontos'));
     await tester.pumpAndSettle();
     // Em Chegadas o acompanhamento é só um banner compacto.
     expect(
@@ -392,7 +393,7 @@ void main() {
   testWidgets('Ajustes troca o tema e o mapa acompanha', (tester) async {
     final store = MemoryThemePreferenceStore();
     await _pumpApp(tester, _FakeTransitRepository(), themeStore: store);
-    await tester.tap(find.text('Ajustes'));
+    await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
 
     expect(find.text('Tema'), findsOneWidget);
@@ -458,7 +459,7 @@ void main() {
           expect(tester.takeException(), isNull);
           expect(find.text('ACOMPANHANDO'), findsOneWidget);
 
-          await tester.tap(find.text('Ajustes'));
+          await tester.tap(find.byTooltip('Ajustes'));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           expect(find.byKey(const Key('fake-map')), findsOneWidget);
@@ -492,7 +493,7 @@ void main() {
 
       await _track(tester, '20529');
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Ajustes'));
+      await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
@@ -510,13 +511,13 @@ void main() {
     expect(repository.requestedStops, hasLength(2));
 
     for (final tab in ['Meu ônibus', 'Ajustes']) {
-      await tester.tap(find.text(tab));
+      await tester.tap(tab == 'Ajustes' ? find.byTooltip(tab) : find.text(tab));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 90));
       expect(repository.requestedStops, hasLength(2), reason: tab);
     }
 
-    await tester.tap(find.text('Chegadas'));
+    await tester.tap(find.text('Pontos'));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 30));
     expect(repository.requestedStops, hasLength(3));
@@ -584,7 +585,7 @@ void main() {
       await _pumpApp(tester, repository);
       await _search(tester, '30402');
       await _track(tester, '20529');
-      await tester.tap(find.text('Chegadas'));
+      await tester.tap(find.text('Pontos'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Buscar outro ponto'));
@@ -1080,7 +1081,7 @@ void main() {
       await _pumpApp(tester, _FakeTransitRepository());
       await _search(tester, '30402');
       await _track(tester, '20529');
-      await tester.tap(find.text('Chegadas'));
+      await tester.tap(find.text('Pontos'));
       await tester.pumpAndSettle();
 
       _map(tester).onTrackedTap!();
@@ -1123,7 +1124,7 @@ void main() {
     await _pumpApp(tester, _FakeTransitRepository());
     await _search(tester, '30402');
     await _track(tester, '20529');
-    await tester.tap(find.text('Chegadas'));
+    await tester.tap(find.text('Pontos'));
     await tester.pumpAndSettle();
 
     await tester.tap(

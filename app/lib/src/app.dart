@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'core/config/nav_config.dart';
 import 'core/settings/theme_mode_cubit.dart';
 import 'core/theme/app_theme.dart';
 import 'features/saved_stops/data/memory_saved_stops_store.dart';
@@ -22,7 +21,6 @@ class BusaoGynApp extends StatelessWidget {
     this.mapBuilder,
     this.clock,
     this.themeStore,
-    this.v2Nav = NavConfig.v2Nav,
     this.savedStopsStore,
     super.key,
   });
@@ -42,10 +40,7 @@ class BusaoGynApp extends StatelessWidget {
   /// Sem store, o tema começa em "Sistema" e não é persistido.
   final ThemePreferenceStore? themeStore;
 
-  /// Navegação v2 (flag `BUSAOGYN_V2_NAV`); ligada por padrão.
-  final bool v2Nav;
-
-  /// Onde favoritos e recentes ficam (só usados com [v2Nav]). Sem store, ficam
+  /// Onde favoritos e recentes ficam. Sem store, ficam
   /// em memória.
   final SavedStopsStore? savedStopsStore;
 
@@ -90,11 +85,7 @@ class BusaoGynApp extends StatelessWidget {
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: themeMode,
-            home: StopArrivalsPage(
-              mapBuilder: mapBuilder,
-              clock: clock,
-              v2Nav: v2Nav,
-            ),
+            home: StopArrivalsPage(mapBuilder: mapBuilder, clock: clock),
           ),
         ),
       ),

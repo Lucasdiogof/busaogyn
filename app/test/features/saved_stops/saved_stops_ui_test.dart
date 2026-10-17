@@ -119,7 +119,6 @@ Future<void> _pump(
   WidgetTester tester, {
   _Repository? repository,
   FakeStore? store,
-  bool v2 = true,
   Size size = const Size(390, 844),
   ThemeMode theme = ThemeMode.light,
   double textScale = 1,
@@ -137,7 +136,6 @@ Future<void> _pump(
       mapBuilder: _map,
       clock: () => _now,
       themeStore: MemoryThemePreferenceStore(theme),
-      v2Nav: v2,
       savedStopsStore: store ?? FakeStore(),
     ),
   );
@@ -944,31 +942,6 @@ void main() {
 
       expect(_CountingMap.created, 1);
       expect(_CountingMap.disposed, 0);
-    });
-  });
-
-  group('navegação antiga (flag desligada)', () {
-    testWidgets('não mostra estrela nem recentes e não lê nem grava nada', (
-      tester,
-    ) async {
-      final store = FakeStore(
-        initial: _data(favorites: ['30402'], recents: ['30100']),
-      );
-      await _pump(tester, store: store, v2: false);
-      await _search(tester, '30402');
-      await tester.tap(find.byTooltip('Atualizar chegadas'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(AppDock), findsOneWidget);
-      expect(find.byType(NavDock), findsNothing);
-      expect(find.byType(FavoriteToggleButton), findsNothing);
-      expect(find.byType(RecentStopsSection), findsNothing);
-      expect(find.text('RECENTES'), findsNothing);
-      expect(find.byTooltip('Favoritar o ponto 30402'), findsNothing);
-      // A política de privacidade atual continua verdadeira: nada é lido
-      // nem gravado.
-      expect(store.loads, 0);
-      expect(store.saves, isEmpty);
     });
   });
 }

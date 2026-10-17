@@ -4,74 +4,10 @@ import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../formatters/transit_labels.dart';
 
-/// Destinos da home. No dock atual: Chegadas ([stop]), Meu ônibus
-/// ([tracking]) e Ajustes ([settings]). Na navegação v2: Linhas ([lines]),
-/// Pontos ([stop]), Favoritos ([favorites]) e Meu ônibus ([tracking]);
-/// Ajustes abre pela TopBar.
+/// Destinos da home: Linhas ([lines]), Pontos ([stop]), Favoritos
+/// ([favorites]) e Meu ônibus ([tracking]); Ajustes ([settings]) abre pela
+/// TopBar.
 enum HomeTab { lines, stop, favorites, tracking, settings }
-
-/// Dock inferior flutuante com três destinos.
-///
-/// [layout] vem de `Chrome.dockLayout` (a página usa a mesma medida na
-/// geometria): com fonte normal os rótulos têm uma linha e o dock mede
-/// `Chrome.dock`; com fonte grande, rótulos como "Meu ônibus" passam para
-/// duas linhas e o dock cresce só o necessário.
-class AppDock extends StatelessWidget {
-  const AppDock({
-    required this.selected,
-    required this.onSelected,
-    required this.trackingActive,
-    required this.layout,
-    super.key,
-  });
-
-  final HomeTab selected;
-  final ValueChanged<HomeTab> onSelected;
-
-  /// Marca a aba Meu ônibus quando há um ônibus acompanhado.
-  final bool trackingActive;
-
-  final ({int labelLines, double height}) layout;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassSurface(
-      radius: Radii.dock,
-      padding: const EdgeInsets.all(6),
-      child: SizedBox(
-        height: layout.height - 12,
-        child: Row(
-          children: [
-            _DockItem(
-              icon: Icons.departure_board_rounded,
-              label: 'Chegadas',
-              labelLines: layout.labelLines,
-              selected: selected == HomeTab.stop,
-              onTap: () => onSelected(HomeTab.stop),
-            ),
-            const SizedBox(width: 4),
-            _DockItem(
-              icon: Icons.directions_bus_outlined,
-              label: 'Meu ônibus',
-              labelLines: layout.labelLines,
-              selected: selected == HomeTab.tracking,
-              badge: trackingActive,
-              onTap: () => onSelected(HomeTab.tracking),
-            ),
-            const SizedBox(width: 4),
-            _DockItem(
-              icon: Icons.tune_rounded,
-              label: 'Ajustes',
-              labelLines: layout.labelLines,
-              selected: selected == HomeTab.settings,
-              onTap: () => onSelected(HomeTab.settings),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _DockItem extends StatelessWidget {
   const _DockItem({
@@ -182,7 +118,7 @@ class _DockItem extends StatelessWidget {
   }
 }
 
-/// Dock da navegação v2: Linhas, Pontos, Favoritos e Meu ônibus. Ajustes não
+/// Dock inferior flutuante: Linhas, Pontos, Favoritos e Meu ônibus. Ajustes não
 /// fica aqui, abre pela [TopBar].
 class NavDock extends StatelessWidget {
   const NavDock({
@@ -244,7 +180,7 @@ class NavDock extends StatelessWidget {
   }
 }
 
-/// Marca à esquerda e status dos dados à direita. Com [onSettings] (v2),
+/// Marca à esquerda e status dos dados à direita. Com [onSettings],
 /// o botão Ajustes fica no canto direito.
 class TopBar extends StatelessWidget {
   const TopBar({
