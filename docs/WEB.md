@@ -24,3 +24,4 @@ como hospedagem da versão web). Nada mudou no tratamento de dados. Pendente par
 - Smoke estrito do template contra o `workers.dev`: HTML, scripts, `main.dart.js` (3,3 MB), manifest, `version.json`, rotas `/ponto/30402` e `/linhas`, headers: **passou**. `/privacidade.html` responde 307 para `/privacidade` (200, html) — comportamento do Static Assets, não erro.
 - Navegador: Home e ponto 30402 com 10 linhas e chegadas em tempo real, mapa (OpenFreeMap) com os ônibus. `GET /v1/vehicles/50507/position` respondeu 502 (veículo sem posição no upstream RMTC); o app segue normalmente.
 - Workflow: `SMOKE_URLS` só com a URL viva; o domínio volta à lista quando a rota for ativada.
+- **Deploy web pelo CI comprovado** (run 39069599813, `workflow_dispatch`): build, checagem de segredos, deploy Wrangler 4 e smoke estrito ok. `AUTO_DEPLOY` continua indefinido (push não publica).
