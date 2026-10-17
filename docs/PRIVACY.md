@@ -75,5 +75,5 @@ Esta seção descreve intenção para as próximas versões ([plano](v2/PLANO_BU
 
 ## Pendências
 
-- **Política de privacidade publicada**: as duas lojas exigem uma URL pública. É preciso redigir a política a partir deste documento e hospedá-la, de preferência no mesmo domínio do app Web.
+- **Política de privacidade publicada**: o texto público está em `app/web/privacidade.html` (servido em `/privacidade.html` com o app Web). Falta só publicar o app Web e informar essa URL nas duas lojas. Mantenha a página igual a este documento quando algo mudar.
 - Revisar este documento sempre que mudarem as dependências de rede (estilo do mapa, CDN, API) ou entrar qualquer SDK novo.

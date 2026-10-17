@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <title>Política de privacidade — BusãoGyn</title>
+  <meta name="description" content="Como o app BusãoGyn trata dados: sem conta, sem localização, sem rastreamento.">
+  <link rel="icon" href="favicon.png">
+  <style>
+    :root { --bg:#f6f7f9; --card:#fff; --text:#1b2330; --muted:#556070; --line:#dfe3e9; --accent:#0b6b4f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#10151c; --card:#171e28; --text:#e8ecf2; --muted:#a3adbb; --line:#283140; --accent:#4cc9a0; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+    main { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+    h1 { font-size:1.6rem; margin:8px 0 4px; }
+    h2 { font-size:1.15rem; margin:32px 0 8px; }
+    p, li { color:var(--text); }
+    .muted { color:var(--muted); font-size:.9rem; }
+    ul { padding-left:1.2rem; }
+    table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:.92rem; }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    tr:last-child td { border-bottom:0; }
+    a { color:var(--accent); }
+    .table-wrap { overflow-x:auto; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Política de privacidade do BusãoGyn</h1>
+  <p class="muted">Atualizada em 17/10/2026 · versão do app 1.0.0</p>
+
+  <p>O BusãoGyn mostra, em tempo real, as chegadas de ônibus do transporte coletivo de Goiânia e a posição de um ônibus no mapa. Esta página explica, em linguagem simples, o que o app faz com dados.</p>
+
+  <h2>Resumo</h2>
+  <ul>
+    <li>Não há conta, login nem cadastro.</li>
+    <li>O app <strong>não usa a sua localização</strong>.</li>
+    <li>Não acessa contatos, fotos, câmera, microfone, arquivos nem agenda.</li>
+    <li>Não tem publicidade, análise de uso (analytics), relatório de falhas nem qualquer SDK de rastreamento.</li>
+    <li>Os dados que o app guarda ficam <strong>só no seu aparelho</strong>.</li>
+  </ul>
+
+  <h2>O que fica guardado no seu aparelho</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dado</th><th>Para quê</th><th>Até quando</th></tr></thead>
+      <tbody>
+        <tr><td>Tema (claro, noturno ou do sistema)</td><td>Lembrar a sua escolha</td><td>Até você trocar ou apagar os dados do app</td></tr>
+        <tr><td>Pontos favoritos (até 50): código do ponto e a hora em que foi favoritado</td><td>Consultar de novo com um toque</td><td>Até você remover ou apagar os dados do app</td></tr>
+        <tr><td>Linhas favoritas em um ponto (até 50): código do ponto, código da linha e a hora</td><td>Voltar rápido a uma linha que você usa</td><td>Até você remover ou apagar os dados do app</td></tr>
+        <tr><td>Pontos recentes (até 10): código do ponto e a hora da última consulta que deu certo</td><td>Atalho para pontos que você consultou</td><td>Até você remover o item, limpar o histórico ou apagar os dados do app</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>O app <strong>não guarda</strong> previsões de chegada, posições de ônibus, histórico de buscas com erro nem textos que você digita. Nada disso é enviado para nós: ficam no aparelho e saem quando você apaga os dados do app ou o desinstala.</p>
+
+  <h2>O que é enviado pela internet</h2>
+  <p>Para funcionar, o app consulta serviços pela internet (sempre com HTTPS):</p>
+  <ul>
+    <li><strong>API do BusãoGyn</strong> (hospedada na Cloudflare): recebe o <em>código do ponto</em> que você consulta e o <em>número do ônibus</em> que você acompanha. Ela repassa a consulta às fontes públicas da RMTC e devolve o resultado. O app não fala com a RMTC diretamente.</li>
+    <li><strong>OpenFreeMap</strong>: fornece o mapa. Recebe a área e o zoom do mapa que aparece na tela.</li>
+    <li>Na versão <strong>web</strong>, também podem ser carregados a biblioteca do mapa (unpkg) e fontes de apoio (Google Fonts).</li>
+  </ul>
+  <p>Como em qualquer acesso à internet, cada serviço recebe o endereço IP, o horário e os dados técnicos padrão da conexão. O app não envia identificador próprio, cookie ou token. A API registra em log apenas o tipo da requisição, o caminho consultado (que inclui o código do ponto ou o número do ônibus), o status e o tempo de resposta. A Cloudflare, como provedora da infraestrutura, pode manter registros técnicos próprios.</p>
+  <p>Esses dados não são usados para identificar você, não são vendidos e não são compartilhados para publicidade.</p>
+
+  <h2>Localização</h2>
+  <p>O app não pede nem usa a localização do aparelho. Os ônibus e pontos que aparecem no mapa vêm da fonte de dados, não de você. Se isso mudar no futuro, a permissão será pedida só no momento do uso e esta página será atualizada antes.</p>
+
+  <h2>Crianças</h2>
+  <p>O app não coleta dados pessoais de ninguém, inclusive de crianças.</p>
+
+  <h2>Seus direitos</h2>
+  <p>Como o app não mantém conta nem dados seus em servidor, não há o que exportar ou excluir do nosso lado. Você controla tudo pelo próprio aparelho: remova favoritos e recentes dentro do app ou apague os dados do app nas configurações do sistema.</p>
+
+  <h2>Mudanças e contato</h2>
+  <p>Quando o app mudar a forma de tratar dados, esta página será atualizada e a data no topo, alterada. Dúvidas ou pedidos: abra uma conversa em <a href="https://github.com/Lucasdiogof/busaogyn/issues">github.com/Lucasdiogof/busaogyn/issues</a>.</p>
+</main>
+</body>
+</html>
