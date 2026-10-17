@@ -269,6 +269,7 @@ class ContextHeader extends StatelessWidget {
     required this.subtitle,
     this.action,
     this.semanticsLabel,
+    this.tallAction = false,
     super.key,
   });
 
@@ -277,6 +278,11 @@ class ContextHeader extends StatelessWidget {
   final Widget subtitle;
   final Widget? action;
   final String? semanticsLabel;
+
+  /// Dá 48 dp de altura à [action] (respiro vertical de 8 em vez de 10, com a
+  /// mesma altura de cartão), para botões que precisam do alvo de toque
+  /// mínimo. O padrão mantém o cartão como sempre foi.
+  final bool tallAction;
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +293,12 @@ class ContextHeader extends StatelessWidget {
       child: SizedBox(
         height: Chrome.headerHeight(scaler),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+          padding: EdgeInsets.fromLTRB(
+            10,
+            tallAction ? 8 : 10,
+            6,
+            tallAction ? 8 : 10,
+          ),
           child: Row(
             children: [
               leading,
