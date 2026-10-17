@@ -818,10 +818,12 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               onOpenStop: () => _select(HomeTab.stop),
             ),
           },
-          HomeTab.lines => _EmptyDestination(
-            icon: Icons.format_list_bulleted_rounded,
-            title: 'As linhas estarão disponíveis em breve.',
-            body: 'Por enquanto, consulte as chegadas pelo código do ponto.',
+          HomeTab.lines => SeenLinesPanel(
+            currentStopId: state is StopArrivalsLoaded ? state.stopId : null,
+            currentGroups: state is StopArrivalsLoaded
+                ? state.arrivals.data
+                : const [],
+            onOpen: _openStop,
             onSearchStop: _goToStopSearch,
           ),
           HomeTab.favorites => FavoritesPanel(
@@ -852,36 +854,6 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           child: KeyedSubtree(key: ValueKey(_tab), child: child),
         );
       },
-    );
-  }
-}
-
-/// Linhas e Favoritos enquanto não há dados: explica o que virá e leva à
-/// busca de pontos, que funciona hoje.
-class _EmptyDestination extends StatelessWidget {
-  const _EmptyDestination({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.onSearchStop,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-  final VoidCallback onSearchStop;
-
-  @override
-  Widget build(BuildContext context) {
-    return MessageView(
-      icon: icon,
-      title: title,
-      body: body,
-      action: FilledButton.icon(
-        onPressed: onSearchStop,
-        icon: const Icon(Icons.location_on_outlined, size: 20),
-        label: const Text('Buscar um ponto'),
-      ),
     );
   }
 }

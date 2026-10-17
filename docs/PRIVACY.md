@@ -26,7 +26,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 
 As posições do rastro são do **ônibus**, recebidas da API, e não do usuário. Elas não são gravadas em disco.
 
-Favoritos, linhas favoritas e recentes guardam **só códigos de ponto, códigos de linha e horas**. Nenhuma previsão de chegada, posição de ônibus, coordenada ou texto livre digitado pelo usuário é gravada. Os códigos só vão para a API BusãoGyn quando o usuário consulta as chegadas de um ponto, como sempre. Se o aparelho não permitir gravar, o app avisa e a lista vale até fechar o app.
+Favoritos, linhas favoritas e recentes guardam **só códigos de ponto, códigos de linha e horas**. Nenhuma previsão de chegada, posição de ônibus, coordenada ou texto livre digitado pelo usuário é gravada. A aba Favoritos consulta a API BusãoGyn (com os códigos dos pontos favoritos, até 10 por vez) ao abrir e ao atualizar; o resultado fica só na memória. Os códigos só vão para a API BusãoGyn quando o usuário consulta as chegadas de um ponto, como sempre. Se o aparelho não permitir gravar, o app avisa e a lista vale até fechar o app.
 
 ## 2. Dados técnicos de rede
 

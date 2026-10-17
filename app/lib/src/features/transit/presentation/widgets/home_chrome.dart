@@ -185,7 +185,7 @@ class NavDock extends StatelessWidget {
 class TopBar extends StatelessWidget {
   const TopBar({
     required this.status,
-    this.onSettings,
+    required this.onSettings,
     this.settingsSelected = false,
     super.key,
   });
@@ -193,8 +193,8 @@ class TopBar extends StatelessWidget {
   /// `null` esconde o status (nada consultado ainda).
   final LiveStatus? status;
 
-  /// Abre (ou fecha) Ajustes; `null` esconde o botão (navegação atual).
-  final VoidCallback? onSettings;
+  /// Abre (ou fecha) Ajustes.
+  final VoidCallback onSettings;
   final bool settingsSelected;
 
   @override
@@ -202,10 +202,8 @@ class TopBar extends StatelessWidget {
     final status = this.status;
     // Com fonte muito grande o wordmark (decorativo) sai e fica só o selo,
     // deixando a largura para o status ao vivo, que continua escalando.
-    // Com o botão Ajustes ao lado (v2) a marca perde o nome um pouco antes.
-    final wordmark =
-        MediaQuery.textScalerOf(context).scale(1) <
-        (onSettings == null ? 1.5 : 1.3);
+    // Com o botão Ajustes ao lado a marca perde o nome um pouco antes.
+    final wordmark = MediaQuery.textScalerOf(context).scale(1) < 1.3;
     return Row(
       children: [
         GlassSurface(
@@ -247,10 +245,8 @@ class TopBar extends StatelessWidget {
             ),
           ),
         ),
-        if (onSettings != null) ...[
-          const SizedBox(width: Space.xs),
-          _SettingsButton(onPressed: onSettings!, selected: settingsSelected),
-        ],
+        const SizedBox(width: Space.xs),
+        _SettingsButton(onPressed: onSettings, selected: settingsSelected),
       ],
     );
   }

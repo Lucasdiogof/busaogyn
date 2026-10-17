@@ -472,7 +472,7 @@ void main() {
     ) async {
       await _pump(tester, _Repository());
       await _search(tester, '30402');
-      await _openTab(tester, 'Linhas');
+      await _openTab(tester, 'Favoritos');
       await tester.tap(find.text('Buscar um ponto'));
       await tester.pumpAndSettle();
       expect(find.text('Ponto 30402'), findsOneWidget);

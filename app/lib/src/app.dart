@@ -5,6 +5,7 @@ import 'core/settings/theme_mode_cubit.dart';
 import 'core/theme/app_theme.dart';
 import 'features/saved_stops/data/memory_saved_stops_store.dart';
 import 'features/saved_stops/domain/saved_stops_store.dart';
+import 'features/saved_stops/presentation/cubit/favorite_arrivals_cubit.dart';
 import 'features/saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import 'features/transit/domain/repositories/transit_repository.dart';
 import 'features/transit/presentation/cubit/map_vehicles_cubit.dart';
@@ -69,6 +70,9 @@ class BusaoGynApp extends StatelessWidget {
               savedStopsStore ?? MemorySavedStopsStore(),
               clock: clock,
             ),
+          ),
+          BlocProvider(
+            create: (_) => FavoriteArrivalsCubit(repository, clock: clock),
           ),
           BlocProvider(
             create: (_) => MapVehiclesCubit(

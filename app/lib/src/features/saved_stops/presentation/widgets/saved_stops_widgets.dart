@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../transit/domain/entities/arrival.dart';
+import '../../../transit/presentation/formatters/transit_labels.dart';
 import '../../domain/saved_stop.dart';
+import '../cubit/favorite_arrivals_cubit.dart';
 import '../cubit/saved_stops_cubit.dart';
 
 /// Estrela do cabeçalho do ponto: preenchida quando o ponto é favorito. O
@@ -222,6 +227,7 @@ class _StopTile extends StatelessWidget {
     required this.removeTooltip,
     required this.onOpen,
     required this.onRemove,
+    this.summary,
   });
 
   final SavedStop stop;
@@ -229,6 +235,9 @@ class _StopTile extends StatelessWidget {
   final String removeTooltip;
   final VoidCallback onOpen;
   final VoidCallback onRemove;
+
+  /// Próximas chegadas do ponto (só nos favoritos).
+  final Widget? summary;
 
   @override
   Widget build(BuildContext context) {
@@ -240,89 +249,95 @@ class _StopTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.card),
         border: Border.all(color: tokens.hairline),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Semantics(
-              button: true,
-              label:
-                  'Consultar as chegadas do ponto ${stop.code}'
-                  '${named ? ', ${stop.name}' : ''}',
-              excludeSemantics: true,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Radii.card),
-                onTap: onOpen,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 56),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Space.sm,
-                      Space.xs,
-                      Space.xs,
-                      Space.xs,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, size: 20, color: tokens.accentText),
-                        const SizedBox(width: Space.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (named)
-                                Text(
-                                  stop.name!,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: tokens.strongText,
-                                  ),
-                                ),
-                              Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: 'Ponto ',
-                                      style: TextStyle(
-                                        fontWeight: named
-                                            ? FontWeight.w400
-                                            : FontWeight.w600,
-                                        color: named
-                                            ? tokens.mutedText
-                                            : tokens.strongText,
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text: stop.code,
-                                      style: monoStyle(
-                                        TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: named
-                                              ? tokens.mutedText
-                                              : tokens.strongText,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  label:
+                      'Consultar as chegadas do ponto ${stop.code}'
+                      '${named ? ', ${stop.name}' : ''}',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(Radii.card),
+                    onTap: onOpen,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 56),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          Space.sm,
+                          Space.xs,
+                          Space.xs,
+                          Space.xs,
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            Icon(icon, size: 20, color: tokens.accentText),
+                            const SizedBox(width: Space.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (named)
+                                    Text(
+                                      stop.name!,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: tokens.strongText,
+                                      ),
+                                    ),
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'Ponto ',
+                                          style: TextStyle(
+                                            fontWeight: named
+                                                ? FontWeight.w400
+                                                : FontWeight.w600,
+                                            color: named
+                                                ? tokens.mutedText
+                                                : tokens.strongText,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: stop.code,
+                                          style: monoStyle(
+                                            TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: named
+                                                  ? tokens.mutedText
+                                                  : tokens.strongText,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              SizedBox.square(
+                dimension: 48,
+                child: IconButton(
+                  tooltip: removeTooltip,
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                ),
+              ),
+            ],
           ),
-          SizedBox.square(
-            dimension: 48,
-            child: IconButton(
-              tooltip: removeTooltip,
-              onPressed: onRemove,
-              icon: const Icon(Icons.close_rounded, size: 20),
-            ),
-          ),
+          ?summary,
         ],
       ),
     );
@@ -335,11 +350,13 @@ class _LineTile extends StatelessWidget {
     required this.line,
     required this.onOpen,
     required this.onRemove,
+    this.summary,
   });
 
   final SavedLine line;
   final VoidCallback onOpen;
   final VoidCallback onRemove;
+  final Widget? summary;
 
   @override
   Widget build(BuildContext context) {
@@ -350,69 +367,75 @@ class _LineTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.card),
         border: Border.all(color: tokens.hairline),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Semantics(
-              button: true,
-              label:
-                  'Consultar as chegadas da linha ${line.routeId} no ponto '
-                  '${line.stopCode}',
-              excludeSemantics: true,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Radii.card),
-                onTap: onOpen,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 56),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Space.sm,
-                      Space.xs,
-                      Space.xs,
-                      Space.xs,
-                    ),
-                    child: Row(
-                      children: [
-                        RoutePlate(line.routeId),
-                        const SizedBox(width: Space.sm),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: 'no ponto ',
-                                  style: TextStyle(color: tokens.mutedText),
-                                ),
-                                TextSpan(
-                                  text: line.stopCode,
-                                  style: monoStyle(
-                                    TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: tokens.strongText,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  label:
+                      'Consultar as chegadas da linha ${line.routeId} no ponto '
+                      '${line.stopCode}',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(Radii.card),
+                    onTap: onOpen,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 56),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          Space.sm,
+                          Space.xs,
+                          Space.xs,
+                          Space.xs,
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            RoutePlate(line.routeId),
+                            const SizedBox(width: Space.sm),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'no ponto ',
+                                      style: TextStyle(color: tokens.mutedText),
+                                    ),
+                                    TextSpan(
+                                      text: line.stopCode,
+                                      style: monoStyle(
+                                        TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: tokens.strongText,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              SizedBox.square(
+                dimension: 48,
+                child: IconButton(
+                  tooltip:
+                      'Remover a linha ${line.routeId} do ponto ${line.stopCode} '
+                      'dos favoritos',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                ),
+              ),
+            ],
           ),
-          SizedBox.square(
-            dimension: 48,
-            child: IconButton(
-              tooltip:
-                  'Remover a linha ${line.routeId} do ponto ${line.stopCode} '
-                  'dos favoritos',
-              onPressed: onRemove,
-              icon: const Icon(Icons.close_rounded, size: 20),
-            ),
-          ),
+          ?summary,
         ],
       ),
     );
@@ -444,6 +467,10 @@ class FavoritesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return FavoriteArrivalsScope(child: _body());
+  }
+
+  Widget _body() {
     return BlocBuilder<SavedStopsCubit, SavedStopsState>(
       builder: (context, state) {
         final children = <Widget>[
@@ -477,6 +504,7 @@ class FavoritesPanel extends StatelessWidget {
               TextStyle(fontSize: 12, color: context.tokens.mutedText),
             ),
           );
+          children.add(const FavoriteArrivalsRefresh());
           if (state.favorites.isNotEmpty) {
             children
               ..add(
@@ -498,6 +526,7 @@ class FavoritesPanel extends StatelessWidget {
                     onRemove: () => context
                         .read<SavedStopsCubit>()
                         .removeFavorite(stop.code),
+                    summary: FavoriteArrivalsSummary(stopCode: stop.code),
                   ),
                 )
                 ..add(const SizedBox(height: Space.xs));
@@ -521,6 +550,10 @@ class FavoritesPanel extends StatelessWidget {
                 ..add(
                   _LineTile(
                     line: line,
+                    summary: FavoriteArrivalsSummary(
+                      stopCode: line.stopCode,
+                      routeId: line.routeId,
+                    ),
                     onOpen: () => onOpen(line.stopCode),
                     onRemove: () => context
                         .read<SavedStopsCubit>()
@@ -670,6 +703,374 @@ class _LoadingRows extends StatelessWidget {
             const SizedBox(height: Space.xs),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Próximas chegadas de um favorito, sempre com a hora da consulta. Só
+/// mostra o que a consulta acabou de devolver; sem internet ou com falha,
+/// diz isso em vez de repetir a última previsão.
+class FavoriteArrivalsSummary extends StatelessWidget {
+  const FavoriteArrivalsSummary({
+    required this.stopCode,
+    this.routeId,
+    super.key,
+  });
+
+  final String stopCode;
+
+  /// Se informado, mostra só esta linha (linha favorita).
+  final String? routeId;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<FavoriteArrivalsCubit, FavoriteArrivalsState>(
+      buildWhen: (a, b) => a.byStop[stopCode] != b.byStop[stopCode],
+      builder: (context, state) {
+        final entry = state.byStop[stopCode];
+        if (entry == null) return const SizedBox.shrink();
+        final style = Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: context.tokens.mutedText);
+        final Widget content = switch (entry.status) {
+          FavoriteStopStatus.loading => Text('Consultando…', style: style),
+          FavoriteStopStatus.offline => Text(
+            'Sem conexão. Toque em Atualizar quando a internet voltar.',
+            style: style,
+          ),
+          FavoriteStopStatus.failed => Text(
+            'Não foi possível consultar agora.',
+            style: style,
+          ),
+          FavoriteStopStatus.ready => _ready(context, entry, style),
+        };
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(Space.sm, 0, Space.sm, Space.xs),
+          child: Align(alignment: Alignment.centerLeft, child: content),
+        );
+      },
+    );
+  }
+
+  Widget _ready(
+    BuildContext context,
+    FavoriteStopArrivals entry,
+    TextStyle? style,
+  ) {
+    final groups = [
+      for (final group in entry.groups)
+        if (routeId == null || group.routeId == routeId) group,
+    ];
+    final time = entry.fetchedAt;
+    final hour = time == null
+        ? null
+        : '${time.hour.toString().padLeft(2, '0')}:'
+              '${time.minute.toString().padLeft(2, '0')}';
+    final at = hour == null ? '' : ' · consulta das $hour';
+    if (groups.isEmpty) {
+      return Text('Nenhuma chegada prevista agora$at', style: style);
+    }
+    const shown = 4;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: Space.sm,
+          runSpacing: 2,
+          children: [
+            for (final group in groups.take(shown))
+              _ArrivalChip(group: group, color: context.tokens.strongText),
+            if (groups.length > shown)
+              Text('+${groups.length - shown}', style: style),
+          ],
+        ),
+        Text(
+          entry.stale
+              ? 'Último dado válido da fonte$at'
+              : (hour == null ? 'Consulta feita agora' : 'Consulta das $hour'),
+          style: style,
+        ),
+      ],
+    );
+  }
+}
+
+class _ArrivalChip extends StatelessWidget {
+  const _ArrivalChip({required this.group, required this.color});
+
+  final ArrivalGroup group;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final quality = displayQuality(group.next);
+    final minutes = group.next.minutes;
+    final value = switch (minutes) {
+      null => '—',
+      <= 0 => '< 1 min',
+      final m => '$m min',
+    };
+    return Semantics(
+      container: true,
+      label:
+          'Linha ${group.routeId}, ${minutesSemantics(minutes)}, '
+          '${qualityShortLabel(quality)}',
+      excludeSemantics: true,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: group.routeId,
+              style: monoStyle(
+                TextStyle(fontWeight: FontWeight.w700, color: color),
+              ),
+            ),
+            TextSpan(
+              text: ' $value',
+              style: TextStyle(color: color),
+            ),
+            if (quality != ArrivalQuality.realtime)
+              TextSpan(
+                text: ' (${qualityShortLabel(quality).toLowerCase()})',
+                style: TextStyle(fontSize: 12, color: context.tokens.mutedText),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Mantém a consulta das chegadas dos favoritos: roda ao abrir a aba, quando
+/// o conjunto de pontos muda e quando o usuário toca em Atualizar.
+class FavoriteArrivalsScope extends StatefulWidget {
+  const FavoriteArrivalsScope({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<FavoriteArrivalsScope> createState() => _FavoriteArrivalsScopeState();
+}
+
+class _FavoriteArrivalsScopeState extends State<FavoriteArrivalsScope> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(context.read<SavedStopsCubit>().state);
+    });
+  }
+
+  void _sync(SavedStopsState state) {
+    if (state.loading) return;
+    unawaited(
+      context.read<FavoriteArrivalsCubit>().refresh(favoriteStopCodes(state)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<SavedStopsCubit, SavedStopsState>(
+      listener: (context, state) => _sync(state),
+      child: widget.child,
+    );
+  }
+}
+
+/// Pontos a consultar na aba Favoritos: os favoritos e os pontos das linhas
+/// favoritas, sem repetir.
+List<String> favoriteStopCodes(SavedStopsState state) => [
+  ...{
+    for (final stop in state.favorites) stop.code,
+    for (final line in state.lines) line.stopCode,
+  },
+];
+
+/// Botão Atualizar da aba Favoritos: refaz a consulta de todos os pontos.
+class FavoriteArrivalsRefresh extends StatelessWidget {
+  const FavoriteArrivalsRefresh({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<FavoriteArrivalsCubit, FavoriteArrivalsState>(
+      buildWhen: (a, b) => a.refreshing != b.refreshing,
+      builder: (context, state) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: state.refreshing
+                ? null
+                : () => context.read<FavoriteArrivalsCubit>().refresh(
+                    favoriteStopCodes(context.read<SavedStopsCubit>().state),
+                    force: true,
+                  ),
+            icon: state.refreshing
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 20),
+            label: const Text('Atualizar chegadas'),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Aba Linhas: as linhas que o app já viu **nesta sessão e nos seus
+/// favoritos**, com o ponto onde cada uma apareceu. Não é o catálogo oficial
+/// (isso depende de autorização da RMTC) e não diz ordem de percurso nem
+/// sentido: só "esta linha passou por este ponto".
+class SeenLinesPanel extends StatelessWidget {
+  const SeenLinesPanel({
+    required this.currentStopId,
+    required this.currentGroups,
+    required this.onOpen,
+    required this.onSearchStop,
+    super.key,
+  });
+
+  /// Ponto na tela agora e as linhas que a consulta dele trouxe.
+  final String? currentStopId;
+  final List<ArrivalGroup> currentGroups;
+
+  /// Consulta o ponto (abre Pontos).
+  final ValueChanged<String> onOpen;
+  final VoidCallback onSearchStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SavedStopsCubit, SavedStopsState>(
+      builder: (context, saved) {
+        return BlocBuilder<FavoriteArrivalsCubit, FavoriteArrivalsState>(
+          builder: (context, live) {
+            final seen = <String, List<String>>{};
+            void add(String route, String stop) {
+              final stops = seen.putIfAbsent(route, () => []);
+              if (!stops.contains(stop)) stops.add(stop);
+            }
+
+            if (currentStopId != null) {
+              for (final group in currentGroups) {
+                add(group.routeId, currentStopId!);
+              }
+            }
+            for (final line in saved.lines) {
+              add(line.routeId, line.stopCode);
+            }
+            for (final entry in live.byStop.entries) {
+              for (final group in entry.value.groups) {
+                add(group.routeId, entry.key);
+              }
+            }
+            if (seen.isEmpty) {
+              return MessageView(
+                icon: Icons.format_list_bulleted_rounded,
+                title: 'As linhas estarão disponíveis em breve.',
+                body:
+                    'Por enquanto, consulte as chegadas pelo código do ponto.',
+                action: FilledButton.icon(
+                  onPressed: onSearchStop,
+                  icon: const Icon(Icons.location_on_outlined, size: 20),
+                  label: const Text('Buscar um ponto'),
+                ),
+              );
+            }
+            final routes = seen.keys.toList()..sort();
+            final tokens = context.tokens;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionLabel(
+                  icon: Icons.directions_bus_outlined,
+                  label: 'Linhas vistas',
+                  trailing: Text(
+                    '${routes.length}',
+                    style: monoStyle(
+                      TextStyle(fontSize: 12, color: tokens.mutedText),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Space.xs),
+                for (final route in routes) ...[
+                  _SeenLineTile(
+                    routeId: route,
+                    stops: seen[route]!,
+                    onOpen: onOpen,
+                  ),
+                  const SizedBox(height: Space.xs),
+                ],
+                const FootNote(
+                  child: Text(
+                    'Linhas vistas nas suas consultas desta sessão e nos '
+                    'seus favoritos. A lista completa de linhas depende de '
+                    'autorização da RMTC.',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _SeenLineTile extends StatelessWidget {
+  const _SeenLineTile({
+    required this.routeId,
+    required this.stops,
+    required this.onOpen,
+  });
+
+  final String routeId;
+  final List<String> stops;
+  final ValueChanged<String> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final label = stops.length == 1
+        ? 'no ponto ${stops.first}'
+        : 'nos pontos ${stops.take(3).join(', ')}'
+              '${stops.length > 3 ? ' e mais ${stops.length - 3}' : ''}';
+    return Semantics(
+      button: true,
+      label:
+          'Linha $routeId, $label. Consultar as chegadas do ponto '
+          '${stops.first}',
+      excludeSemantics: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(Radii.card),
+          border: Border.all(color: tokens.hairline),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.card),
+          onTap: () => onOpen(stops.first),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.all(Space.sm),
+              child: Row(
+                children: [
+                  RoutePlate(routeId),
+                  const SizedBox(width: Space.sm),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(color: tokens.mutedText),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

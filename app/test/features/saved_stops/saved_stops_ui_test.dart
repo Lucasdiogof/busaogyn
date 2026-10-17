@@ -164,6 +164,15 @@ Future<void> _search(WidgetTester tester, String code) async {
   await tester.pumpAndSettle();
 }
 
+/// Abre uma aba sem esperar o fim das animações: com uma consulta pendente o
+/// botão Atualizar gira sem parar e `pumpAndSettle` nunca termina.
+Future<void> _openTabNow(WidgetTester tester, String label) async {
+  await tester.tap(
+    find.descendant(of: find.byType(NavDock), matching: find.text(label)),
+  );
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 Future<void> _openTab(WidgetTester tester, String label) async {
   await tester.tap(
     find.descendant(of: find.byType(NavDock), matching: find.text(label)),
@@ -322,6 +331,7 @@ void main() {
         store: FakeStore(initial: _data(favorites: ['30402', '30100'])),
       );
       await _openTab(tester, 'Favoritos');
+      repository.requested.clear(); // consulta do resumo dos favoritos
       await _tap(tester, _favTile('30100'));
 
       expect(repository.requested, ['30100']);
@@ -364,6 +374,127 @@ void main() {
       expect(find.textContaining('Limite de 50 favoritos'), findsOneWidget);
       expect(store.data.favorites, hasLength(defaultFavoriteStopsLimit));
       expect(_favStar('99999'), findsOneWidget);
+    });
+  });
+
+  group('chegadas nos favoritos', () {
+    testWidgets('mostra as próximas chegadas com a hora da consulta', (
+      tester,
+    ) async {
+      final repository = _Repository();
+      await _pump(
+        tester,
+        repository: repository,
+        store: FakeStore(initial: _data(favorites: ['30402'])),
+      );
+      await _openTab(tester, 'Favoritos');
+
+      expect(repository.requested, ['30402']);
+      expect(find.textContaining('020', findRichText: true), findsWidgets);
+      expect(find.textContaining('Consulta das'), findsOneWidget);
+    });
+
+    testWidgets('sem internet diz isso e não mostra previsão', (tester) async {
+      final repository = _Repository()..failures['30402'] = _offline;
+      await _pump(
+        tester,
+        repository: repository,
+        store: FakeStore(initial: _data(favorites: ['30402'])),
+      );
+      await _openTab(tester, 'Favoritos');
+
+      expect(find.textContaining('Sem conexão'), findsWidgets);
+      expect(find.textContaining('Consulta das'), findsNothing);
+      expect(find.textContaining(' min', findRichText: true), findsNothing);
+    });
+
+    testWidgets('Atualizar chegadas consulta de novo, uma vez por toque', (
+      tester,
+    ) async {
+      final repository = _Repository();
+      await _pump(
+        tester,
+        repository: repository,
+        store: FakeStore(initial: _data(favorites: ['30402'])),
+      );
+      await _openTab(tester, 'Favoritos');
+      expect(repository.requested, ['30402']);
+
+      await tester.tap(find.text('Atualizar chegadas'));
+      await tester.pumpAndSettle();
+      expect(repository.requested, ['30402', '30402']);
+    });
+
+    testWidgets('reabrir a aba logo em seguida não consulta de novo', (
+      tester,
+    ) async {
+      final repository = _Repository();
+      await _pump(
+        tester,
+        repository: repository,
+        store: FakeStore(initial: _data(favorites: ['30402'])),
+      );
+      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Linhas');
+      await _openTab(tester, 'Favoritos');
+      expect(repository.requested, ['30402']);
+    });
+
+    testWidgets('linha favorita mostra só a sua linha', (tester) async {
+      final repository = _Repository();
+      await _pump(
+        tester,
+        repository: repository,
+        store: FakeStore(
+          initial: SavedStopsData(
+            lines: [
+              SavedLine(
+                stopCode: '30402',
+                routeId: '999',
+                at: DateTime.utc(2026, 10, 17),
+              ),
+            ],
+          ),
+        ),
+      );
+      await _openTab(tester, 'Favoritos');
+
+      // A fonte não traz a linha 999 neste ponto: nada de chegada inventada.
+      expect(
+        find.textContaining('Nenhuma chegada prevista agora'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('aba Linhas', () {
+    testWidgets('sem consulta nenhuma explica e leva à busca', (tester) async {
+      await _pump(tester);
+      await _openTab(tester, 'Linhas');
+      expect(
+        find.text('As linhas estarão disponíveis em breve.'),
+        findsOneWidget,
+      );
+      expect(find.text('Buscar um ponto'), findsOneWidget);
+    });
+
+    testWidgets('lista as linhas vistas e toque consulta o ponto', (
+      tester,
+    ) async {
+      final repository = _Repository();
+      await _pump(tester, repository: repository);
+      await _search(tester, '30402');
+      repository.requested.clear();
+
+      await _openTab(tester, 'Linhas');
+      expect(find.text('LINHAS VISTAS'), findsOneWidget);
+      expect(find.text('no ponto 30402'), findsOneWidget);
+      // Sem ordem de percurso, sentido ou minutos: só onde a linha apareceu.
+      expect(find.textContaining(' min'), findsNothing);
+
+      await tester.tap(find.text('no ponto 30402'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ponto 30402'), findsOneWidget);
     });
   });
 
@@ -422,6 +553,7 @@ void main() {
       );
       await _pump(tester, repository: repository, store: store);
       await _openTab(tester, 'Favoritos');
+      repository.requested.clear(); // consulta do resumo dos favoritos
 
       await tester.tap(
         find.bySemanticsLabel(
@@ -647,7 +779,8 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTabNow(tester, 'Favoritos');
+      repository.requested.clear(); // consulta do resumo dos favoritos
       await tester.tap(_favTile('30402'));
       await tester.pump();
 
@@ -677,7 +810,8 @@ void main() {
       final gateB = repository.gates['30402'] = Completer<void>();
       final store = FakeStore(initial: _data(favorites: ['30100', '30402']));
       await _pump(tester, repository: repository, store: store);
-      await _openTab(tester, 'Favoritos');
+      await _openTabNow(tester, 'Favoritos');
+      repository.requested.clear(); // consulta do resumo dos favoritos
 
       await tester.tap(_favTile('30100'));
       await tester.pump();
