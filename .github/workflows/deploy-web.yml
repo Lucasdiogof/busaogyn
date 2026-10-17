@@ -16,7 +16,9 @@ env:
   FLUTTER_VERSION: "3.47.4"        # pin to the version the app is developed with
   APP_DIR: "app"                    # folder with pubspec.yaml and wrangler.jsonc (OrbiJob: app)
   FLUTTER_WEB_FLAGS: ""             # e.g. --no-web-resources-cdn
-  SMOKE_URLS: "https://busaogyn.lucksrei.com https://busaogyn-web.lucasdiogo1234.workers.dev"  # public URLs checked after every deploy (space separated)
+  # Only live URLs: add https://busaogyn.lucksrei.com when the custom-domain route in app/wrangler.jsonc is enabled.
+  SMOKE_URLS: "https://busaogyn-web.lucasdiogo1234.workers.dev"
+  SMOKE_ROUTES: "/ponto/30402 /linhas"  # SPA deep links that must fall back to index.html
 jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY == 'true'
@@ -44,4 +46,4 @@ jobs:
           command: deploy
       - name: Smoke test (public URLs, fails the workflow on a bad publish)
         run: |
-          for u in $SMOKE_URLS; do bash scripts/smoke-test.sh "$u" || exit 1; done
+          for u in $SMOKE_URLS; do bash scripts/smoke-test.sh "$u" $SMOKE_ROUTES || exit 1; done
