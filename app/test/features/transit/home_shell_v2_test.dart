@@ -190,8 +190,8 @@ void main() {
   });
 
   group('inicialização e flag', () {
-    testWidgets('a flag é desligada por padrão', (tester) async {
-      expect(NavConfig.v2Nav, isFalse);
+    testWidgets('a navegação v2 é a padrão', (tester) async {
+      expect(NavConfig.v2Nav, isTrue);
     });
 
     testWidgets('com a flag ligada abre em Pontos, com quatro destinos', (

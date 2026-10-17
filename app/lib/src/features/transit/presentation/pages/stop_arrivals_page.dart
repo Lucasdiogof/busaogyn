@@ -31,7 +31,7 @@ import '../widgets/tracking_card.dart';
 /// celular, coluna central em telas largas) e o dock com Chegadas,
 /// Meu ônibus e Ajustes.
 ///
-/// Com [v2Nav] (flag `BUSAOGYN_V2_NAV`, desligada por padrão) o dock passa a
+/// Com [v2Nav] (flag `BUSAOGYN_V2_NAV`, ligada por padrão) o dock passa a
 /// Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar. O mapa, o
 /// painel e os cubits são os mesmos nos dois modos.
 class StopArrivalsPage extends StatefulWidget {

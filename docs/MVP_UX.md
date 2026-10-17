@@ -4,7 +4,7 @@ Atualizado em 06/10/2026.
 
 Este documento define o comportamento do MVP enquanto a rede estática/GTFS oficial ainda não foi recebida.
 
-> **Navegação v2 (aprovada em 10/10/2026; implementada atrás da flag `BUSAOGYN_V2_NAV`, desligada por padrão):** quatro destinos — **Linhas, Pontos, Favoritos e Meu ônibus** —, com **Ajustes na TopBar** e **Chegadas como detalhe do ponto**. Entra de forma gradual, por feature flag desligada em release até a validação (PR‑6). Com a flag desligada, **tudo neste documento continua valendo** (dock Chegadas / Meu ônibus / Ajustes); Linhas e Favoritos ainda não têm dados. Detalhes: [ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md) e [contrato do PR‑6](v2/PR-6-home-shell-aceite.md).
+> **Navegação v2 (aprovada em 10/10/2026; implementada e padrão do app):** quatro destinos — **Linhas, Pontos, Favoritos e Meu ônibus** —, com **Ajustes na TopBar** e **Chegadas como detalhe do ponto**. Substituiu o dock antigo (Chegadas / Meu ônibus / Ajustes); Linhas ainda não tem dados. Detalhes: [ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md) e [contrato do PR‑6](v2/PR-6-home-shell-aceite.md).
 
 ## Proposta central
 
@@ -198,7 +198,7 @@ Primeira versão aceitável:
 - pontos favoritos;
 - persistência local.
 
-Na v2 isso evolui para o destino **Favoritos** e uma seção **Recentes** em Pontos, só no aparelho, sem conta. **Favoritos e recentes de pontos já existem atrás da flag `BUSAOGYN_V2_NAV`** ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)): estrela no cabeçalho do ponto, lista na aba Favoritos (toque consulta o ponto), até 50 favoritos e 10 recentes, remover item e limpar recentes com confirmação, e nenhuma previsão guardada. Favoritos de par ponto‑linha seguem **não implementados**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo. Ao entrar em produção, `PRIVACY.md` deixa de dizer que o app não guarda pontos consultados.
+Na v2 isso evolui para o destino **Favoritos** e uma seção **Recentes** em Pontos, só no aparelho, sem conta. **Favoritos e recentes de pontos já existem** ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)): estrela no cabeçalho do ponto, lista na aba Favoritos (toque consulta o ponto), até 50 favoritos e 10 recentes, remover item e limpar recentes com confirmação, e nenhuma previsão guardada. Favoritos de par ponto‑linha seguem **não implementados**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo.
 
 Não persistir amostras GPS do ônibus no Supabase.
 

@@ -81,6 +81,7 @@ Future<void> _pump(
       trackingRefreshInterval: null,
       mapBuilder: _fakeMap,
       clock: () => _now,
+      v2Nav: false,
       themeStore: MemoryThemePreferenceStore(
         dark ? ThemeMode.dark : ThemeMode.light,
       ),

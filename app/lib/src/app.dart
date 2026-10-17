@@ -42,7 +42,7 @@ class BusaoGynApp extends StatelessWidget {
   /// Sem store, o tema começa em "Sistema" e não é persistido.
   final ThemePreferenceStore? themeStore;
 
-  /// Navegação v2 (flag `BUSAOGYN_V2_NAV`); desligada por padrão.
+  /// Navegação v2 (flag `BUSAOGYN_V2_NAV`); ligada por padrão.
   final bool v2Nav;
 
   /// Onde favoritos e recentes ficam (só usados com [v2Nav]). Sem store, ficam

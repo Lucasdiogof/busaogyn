@@ -10,16 +10,15 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 - O app **não usa a localização do usuário**: não há permissão de localização no Android, nem chave `NSLocation*` no iOS.
 - Não acessa contatos, fotos, câmera, microfone, arquivos ou calendário.
 - Não tem analytics, crash reporting, publicidade nem SDK de rastreamento.
-- **No app publicado** (navegação v2 desligada), não guarda histórico de buscas, de pontos consultados ou de posições, e o único dado persistido no aparelho é a preferência de tema (claro, noturno ou sistema).
-- **Com a navegação v2 ligada** (flag `BUSAOGYN_V2_NAV`, desligada por padrão e nos builds de release até a validação), o app guarda **no aparelho** os pontos favoritos e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta.
+- O app guarda **no aparelho**, e só nele, a preferência de tema (claro, noturno ou sistema), os pontos favoritos e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta. Não guarda histórico de buscas, previsões de chegada nem posições.
 
 ## 1. Dados do app
 
 | Dado | Onde fica | Por quanto tempo | Sai do aparelho? |
 | --- | --- | --- | --- |
 | Preferência de tema | `shared_preferences` (Android: SharedPreferences; iOS: NSUserDefaults; Web: `localStorage`) | Até o usuário trocar ou apagar os dados do app | Não |
-| Pontos favoritos (**só com a navegação v2 ligada**) | `shared_preferences`, chave `busaogyn.saved_stops.v1`: código do ponto, nome só se a fonte der um nome confiável (hoje nenhuma dá) e hora em que foi favoritado. Máximo de 50 | Até o usuário remover o favorito ou apagar os dados do app | Não |
-| Pontos recentes (**só com a navegação v2 ligada**) | Mesma chave: código do ponto e hora da última consulta bem-sucedida. Máximo de 10, sem repetição; só entram consultas que deram certo | Até o usuário remover o item, limpar o histórico (com confirmação) ou apagar os dados do app | Não |
+| Pontos favoritos | `shared_preferences`, chave `busaogyn.saved_stops.v1`: código do ponto, nome só se a fonte der um nome confiável (hoje nenhuma dá) e hora em que foi favoritado. Máximo de 50 | Até o usuário remover o favorito ou apagar os dados do app | Não |
+| Pontos recentes | Mesma chave: código do ponto e hora da última consulta bem-sucedida. Máximo de 10, sem repetição; só entram consultas que deram certo | Até o usuário remover o item, limpar o histórico (com confirmação) ou apagar os dados do app | Não |
 | Código do ponto digitado | Memória, durante a sessão | Até fechar o app | Sim, na consulta à API BusãoGyn |
 | Número do ônibus acompanhado | Memória, durante a sessão | Até parar o acompanhamento ou fechar o app | Sim, na consulta de posição à API BusãoGyn |
 | Posições observadas do ônibus (rastro e direção) | Memória, até 20 posições | Limpas ao trocar ou parar o acompanhamento | Não (vêm da API, não do aparelho) |
@@ -61,14 +60,14 @@ Notas:
 
 São sugestões factuais, a confirmar junto com a política final: os formulários têm definições próprias, como "coleta" e "processamento efêmero". Elas valem para o comportamento atual e devem ser revistas se surgir login, analytics, crash reporting ou localização.
 
-- **Google Play — Segurança dos dados** (app publicado, navegação v2 desligada): nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
+- **Google Play — Segurança dos dados** (favoritos e recentes ficam só no aparelho): nenhum dado coletado nem compartilhado. Os códigos de ponto e os números de ônibus são enviados apenas para a consulta pedida e não ficam associados a uma pessoa. Dados criptografados em trânsito: sim. Exclusão de dados: não se aplica, porque não há conta.
 - **App Store — Privacidade do app**: "Data Not Collected". Tracking: não.
 
 ## Mudanças planejadas (NÃO implementadas)
 
-Esta seção descreve intenção para a v2 ([plano](v2/PLANO_BUSAOGYN_V2.md)). **Nada abaixo existe no app atual**, e todas as seções acima continuam sendo a descrição correta do comportamento da versão `1.0.0+1`.
+Esta seção descreve intenção para as próximas versões ([plano](v2/PLANO_BUSAOGYN_V2.md)). **Nada abaixo, exceto o que está marcado como implementado, existe no app atual.**
 
-- **Favoritos e recentes de pontos (implementados atrás da flag):** descritos no resumo e na seção 1. Continuam **desligados no app publicado**. Antes de ligar a flag em um build de release, revise as respostas das lojas (seção 5): os dados ficam só no aparelho e não são transmitidos, mas a política publicada deve citar que o app guarda favoritos e recentes localmente.
+- **Favoritos e recentes de pontos (implementados):** descritos no resumo e na seção 1. Os dados ficam só no aparelho e não são transmitidos, mas a política publicada deve citar que o app guarda favoritos e recentes localmente.
 - **Favoritos de par ponto‑linha (planejado):** ainda não existem; se vierem, entram na mesma chave local, sem sair do aparelho.
 - **Catálogo de linhas e pontos (planejado):** quando houver autorização, o aparelho poderá guardar uma cópia local do catálogo oficial (dados públicos de transporte, sem dado pessoal). Até lá, apenas dados sintéticos em desenvolvimento e testes.
 - **Localização do usuário:** continua **não usada** e **não prevista para o próximo release**. Se algum dia entrar (por exemplo, “pontos perto de mim”), será pedida apenas no momento do uso, processada no aparelho e este documento, o CI de permissões e os formulários das lojas serão revistos antes.

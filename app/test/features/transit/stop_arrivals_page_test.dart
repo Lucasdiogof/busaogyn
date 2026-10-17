@@ -153,6 +153,7 @@ Future<void> _pumpApp(
       mapBuilder: _fakeMap,
       clock: clock ?? () => _now,
       themeStore: themeStore,
+      v2Nav: false,
     ),
   );
 }

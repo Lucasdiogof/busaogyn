@@ -37,18 +37,6 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
-      - name: Flag da navegação v2 desligada em builds
-        # A flag só liga por teste/validação local. Nenhum build do CI ou
-        # configuração de build pode ligá-la antes da validação do HomeShell
-        # (docs/adr/0001-navegacao-e-catalogo-v2.md). O nome fica separado do
-        # padrão para este passo não casar com a própria busca.
-        working-directory: .
-        run: |
-          flag='BUSAOGYN_V2_NAV'
-          if grep -rInE "${flag}[=:] *['\"]?true" .github app/android app/ios app/web; then
-            echo "::error::A flag da navegacao v2 nao pode estar ligada em build."
-            exit 1
-          fi
 
   build-android-web:
     needs: flutter
