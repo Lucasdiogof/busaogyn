@@ -95,7 +95,7 @@ O rastro de posições observadas ("Posições recentes") fica para depois. Ele 
 
 Decisões registradas em [`docs/adr/`](adr/README.md); escopo e backlog em [`docs/v2/PLANO_BUSAOGYN_V2.md`](v2/PLANO_BUSAOGYN_V2.md). Esta seção descreve intenção, não o estado atual do código.
 
-- **Navegação:** Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar e Chegadas como detalhe do ponto ([ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md)). Já existe atrás da flag `BUSAOGYN_V2_NAV` (desligada por padrão e em release até a validação); Linhas e Favoritos ainda sem dados.
+- **Navegação:** Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar e Chegadas como detalhe do ponto ([ADR‑0001](adr/0001-navegacao-e-catalogo-v2.md)). Já existe atrás da flag `BUSAOGYN_V2_NAV` (desligada por padrão e em release até a validação); Favoritos e Recentes de pontos já existem nela, guardados no aparelho em `shared_preferences` ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)); Linhas ainda sem dados.
 - **Dados confiáveis:** código de linha sempre `String` (`003`, `MGP1`, `NS1`); relação ponto‑linha não é ordem de percurso; sem inferir sentido, sequência, shape ou horário; sem usar o catálogo em massa da RMTC em produção sem autorização verificável; fixtures apenas sintéticas ([ADR‑0002](adr/0002-dados-confiaveis-e-nao-inferencia.md)).
 - **Preservação do realtime:** o mapa (índice 0 do `Stack`, nunca recriado), `StopArrivalsCubit`, `MapVehiclesCubit` e `TransitRepository` não são refatorados pela navegação; descarte por geração, expiração em 90 s e rótulos de “observado” seguem como hoje ([ADR‑0003](adr/0003-protecao-do-mapa-e-do-realtime.md)). O Flutter continua falando só com a API BusãoGyn.
 - **Gates de liberação:**

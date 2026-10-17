@@ -198,7 +198,7 @@ Primeira versão aceitável:
 - pontos favoritos;
 - persistência local.
 
-Na v2 isso evolui para o destino **Favoritos** (favoritos de ponto e de par ponto‑linha, mais recentes, só no aparelho, sem conta), planejado nos PRs 5 e 7 e **ainda não implementado**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo. Ao entrar em produção, `PRIVACY.md` deixa de dizer que o app não guarda pontos consultados.
+Na v2 isso evolui para o destino **Favoritos** e uma seção **Recentes** em Pontos, só no aparelho, sem conta. **Favoritos e recentes de pontos já existem atrás da flag `BUSAOGYN_V2_NAV`** ([ADR‑0004](adr/0004-persistencia-local-de-pontos.md)): estrela no cabeçalho do ponto, lista na aba Favoritos (toque consulta o ponto), até 50 favoritos e 10 recentes, remover item e limpar recentes com confirmação, e nenhuma previsão guardada. Favoritos de par ponto‑linha seguem **não implementados**. Favoritos guardam só a intenção do usuário (códigos) e continuam funcionando para chegadas mesmo sem catálogo. Ao entrar em produção, `PRIVACY.md` deixa de dizer que o app não guarda pontos consultados.
 
 Não persistir amostras GPS do ônibus no Supabase.
 
