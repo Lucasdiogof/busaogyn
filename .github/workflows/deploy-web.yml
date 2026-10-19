@@ -17,7 +17,7 @@ env:
   APP_DIR: "app"                    # folder with pubspec.yaml and wrangler.jsonc (OrbiJob: app)
   FLUTTER_WEB_FLAGS: ""             # e.g. --no-web-resources-cdn
   # Only live URLs: add https://busaogyn.lucksrei.com when the custom-domain route in app/wrangler.jsonc is enabled.
-  SMOKE_URLS: "https://busaogyn-web.lucasdiogo1234.workers.dev"
+  SMOKE_URLS: "https://busaogyn.lucksrei.com https://busaogyn-web.lucasdiogo1234.workers.dev"
   SMOKE_ROUTES: "/ponto/30402 /linhas"  # SPA deep links that must fall back to index.html
 jobs:
   deploy:
