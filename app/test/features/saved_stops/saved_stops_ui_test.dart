@@ -131,6 +131,7 @@ Future<void> _pump(
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   await tester.pumpWidget(
     BusaoGynApp(
+      locale: const Locale('pt'),
       repository: repository ?? _Repository(),
       trackingRefreshInterval: null,
       mapBuilder: _map,

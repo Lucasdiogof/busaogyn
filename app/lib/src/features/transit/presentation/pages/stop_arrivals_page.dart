@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/map_config.dart';
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
@@ -204,11 +205,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Limite de $defaultFavoriteStopsLimit favoritos. Remova um para '
-            'adicionar outro.',
-          ),
+        SnackBar(
+          content: Text(l10n.favoriteStopsLimit(defaultFavoriteStopsLimit)),
         ),
       );
   }
@@ -223,9 +221,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     };
     if (feedback == null || !feedback.isConnectivity) return null;
     return feedback.kind == SearchFeedbackKind.offline
-        ? 'Sem conexão. Você pode abrir seus pontos, mas as chegadas só '
-              'aparecem com internet.'
-        : 'A última consulta não foi concluída. Tente de novo em instantes.';
+        ? l10n.noticeOffline
+        : l10n.noticeQueryIncomplete;
   }
 
   void _recordIfSucceeded(StopArrivalsState state) {
@@ -576,13 +573,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           HomeTab.tracking => _trackingHeader(state),
           HomeTab.lines => (
             const ValueKey('header-lines'),
-            const ContextHeader(
-              leading: HeaderTile(
+            ContextHeader(
+              leading: const HeaderTile(
                 Icons.format_list_bulleted_rounded,
                 filled: false,
               ),
-              title: 'Linhas',
-              subtitle: Text('Em breve'),
+              title: l10n.dockLines,
+              subtitle: Text(l10n.comingSoon),
             ),
           ),
           HomeTab.favorites => (
@@ -592,18 +589,16 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 Icons.star_outline_rounded,
                 filled: false,
               ),
-              title: 'Favoritos',
+              title: l10n.dockFavorites,
               subtitle: BlocBuilder<SavedStopsCubit, SavedStopsState>(
                 builder: (context, saved) {
                   final count = saved.favorites.length;
                   return Text(
                     saved.loading
-                        ? 'Carregando…'
+                        ? l10n.loading
                         : count == 0
-                        ? 'Nenhum ponto salvo'
-                        : count == 1
-                        ? '1 ponto salvo'
-                        : '$count pontos salvos',
+                        ? l10n.savedStopsNone
+                        : l10n.savedStopsCount(count),
                   );
                 },
               ),
@@ -613,10 +608,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             const ValueKey('header-settings'),
             ContextHeader(
               leading: const HeaderTile(Icons.tune_rounded),
-              title: 'Ajustes',
-              subtitle: const Text('Aparência e sobre'),
+              title: l10n.settings,
+              subtitle: Text(l10n.settingsSubtitle),
               action: IconButton(
-                tooltip: 'Fechar ajustes',
+                tooltip: l10n.settingsClose,
                 onPressed: _closeSettings,
                 icon: const Icon(Icons.close_rounded),
               ),
@@ -688,7 +683,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     }
 
     final searchButton = IconButton(
-      tooltip: 'Buscar outro ponto',
+      tooltip: l10n.searchAnotherStop,
       onPressed: _openSearch,
       icon: const Icon(Icons.search_rounded),
     );
@@ -696,7 +691,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       ValueKey('header-stop-$stopId'),
       ContextHeader(
         leading: const HeaderTile(Icons.location_on_outlined),
-        title: 'Ponto $stopId',
+        title: '${l10n.stopWord} $stopId',
         subtitle: state is StopArrivalsLoaded
             ? PeriodicRebuild(
                 builder: (context) {
@@ -706,12 +701,12 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: lines == 1 ? '1 linha' : '$lines linhas',
+                          text: l10n.linesCount(lines),
                           style: TextStyle(color: context.tokens.accentText),
                         ),
                         TextSpan(
                           text:
-                              ' · ${state.refreshing ? 'atualizando…' : freshness.text.toLowerCase()}',
+                              ' · ${state.refreshing ? l10n.refreshing : freshness.text.toLowerCase()}',
                           style: freshness.tone == FreshnessTone.stale
                               ? TextStyle(color: context.tokens.unconfirmed)
                               : null,
@@ -721,7 +716,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   );
                 },
               )
-            : const Text('consultando chegadas…'),
+            : Text(l10n.queryingArrivals),
         tallAction: true,
         action: Row(
           mainAxisSize: MainAxisSize.min,
@@ -744,10 +739,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     if (state is! StopArrivalsLoaded || tracking == null) {
       return (
         const ValueKey('header-tracking-empty'),
-        const ContextHeader(
-          leading: HeaderTile(Icons.directions_bus_outlined, filled: false),
-          title: 'Meu ônibus',
-          subtitle: Text('Acompanhe um veículo em tempo real'),
+        ContextHeader(
+          leading: const HeaderTile(
+            Icons.directions_bus_outlined,
+            filled: false,
+          ),
+          title: l10n.dockTracking,
+          subtitle: Text(l10n.trackingHeaderSubtitle),
         ),
       );
     }
@@ -764,11 +762,17 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         leading: routeId != null
             ? RoutePlate(routeId, filled: true)
             : const HeaderTile(Icons.directions_bus_rounded),
-        title: 'Ônibus ${tracking.vehicleNumber}',
-        semanticsLabel:
-            'Meu ônibus: ônibus ${tracking.vehicleNumber}'
-            '${routeId != null ? ', linha $routeId' : ''}'
-            ', ${headingToLabel(destination)}',
+        title: l10n.busNumber(tracking.vehicleNumber),
+        semanticsLabel: routeId != null
+            ? l10n.trackingHeaderSemanticsRoute(
+                tracking.vehicleNumber,
+                routeId,
+                headingToLabel(destination),
+              )
+            : l10n.trackingHeaderSemantics(
+                tracking.vehicleNumber,
+                headingToLabel(destination),
+              ),
         subtitle: Text(
           headingToLabel(destination),
           style: TextStyle(
@@ -776,7 +780,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           ),
         ),
         action: IconButton(
-          tooltip: 'Parar de acompanhar',
+          tooltip: l10n.stopTracking,
           onPressed: _stopTracking,
           icon: const Icon(Icons.close_rounded),
         ),
@@ -871,21 +875,16 @@ class _TrackingEmpty extends StatelessWidget {
       children: [
         MessageView(
           icon: Icons.directions_bus_outlined,
-          title: 'Nenhum ônibus acompanhado',
-          body: 'Escolha um ônibus em tempo real nas chegadas de um ponto.',
+          title: l10n.noTrackedBusTitle,
+          body: l10n.noTrackedBusBody,
           action: FilledButton.icon(
             onPressed: onOpenStop,
             icon: const Icon(Icons.location_on_outlined, size: 20),
-            label: Text(hasStop ? 'Ver chegadas' : 'Buscar um ponto'),
+            label: Text(hasStop ? l10n.viewArrivals : l10n.searchStopAction),
           ),
         ),
         const SizedBox(height: Space.sm),
-        const FootNote(
-          child: Text(
-            'Só ônibus com GPS informado pela RMTC podem ser acompanhados. '
-            'Horários programados não têm posição.',
-          ),
-        ),
+        FootNote(child: Text(l10n.noTrackedBusNote)),
       ],
     );
   }
@@ -1031,7 +1030,7 @@ class _SheetHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Painel. Arraste para expandir ou recolher',
+      label: l10n.panelHandleLabel,
       child: Center(
         child: Container(
           margin: const EdgeInsets.only(top: 10, bottom: Space.sm),

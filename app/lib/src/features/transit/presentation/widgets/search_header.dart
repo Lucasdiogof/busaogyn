@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../formatters/search_feedback.dart';
@@ -113,7 +114,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                 decoration: InputDecoration(
                   // Área de toque com a altura da barra, não só a da linha.
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                  hintText: 'Código do ponto, ex.: 30402',
+                  hintText: l10n.searchHint,
                   hintStyle: TextStyle(
                     fontFamily: BusaoFonts.sans,
                     fontSize: 15,
@@ -126,13 +127,13 @@ class _SearchHeaderState extends State<SearchHeader> {
             ),
             if (hasText)
               IconButton(
-                tooltip: 'Limpar código',
+                tooltip: l10n.clearCode,
                 onPressed: widget.controller.clear,
                 icon: const Icon(Icons.close_rounded, size: 20),
               )
             else if (widget.onCancel != null)
               IconButton(
-                tooltip: 'Voltar ao ponto',
+                tooltip: l10n.backToStop,
                 onPressed: widget.onCancel,
                 icon: const Icon(Icons.close_rounded, size: 20),
               ),
@@ -141,7 +142,7 @@ class _SearchHeaderState extends State<SearchHeader> {
               child: SizedBox.square(
                 dimension: 44,
                 child: Tooltip(
-                  message: 'Buscar',
+                  message: l10n.search,
                   excludeFromSemantics: true,
                   child: FilledButton(
                     onPressed: widget.onSearch,
@@ -160,10 +161,10 @@ class _SearchHeaderState extends State<SearchHeader> {
                               color: tokens.onAccent,
                             ),
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.arrow_forward_rounded,
                             size: 20,
-                            semanticLabel: 'Buscar',
+                            semanticLabel: l10n.search,
                           ),
                   ),
                 ),
@@ -250,7 +251,7 @@ class SearchErrorNote extends StatelessWidget {
                     minimumSize: const Size(44, 44),
                     padding: const EdgeInsets.symmetric(horizontal: Space.xs),
                   ),
-                  child: const Text('Tentar de novo'),
+                  child: Text(l10n.retry),
                 ),
             ],
           ),

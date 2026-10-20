@@ -1,3 +1,4 @@
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 
@@ -22,10 +23,10 @@ class SearchFeedback {
   /// Código buscado, quando era um número válido.
   final String? stopId;
 
-  static const invalidCode = SearchFeedback(
+  static SearchFeedback get invalidCode => SearchFeedback(
     SearchFeedbackKind.invalidCode,
-    'Digite o código do ponto',
-    'Use só os números da placa do ponto.',
+    l10n.searchInvalidTitle,
+    l10n.searchInvalidBody,
   );
 
   /// Classifica o erro da consulta de chegadas de [stopId].
@@ -46,26 +47,26 @@ class SearchFeedback {
     return switch (kind) {
       SearchFeedbackKind.notFound => SearchFeedback(
         kind,
-        'Ponto não encontrado',
-        'Confira o código e tente novamente.',
+        l10n.searchNotFoundTitle,
+        l10n.searchNotFoundBody,
         stopId: stopId,
       ),
       SearchFeedbackKind.timeout => SearchFeedback(
         kind,
-        'A consulta demorou demais',
-        'Tente novamente em instantes.',
+        l10n.searchTimeoutTitle,
+        l10n.searchTimeoutBody,
         stopId: stopId,
       ),
       SearchFeedbackKind.offline => SearchFeedback(
         kind,
-        'Sem conexão',
-        'Verifique sua internet e tente de novo.',
+        l10n.searchOfflineTitle,
+        l10n.searchOfflineBody,
         stopId: stopId,
       ),
       _ => SearchFeedback(
         SearchFeedbackKind.unavailable,
-        'Serviço temporariamente indisponível',
-        'Tente novamente em alguns minutos.',
+        l10n.searchUnavailableTitle,
+        l10n.searchUnavailableBody,
         stopId: stopId,
       ),
     };

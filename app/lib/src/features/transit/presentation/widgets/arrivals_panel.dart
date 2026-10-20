@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../cubit/stop_arrivals_cubit.dart';
@@ -66,12 +67,12 @@ class ArrivalsPanel extends StatelessWidget {
       ],
       SectionLabel(
         icon: Icons.schedule_rounded,
-        label: 'Próximos ônibus',
+        label: l10n.nextBuses,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              arrivals.length == 1 ? '1 linha' : '${arrivals.length} linhas',
+              l10n.linesCount(arrivals.length),
               style: monoStyle(
                 TextStyle(fontSize: 12, color: tokens.mutedText),
               ),
@@ -81,7 +82,7 @@ class ArrivalsPanel extends StatelessWidget {
               dimension: 44,
               child: IconButton(
                 onPressed: state.refreshing ? null : onRefresh,
-                tooltip: 'Atualizar chegadas',
+                tooltip: l10n.refreshArrivals,
                 padding: EdgeInsets.zero,
                 iconSize: 20,
                 icon: state.refreshing
@@ -99,31 +100,26 @@ class ArrivalsPanel extends StatelessWidget {
         const SizedBox(height: Space.xs),
         _InlineNotice(
           icon: Icons.sync_problem_rounded,
-          text:
-              'Não foi possível atualizar agora. Mostrando a consulta '
-              '${_receivedLabel(state.arrivalsReceivedAt)}, que pode já '
-              'não valer. ${state.refreshError}',
+          text: _refreshFailed(state.arrivalsReceivedAt, state.refreshError!),
         ),
       ],
       if (state.arrivals.stale) ...[
         const SizedBox(height: Space.xs),
-        const _InlineNotice(
+        _InlineNotice(
           icon: Icons.warning_amber_rounded,
-          text: 'A fonte está instável. Mostrando o último dado válido.',
+          text: l10n.sourceUnstable,
         ),
       ],
       const SizedBox(height: Space.xs),
       if (arrivals.isEmpty)
         MessageView(
           icon: Icons.departure_board_rounded,
-          title: 'Nenhuma chegada prevista agora',
-          body:
-              'A fonte não informou ônibus para este ponto neste momento. '
-              'Tente atualizar em alguns minutos.',
+          title: l10n.noArrivalsNow,
+          body: l10n.noArrivalsBody,
           action: OutlinedButton.icon(
             onPressed: onRefresh,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Atualizar'),
+            label: Text(l10n.refresh),
           ),
         )
       else
@@ -137,22 +133,20 @@ class ArrivalsPanel extends StatelessWidget {
           const SizedBox(height: Space.xs),
         ],
       const SizedBox(height: Space.xxs),
-      const FootNote(
+      FootNote(
         child: Text.rich(
           TextSpan(
             children: [
               TextSpan(
-                text: 'Tempo real',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                text: l10n.qualityRealtime,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+              TextSpan(text: '${l10n.legendRealtime} '),
               TextSpan(
-                text: ': posição informada pela RMTC, pode ser acompanhada. ',
+                text: l10n.qualityScheduled,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              TextSpan(
-                text: 'Programado',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              TextSpan(text: ': horário de tabela, sem GPS.'),
+              TextSpan(text: l10n.legendScheduled),
             ],
           ),
         ),
@@ -174,9 +168,7 @@ class _TrackingBanner extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label:
-          'Ônibus ${tracking.vehicleNumber} sendo acompanhado. '
-          'Ver em Meu ônibus',
+      label: l10n.trackingBannerSemantics(tracking.vehicleNumber),
       excludeSemantics: true,
       child: Material(
         color: tokens.accentSoft,
@@ -201,7 +193,7 @@ class _TrackingBanner extends StatelessWidget {
                   child: Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(text: 'Meu ônibus · '),
+                        TextSpan(text: '${l10n.dockTracking} · '),
                         TextSpan(
                           text: tracking.vehicleNumber,
                           style: monoStyle(
@@ -220,7 +212,7 @@ class _TrackingBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Ver',
+                  l10n.view,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: tokens.strongText,
@@ -271,13 +263,13 @@ class _InlineNotice extends StatelessWidget {
   }
 }
 
-/// "das 17:57" quando há hora da última consulta bem-sucedida; senão,
-/// "anterior".
-String _receivedLabel(DateTime? at) {
-  if (at == null) return 'anterior';
+/// Aviso de atualização que falhou, com a hora da última consulta bem-sucedida
+/// quando houver.
+String _refreshFailed(DateTime? at, String error) {
+  if (at == null) return l10n.refreshFailedPrevious(error);
   final h = at.hour.toString().padLeft(2, '0');
   final m = at.minute.toString().padLeft(2, '0');
-  return 'das $h:$m';
+  return l10n.refreshFailedAt('$h:$m', error);
 }
 
 /// Busca que falhou por conexão ou pela fonte: nada de previsão antiga como
@@ -298,24 +290,18 @@ class _ConnectionProblem extends StatelessWidget {
       children: [
         MessageView(
           icon: offline ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
-          title: offline
-              ? 'Chegadas precisam de internet'
-              : 'Não conseguimos consultar as chegadas',
+          title: offline ? l10n.connOfflineTitle : l10n.connFailedTitle,
           body: offline
-              ? 'O mapa segue disponível, mas as próximas chegadas só '
-                    'aparecem com conexão. Nenhuma previsão antiga é mostrada '
-                    'como se fosse atual.'
-              : 'O código ${code ?? 'digitado'} não foi o problema: a '
-                    'consulta não foi concluída. Nenhuma previsão antiga é '
-                    'mostrada como se fosse atual.',
+              ? l10n.connOfflineBody
+              : (code == null
+                    ? l10n.connFailedBodyNoCode
+                    : l10n.connFailedBody(code)),
           action: onRetry == null
               ? null
               : OutlinedButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: Text(
-                    code == null ? 'Tentar de novo' : 'Tentar o ponto $code',
-                  ),
+                  label: Text(code == null ? l10n.retry : l10n.retryStop(code)),
                 ),
         ),
       ],
@@ -336,13 +322,11 @@ class _Intro extends StatelessWidget {
       children: [
         MessageView(
           icon: Icons.location_on_outlined,
-          title: 'Digite o código do ponto',
-          body:
-              'Você vê as próximas chegadas de cada linha e acompanha o '
-              'ônibus no mapa.',
+          title: l10n.introTitle,
+          body: l10n.introBody,
           action: Semantics(
             button: true,
-            label: 'Consultar o ponto de exemplo $exampleStopId',
+            label: l10n.exampleStopSemantics(exampleStopId),
             excludeSemantics: true,
             child: ActionChip(
               onPressed: () => onExample(exampleStopId),
@@ -352,7 +336,7 @@ class _Intro extends StatelessWidget {
                 color: tokens.accentText,
               ),
               label: Text(
-                'Exemplo: $exampleStopId',
+                l10n.exampleStop(exampleStopId),
                 style: monoStyle(
                   TextStyle(
                     fontWeight: FontWeight.w700,
@@ -367,12 +351,7 @@ class _Intro extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Space.sm),
-        const FootNote(
-          child: Text(
-            'O código fica na placa do ponto. Só ônibus com GPS informado '
-            'pela fonte podem ser acompanhados.',
-          ),
-        ),
+        FootNote(child: Text(l10n.introNote)),
       ],
     );
   }
@@ -415,15 +394,15 @@ class _LoadingView extends StatelessWidget {
 
     return Semantics(
       liveRegion: true,
-      label: 'Consultando chegadas',
+      label: l10n.queryingArrivalsSemantics,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SectionLabel(
             icon: Icons.schedule_rounded,
             label: stopId == null
-                ? 'Consultando…'
-                : 'Consultando o ponto $stopId',
+                ? l10n.favoriteStatusLoading
+                : l10n.queryingStop(stopId!),
           ),
           const SizedBox(height: Space.sm),
           row(),

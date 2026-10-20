@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../core/platform/map_attribution_offset.dart';
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
@@ -732,17 +733,12 @@ class _TransitMapState extends State<TransitMap>
     final hasVehicle = _vehicleCenter != null;
     final label = switch ((widget.vehicleNumber, hasVehicle)) {
       (final number?, true) =>
-        'Mapa com a posição do ônibus $number informada pela fonte'
-            '${widget.stale ? ', possivelmente desatualizada' : ''}',
-      (final number?, false) =>
-        'Mapa. Posição do ônibus $number ainda não disponível',
-      _ => 'Mapa de Goiânia. Nenhum ônibus acompanhado',
+        widget.stale ? l10n.mapPositionStale(number) : l10n.mapPosition(number),
+      (final number?, false) => l10n.mapPositionPending(number),
+      _ => l10n.mapNoBus,
     };
     final others = widget.secondaryVehicles.length;
-    final fullLabel = others == 0
-        ? label
-        : '$label. ${others == 1 ? 'Mais 1 ônibus' : 'Mais $others ônibus'} '
-              'em tempo real a caminho do ponto';
+    final fullLabel = others == 0 ? label : '$label. ${l10n.mapOthers(others)}';
 
     return Stack(
       fit: StackFit.expand,
@@ -785,13 +781,11 @@ class _RecenterButton extends StatelessWidget {
     final foreground = following ? tokens.accentText : tokens.onAccent;
 
     return Tooltip(
-      message: 'Centralizar ônibus',
+      message: l10n.centerBus,
       excludeFromSemantics: true,
       child: Semantics(
         button: true,
-        label: following
-            ? 'Centralizar ônibus. Seguindo o ônibus'
-            : 'Centralizar ônibus. Seguimento pausado',
+        label: following ? l10n.centerBusFollowing : l10n.centerBusPaused,
         excludeSemantics: true,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
@@ -835,7 +829,7 @@ class _RecenterButton extends StatelessWidget {
                         if (!following) ...[
                           const SizedBox(width: Space.xs),
                           Text(
-                            'Centralizar',
+                            l10n.center,
                             style: TextStyle(
                               color: foreground,
                               fontWeight: FontWeight.w600,

@@ -30,6 +30,7 @@ BusãoGyn shows the next arrivals of every line at a stop and follows, on a full
 - **My bus:** follows a bus with GPS. The position is refreshed every 15 s, the camera follows the bus, and direction and trail are computed from the observed positions. Old positions or an unstable source are shown as outdated, never as "live".
 - **Map:** other real-time buses for the same stop also appear on the map and disappear when their position gets old.
 - **Favorites and recents:** favorite stops and lines and recent stops, stored only on the device.
+- **Languages:** Portuguese, English and Spanish, following the device language (Portuguese when the device language is not supported). Strings live in the ARB files in `app/lib/l10n/` (`app_pt.arb` is the template); `flutter gen-l10n` generates the committed classes, and `app/test/core/l10n_test.dart` checks that the three languages share the same keys and placeholders.
 - **Settings:** light, dark or system theme (the map follows it), data sources, map, fonts and licenses.
 
 ## Privacy

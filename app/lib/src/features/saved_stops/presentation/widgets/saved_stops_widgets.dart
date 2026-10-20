@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../../transit/domain/entities/arrival.dart';
@@ -33,8 +34,8 @@ class FavoriteToggleButton extends StatelessWidget {
       selector: (state) => state.isFavorite(code),
       builder: (context, favorite) {
         final tooltip = favorite
-            ? 'Remover o ponto $code dos favoritos'
-            : 'Favoritar o ponto $code';
+            ? l10n.favoriteStopRemove(code)
+            : l10n.favoriteStopAdd(code);
         // Alvo de toque de 48 dp (o tema padrão dos botões de ícone é 44).
         return SizedBox.square(
           dimension: 48,
@@ -75,11 +76,8 @@ class LineFavoriteButton extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Limite de $defaultFavoriteLinesLimit linhas favoritas. Remova '
-            'uma para adicionar outra.',
-          ),
+        SnackBar(
+          content: Text(l10n.favoriteLinesLimit(defaultFavoriteLinesLimit)),
         ),
       );
   }
@@ -91,8 +89,8 @@ class LineFavoriteButton extends StatelessWidget {
       selector: (state) => state.isFavoriteLine(stopCode, routeId),
       builder: (context, favorite) {
         final label = favorite
-            ? 'Remover a linha $routeId do ponto $stopCode dos favoritos'
-            : 'Favoritar a linha $routeId neste ponto';
+            ? l10n.favoriteLineRemove(routeId, stopCode)
+            : l10n.favoriteLineAdd(routeId);
         return Semantics(
           button: true,
           selected: favorite,
@@ -120,7 +118,7 @@ class LineFavoriteButton extends StatelessWidget {
                     const SizedBox(width: Space.xs),
                     Flexible(
                       child: Text(
-                        favorite ? 'Linha favorita' : 'Favoritar esta linha',
+                        favorite ? l10n.favoriteLineOn : l10n.favoriteLineOff,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -189,21 +187,11 @@ class _StorageNotices extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final notices = <(IconData, String)>[
-      if (!state.persistent)
-        (
-          Icons.save_outlined,
-          'Este aparelho não guardou os pontos. Eles valem só até fechar o app.',
-        ),
+      if (!state.persistent) (Icons.save_outlined, l10n.storageNotPersistent),
       if (state.readFailed)
-        (
-          Icons.sync_problem_rounded,
-          'Não foi possível ler os pontos salvos. Começamos com a lista vazia.',
-        ),
+        (Icons.sync_problem_rounded, l10n.storageReadFailed),
       if (state.writeFailed)
-        (
-          Icons.sync_problem_rounded,
-          'Não foi possível salvar agora. A lista vale até fechar o app.',
-        ),
+        (Icons.sync_problem_rounded, l10n.storageWriteFailed),
     ];
     if (notices.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -257,9 +245,9 @@ class _StopTile extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: true,
-                  label:
-                      'Consultar as chegadas do ponto ${stop.code}'
-                      '${named ? ', ${stop.name}' : ''}',
+                  label: named
+                      ? l10n.stopOpenArrivalsNamed(stop.code, stop.name!)
+                      : l10n.stopOpenArrivals(stop.code),
                   excludeSemantics: true,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(Radii.card),
@@ -293,7 +281,7 @@ class _StopTile extends StatelessWidget {
                                     TextSpan(
                                       children: [
                                         TextSpan(
-                                          text: 'Ponto ',
+                                          text: '${l10n.stopWord} ',
                                           style: TextStyle(
                                             fontWeight: named
                                                 ? FontWeight.w400
@@ -375,9 +363,7 @@ class _LineTile extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: true,
-                  label:
-                      'Consultar as chegadas da linha ${line.routeId} no ponto '
-                      '${line.stopCode}',
+                  label: l10n.lineOpenArrivals(line.routeId, line.stopCode),
                   excludeSemantics: true,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(Radii.card),
@@ -400,7 +386,7 @@ class _LineTile extends StatelessWidget {
                                 TextSpan(
                                   children: [
                                     TextSpan(
-                                      text: 'no ponto ',
+                                      text: '${l10n.atStopWord} ',
                                       style: TextStyle(color: tokens.mutedText),
                                     ),
                                     TextSpan(
@@ -426,9 +412,7 @@ class _LineTile extends StatelessWidget {
               SizedBox.square(
                 dimension: 48,
                 child: IconButton(
-                  tooltip:
-                      'Remover a linha ${line.routeId} do ponto ${line.stopCode} '
-                      'dos favoritos',
+                  tooltip: l10n.favoriteLineRemove(line.routeId, line.stopCode),
                   onPressed: onRemove,
                   icon: const Icon(Icons.close_rounded, size: 20),
                 ),
@@ -441,10 +425,6 @@ class _LineTile extends StatelessWidget {
     );
   }
 }
-
-const _offlineHint =
-    'Toque num ponto para consultar as chegadas. A consulta precisa de '
-    'internet e nenhuma previsão fica salva no aparelho.';
 
 /// Aba Favoritos: os pontos favoritos, ou um estado vazio claro. Funciona sem
 /// internet; só a consulta de chegadas precisa de conexão.
@@ -486,14 +466,12 @@ class FavoritesPanel extends StatelessWidget {
           children.add(
             MessageView(
               icon: Icons.star_outline_rounded,
-              title: 'Seus pontos favoritos aparecerão aqui.',
-              body:
-                  'Consulte um ponto e toque na estrela do cabeçalho para '
-                  'favoritá-lo.',
+              title: l10n.favoritesEmptyTitle,
+              body: l10n.favoritesEmptyBody,
               action: FilledButton.icon(
                 onPressed: onSearchStop,
                 icon: const Icon(Icons.location_on_outlined, size: 20),
-                label: const Text('Buscar um ponto'),
+                label: Text(l10n.searchStopAction),
               ),
             ),
           );
@@ -510,7 +488,7 @@ class FavoritesPanel extends StatelessWidget {
               ..add(
                 SectionLabel(
                   icon: Icons.star_rounded,
-                  label: 'Pontos favoritos',
+                  label: l10n.favoriteStopsSection,
                   trailing: count(state.favorites.length),
                 ),
               )
@@ -521,7 +499,7 @@ class FavoritesPanel extends StatelessWidget {
                   _StopTile(
                     stop: stop,
                     icon: Icons.star_rounded,
-                    removeTooltip: 'Remover o ponto ${stop.code} dos favoritos',
+                    removeTooltip: l10n.favoriteStopRemove(stop.code),
                     onOpen: () => onOpen(stop.code),
                     onRemove: () => context
                         .read<SavedStopsCubit>()
@@ -540,7 +518,7 @@ class FavoritesPanel extends StatelessWidget {
               ..add(
                 SectionLabel(
                   icon: Icons.directions_bus_outlined,
-                  label: 'Linhas favoritas',
+                  label: l10n.favoriteLinesSection,
                   trailing: count(state.lines.length),
                 ),
               )
@@ -563,7 +541,7 @@ class FavoritesPanel extends StatelessWidget {
                 ..add(const SizedBox(height: Space.xs));
             }
           }
-          children.add(const FootNote(child: Text(_offlineHint)));
+          children.add(FootNote(child: Text(l10n.offlineHint)));
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -599,19 +577,16 @@ class RecentStopsSection extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Limpar recentes?'),
-        content: const Text(
-          'O histórico de pontos consultados neste aparelho será apagado. '
-          'Seus favoritos não mudam.',
-        ),
+        title: Text(l10n.clearRecentsTitle),
+        content: Text(l10n.clearRecentsBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Limpar'),
+            child: Text(l10n.clear),
           ),
         ],
       ),
@@ -637,12 +612,12 @@ class RecentStopsSection extends StatelessWidget {
             const SizedBox(height: Space.md),
             SectionLabel(
               icon: Icons.history_rounded,
-              label: 'Recentes',
+              label: l10n.recentsSection,
               trailing: recents.isEmpty
                   ? null
                   : TextButton(
                       onPressed: () => _confirmClear(context),
-                      child: const Text('Limpar'),
+                      child: Text(l10n.clear),
                     ),
             ),
             const SizedBox(height: Space.xs),
@@ -660,7 +635,7 @@ class RecentStopsSection extends StatelessWidget {
                   vertical: Space.xs,
                 ),
                 child: Text(
-                  'Os pontos que você consultar aparecerão aqui.',
+                  l10n.recentsEmpty,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
@@ -671,14 +646,14 @@ class RecentStopsSection extends StatelessWidget {
                 _StopTile(
                   stop: stop,
                   icon: Icons.history_rounded,
-                  removeTooltip: 'Remover o ponto ${stop.code} dos recentes',
+                  removeTooltip: l10n.recentStopRemove(stop.code),
                   onOpen: () => onOpen(stop.code),
                   onRemove: () =>
                       context.read<SavedStopsCubit>().removeRecent(stop.code),
                 ),
                 const SizedBox(height: Space.xs),
               ],
-              const FootNote(child: Text(_offlineHint)),
+              FootNote(child: Text(l10n.offlineHint)),
             ],
           ],
         );
@@ -695,7 +670,7 @@ class _LoadingRows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Carregando pontos salvos',
+      label: l10n.loadingSavedStops,
       child: Column(
         children: [
           for (var i = 0; i < count; i++) ...[
@@ -734,13 +709,16 @@ class FavoriteArrivalsSummary extends StatelessWidget {
           context,
         ).textTheme.bodySmall?.copyWith(color: context.tokens.mutedText);
         final Widget content = switch (entry.status) {
-          FavoriteStopStatus.loading => Text('Consultando…', style: style),
+          FavoriteStopStatus.loading => Text(
+            l10n.favoriteStatusLoading,
+            style: style,
+          ),
           FavoriteStopStatus.offline => Text(
-            'Sem conexão. Toque em Atualizar quando a internet voltar.',
+            l10n.favoriteStatusOffline,
             style: style,
           ),
           FavoriteStopStatus.failed => Text(
-            'Não foi possível consultar agora.',
+            l10n.favoriteStatusFailed,
             style: style,
           ),
           FavoriteStopStatus.ready => _ready(context, entry, style),
@@ -767,9 +745,11 @@ class FavoriteArrivalsSummary extends StatelessWidget {
         ? null
         : '${time.hour.toString().padLeft(2, '0')}:'
               '${time.minute.toString().padLeft(2, '0')}';
-    final at = hour == null ? '' : ' · consulta das $hour';
     if (groups.isEmpty) {
-      return Text('Nenhuma chegada prevista agora$at', style: style);
+      return Text(
+        hour == null ? l10n.noArrivalsNow : l10n.noArrivalsNowAt(hour),
+        style: style,
+      );
     }
     const shown = 4;
     return Column(
@@ -787,8 +767,8 @@ class FavoriteArrivalsSummary extends StatelessWidget {
         ),
         Text(
           entry.stale
-              ? 'Último dado válido da fonte$at'
-              : (hour == null ? 'Consulta feita agora' : 'Consulta das $hour'),
+              ? (hour == null ? l10n.lastValidData : l10n.lastValidDataAt(hour))
+              : (hour == null ? l10n.queriedNow : l10n.queriedAtHour(hour)),
           style: style,
         ),
       ],
@@ -808,14 +788,16 @@ class _ArrivalChip extends StatelessWidget {
     final minutes = group.next.minutes;
     final value = switch (minutes) {
       null => '—',
-      <= 0 => '< 1 min',
-      final m => '$m min',
+      <= 0 => l10n.minutesLessThanOne,
+      final m => l10n.minutesShort(m),
     };
     return Semantics(
       container: true,
-      label:
-          'Linha ${group.routeId}, ${minutesSemantics(minutes)}, '
-          '${qualityShortLabel(quality)}',
+      label: l10n.lineSemantics(
+        group.routeId,
+        minutesSemantics(minutes),
+        qualityShortLabel(quality),
+      ),
       excludeSemantics: true,
       child: Text.rich(
         TextSpan(
@@ -911,7 +893,7 @@ class FavoriteArrivalsRefresh extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh_rounded, size: 20),
-            label: const Text('Atualizar chegadas'),
+            label: Text(l10n.refreshArrivals),
           ),
         );
       },
@@ -968,13 +950,12 @@ class SeenLinesPanel extends StatelessWidget {
             if (seen.isEmpty) {
               return MessageView(
                 icon: Icons.format_list_bulleted_rounded,
-                title: 'As linhas estarão disponíveis em breve.',
-                body:
-                    'Por enquanto, consulte as chegadas pelo código do ponto.',
+                title: l10n.linesSoonTitle,
+                body: l10n.linesSoonBody,
                 action: FilledButton.icon(
                   onPressed: onSearchStop,
                   icon: const Icon(Icons.location_on_outlined, size: 20),
-                  label: const Text('Buscar um ponto'),
+                  label: Text(l10n.searchStopAction),
                 ),
               );
             }
@@ -985,7 +966,7 @@ class SeenLinesPanel extends StatelessWidget {
               children: [
                 SectionLabel(
                   icon: Icons.directions_bus_outlined,
-                  label: 'Linhas vistas',
+                  label: l10n.seenLinesSection,
                   trailing: Text(
                     '${routes.length}',
                     style: monoStyle(
@@ -1002,13 +983,7 @@ class SeenLinesPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: Space.xs),
                 ],
-                const FootNote(
-                  child: Text(
-                    'Linhas vistas nas suas consultas desta sessão e nos '
-                    'seus favoritos. A lista completa de linhas depende de '
-                    'autorização da RMTC.',
-                  ),
-                ),
+                FootNote(child: Text(l10n.seenLinesNote)),
               ],
             );
           },
@@ -1033,14 +1008,13 @@ class _SeenLineTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final label = stops.length == 1
-        ? 'no ponto ${stops.first}'
-        : 'nos pontos ${stops.take(3).join(', ')}'
-              '${stops.length > 3 ? ' e mais ${stops.length - 3}' : ''}';
+        ? l10n.seenAtStop(stops.first)
+        : (stops.length > 3
+              ? l10n.seenAtStopsMore(stops.take(3).join(', '), stops.length - 3)
+              : l10n.seenAtStops(stops.take(3).join(', ')));
     return Semantics(
       button: true,
-      label:
-          'Linha $routeId, $label. Consultar as chegadas do ponto '
-          '${stops.first}',
+      label: l10n.seenLineSemantics(routeId, label, stops.first),
       excludeSemantics: true,
       child: Container(
         decoration: BoxDecoration(

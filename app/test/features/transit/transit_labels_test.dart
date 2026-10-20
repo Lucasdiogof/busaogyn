@@ -229,7 +229,7 @@ void main() {
       expect(liveStatus(const StopArrivalsLoading(stopId: '1'), now), isNull);
       expect(
         liveStatus(
-          const StopArrivalsInitial(searchError: SearchFeedback.invalidCode),
+          StopArrivalsInitial(searchError: SearchFeedback.invalidCode),
           now,
         ),
         isNull,

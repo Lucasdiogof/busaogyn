@@ -1,0 +1,919 @@
+{
+  "@@locale": "pt",
+  "dockLines": "Linhas",
+  "@dockLines": {},
+  "dockStops": "Pontos",
+  "@dockStops": {},
+  "dockFavorites": "Favoritos",
+  "@dockFavorites": {},
+  "dockTracking": "Meu ônibus",
+  "@dockTracking": {},
+  "dockTrackedBadge": "{label}, ônibus acompanhado",
+  "@dockTrackedBadge": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "settings": "Ajustes",
+  "@settings": {},
+  "settingsSubtitle": "Aparência e sobre",
+  "@settingsSubtitle": {},
+  "settingsClose": "Fechar ajustes",
+  "@settingsClose": {},
+  "comingSoon": "Em breve",
+  "@comingSoon": {},
+  "loading": "Carregando…",
+  "@loading": {},
+  "refresh": "Atualizar",
+  "@refresh": {},
+  "refreshing": "atualizando…",
+  "@refreshing": {},
+  "refreshArrivals": "Atualizar chegadas",
+  "@refreshArrivals": {},
+  "retry": "Tentar de novo",
+  "@retry": {},
+  "retryStop": "Tentar o ponto {code}",
+  "@retryStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel": "Cancelar",
+  "@cancel": {},
+  "clear": "Limpar",
+  "@clear": {},
+  "close": "Fechar",
+  "@close": {},
+  "view": "Ver",
+  "@view": {},
+  "viewArrivals": "Ver chegadas",
+  "@viewArrivals": {},
+  "search": "Buscar",
+  "@search": {},
+  "searchStopAction": "Buscar um ponto",
+  "@searchStopAction": {},
+  "searchAnotherStop": "Buscar outro ponto",
+  "@searchAnotherStop": {},
+  "searchHint": "Código do ponto, ex.: 30402",
+  "@searchHint": {},
+  "clearCode": "Limpar código",
+  "@clearCode": {},
+  "backToStop": "Voltar ao ponto",
+  "@backToStop": {},
+  "stopWord": "Ponto",
+  "@stopWord": {},
+  "atStopWord": "no ponto",
+  "@atStopWord": {},
+  "now": "agora",
+  "@now": {},
+  "ago": "há {age}",
+  "@ago": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "panelHandleLabel": "Painel. Arraste para expandir ou recolher",
+  "@panelHandleLabel": {},
+  "routeNumber": "Linha {route}",
+  "@routeNumber": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      }
+    }
+  },
+  "routeNotProvided": "Linha não informada",
+  "@routeNotProvided": {},
+  "busNumber": "Ônibus {number}",
+  "@busNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "linesCount": "{count, plural, =1{1 linha} other{{count} linhas}}",
+  "@linesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "savedStopsNone": "Nenhum ponto salvo",
+  "@savedStopsNone": {},
+  "savedStopsCount": "{count, plural, =1{1 ponto salvo} other{{count} pontos salvos}}",
+  "@savedStopsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queryingArrivals": "consultando chegadas…",
+  "@queryingArrivals": {},
+  "queryingArrivalsSemantics": "Consultando chegadas",
+  "@queryingArrivalsSemantics": {},
+  "queryingStop": "Consultando o ponto {stop}",
+  "@queryingStop": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "qualityRealtime": "Tempo real",
+  "@qualityRealtime": {},
+  "qualityScheduled": "Programado",
+  "@qualityScheduled": {},
+  "qualityUnknownLong": "Informação não confirmada",
+  "@qualityUnknownLong": {},
+  "qualityUnknownShort": "Não confirmado",
+  "@qualityUnknownShort": {},
+  "minutesUnknown": "tempo não informado",
+  "@minutesUnknown": {},
+  "minutesLessThanOne": "< 1 min",
+  "@minutesLessThanOne": {},
+  "minutesLessThanOneLong": "menos de 1 minuto",
+  "@minutesLessThanOneLong": {},
+  "minutesShort": "{minutes} min",
+  "@minutesShort": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "minutesLong": "{count, plural, =1{1 minuto} other{{count} minutos}}",
+  "@minutesLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "punctualityOnTime": "No horário",
+  "@punctualityOnTime": {},
+  "punctualityDelayed": "Atrasado",
+  "@punctualityDelayed": {},
+  "punctualityEarly": "Adiantado",
+  "@punctualityEarly": {},
+  "punctualityUnknown": "Pontualidade não informada",
+  "@punctualityUnknown": {},
+  "accessible": "Acessível",
+  "@accessible": {},
+  "accessibilityNotIndicated": "Acessibilidade não indicada",
+  "@accessibilityNotIndicated": {},
+  "accessibilityUnknown": "Acessibilidade não informada",
+  "@accessibilityUnknown": {},
+  "destinationUnknown": "Destino não informado",
+  "@destinationUnknown": {},
+  "headingTo": "Indo para {destination}",
+  "@headingTo": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "positionSearching": "Buscando posição do ônibus",
+  "@positionSearching": {},
+  "positionConnection": "Conexão instável",
+  "@positionConnection": {},
+  "positionUnavailable": "Posição temporariamente indisponível",
+  "@positionUnavailable": {},
+  "positionOutdated": "Posição desatualizada · há {age}",
+  "@positionOutdated": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "positionLive": "Ao vivo · há {age}",
+  "@positionLive": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "positionLast": "Última posição há {age}",
+  "@positionLast": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "positionAgeShort": "posição há {age}",
+  "@positionAgeShort": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "positionMaybeOutdated": "Posição possivelmente desatualizada",
+  "@positionMaybeOutdated": {},
+  "freshnessStale": "Dados temporariamente desatualizados · há {age}",
+  "@freshnessStale": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "freshnessNow": "Atualizado agora",
+  "@freshnessNow": {},
+  "freshnessAge": "Atualizado há {age}",
+  "@freshnessAge": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "liveSearchingLabel": "Buscando",
+  "@liveSearchingLabel": {},
+  "liveSearchingDetail": "posição",
+  "@liveSearchingDetail": {},
+  "liveConnectionLabel": "Conexão",
+  "@liveConnectionLabel": {},
+  "liveConnectionDetail": "instável",
+  "@liveConnectionDetail": {},
+  "liveLocatingLabel": "Localizando",
+  "@liveLocatingLabel": {},
+  "liveLocatingDetail": "ônibus",
+  "@liveLocatingDetail": {},
+  "liveOutdated": "Desatualizado",
+  "@liveOutdated": {},
+  "liveLabel": "Ao vivo",
+  "@liveLabel": {},
+  "livePosition": "Posição",
+  "@livePosition": {},
+  "liveNoEstimate": "Sem previsão",
+  "@liveNoEstimate": {},
+  "liveNoGps": "sem GPS",
+  "@liveNoGps": {},
+  "liveEstimate": "Previsão",
+  "@liveEstimate": {},
+  "errFormat": "O BusãoGyn recebeu dados em formato inesperado. Tente novamente.",
+  "@errFormat": {},
+  "errArrivalsGeneric": "Não foi possível consultar este ponto agora.",
+  "@errArrivalsGeneric": {},
+  "errPositionGeneric": "Não foi possível localizar este ônibus agora.",
+  "@errPositionGeneric": {},
+  "errTimeout": "A consulta demorou mais que o esperado. Tente novamente.",
+  "@errTimeout": {},
+  "errNetwork": "Sem conexão com o BusãoGyn. Verifique sua internet.",
+  "@errNetwork": {},
+  "errSourceTimeout": "A RMTC demorou para responder. Tente novamente em instantes.",
+  "@errSourceTimeout": {},
+  "errSourceUnavailable": "A fonte de dados da RMTC está indisponível agora. Tente novamente em instantes.",
+  "@errSourceUnavailable": {},
+  "errSourceInvalidArrivals": "A RMTC não retornou dados válidos para este ponto. Confira o código ou tente novamente.",
+  "@errSourceInvalidArrivals": {},
+  "errSourceInvalidPosition": "A RMTC não retornou dados válidos para este ônibus agora.",
+  "@errSourceInvalidPosition": {},
+  "errInvalidStop": "Código de ponto inválido. Use apenas números.",
+  "@errInvalidStop": {},
+  "errInvalidVehicle": "Este ônibus não tem um número válido para acompanhamento.",
+  "@errInvalidVehicle": {},
+  "errInvalidResponse": "O BusãoGyn recebeu uma resposta inesperada. Tente novamente.",
+  "@errInvalidResponse": {},
+  "errRetryable": "O serviço está instável agora. Tente novamente em instantes.",
+  "@errRetryable": {},
+  "errGeneric": "Não foi possível concluir a consulta.",
+  "@errGeneric": {},
+  "errPositionNotReported": "A fonte não informou a posição deste ônibus agora.",
+  "@errPositionNotReported": {},
+  "errPositionUnavailable": "Posição temporariamente indisponível.",
+  "@errPositionUnavailable": {},
+  "searchInvalidTitle": "Digite o código do ponto",
+  "@searchInvalidTitle": {},
+  "searchInvalidBody": "Use só os números da placa do ponto.",
+  "@searchInvalidBody": {},
+  "searchNotFoundTitle": "Ponto não encontrado",
+  "@searchNotFoundTitle": {},
+  "searchNotFoundBody": "Confira o código e tente novamente.",
+  "@searchNotFoundBody": {},
+  "searchTimeoutTitle": "A consulta demorou demais",
+  "@searchTimeoutTitle": {},
+  "searchTimeoutBody": "Tente novamente em instantes.",
+  "@searchTimeoutBody": {},
+  "searchOfflineTitle": "Sem conexão",
+  "@searchOfflineTitle": {},
+  "searchOfflineBody": "Verifique sua internet e tente de novo.",
+  "@searchOfflineBody": {},
+  "searchUnavailableTitle": "Serviço temporariamente indisponível",
+  "@searchUnavailableTitle": {},
+  "searchUnavailableBody": "Tente novamente em alguns minutos.",
+  "@searchUnavailableBody": {},
+  "nextBuses": "Próximos ônibus",
+  "@nextBuses": {},
+  "sourceUnstable": "A fonte está instável. Mostrando o último dado válido.",
+  "@sourceUnstable": {},
+  "noArrivalsNow": "Nenhuma chegada prevista agora",
+  "@noArrivalsNow": {},
+  "noArrivalsNowAt": "Nenhuma chegada prevista agora · consulta das {hour}",
+  "@noArrivalsNowAt": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "noArrivalsBody": "A fonte não informou ônibus para este ponto neste momento. Tente atualizar em alguns minutos.",
+  "@noArrivalsBody": {},
+  "legendRealtime": ": posição informada pela RMTC, pode ser acompanhada.",
+  "@legendRealtime": {},
+  "legendScheduled": ": horário de tabela, sem GPS.",
+  "@legendScheduled": {},
+  "trackingBannerSemantics": "Ônibus {number} sendo acompanhado. Ver em Meu ônibus",
+  "@trackingBannerSemantics": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshFailedAt": "Não foi possível atualizar agora. Mostrando a consulta das {hour}, que pode já não valer. {error}",
+  "@refreshFailedAt": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshFailedPrevious": "Não foi possível atualizar agora. Mostrando a consulta anterior, que pode já não valer. {error}",
+  "@refreshFailedPrevious": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connOfflineTitle": "Chegadas precisam de internet",
+  "@connOfflineTitle": {},
+  "connFailedTitle": "Não conseguimos consultar as chegadas",
+  "@connFailedTitle": {},
+  "connOfflineBody": "O mapa segue disponível, mas as próximas chegadas só aparecem com conexão. Nenhuma previsão antiga é mostrada como se fosse atual.",
+  "@connOfflineBody": {},
+  "connFailedBody": "O código {code} não foi o problema: a consulta não foi concluída. Nenhuma previsão antiga é mostrada como se fosse atual.",
+  "@connFailedBody": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "connFailedBodyNoCode": "O código digitado não foi o problema: a consulta não foi concluída. Nenhuma previsão antiga é mostrada como se fosse atual.",
+  "@connFailedBodyNoCode": {},
+  "introTitle": "Digite o código do ponto",
+  "@introTitle": {},
+  "introBody": "Você vê as próximas chegadas de cada linha e acompanha o ônibus no mapa.",
+  "@introBody": {},
+  "introNote": "O código fica na placa do ponto. Só ônibus com GPS informado pela fonte podem ser acompanhados.",
+  "@introNote": {},
+  "exampleStop": "Exemplo: {code}",
+  "@exampleStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "exampleStopSemantics": "Consultar o ponto de exemplo {code}",
+  "@exampleStopSemantics": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "noFollowing": "sem seguinte",
+  "@noFollowing": {},
+  "followingUpper": "SEGUINTE",
+  "@followingUpper": {},
+  "nextSemantics": "Próximo: {minutes}, {quality}",
+  "@nextSemantics": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "followingSemantics": "Seguinte: {minutes}, {quality}, ônibus {number}",
+  "@followingSemantics": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "quality": {
+        "type": "String"
+      },
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingUnavailableSemantics": "Acompanhamento indisponível: chegada sem GPS da fonte",
+  "@trackingUnavailableSemantics": {},
+  "trackBus": "Acompanhar ônibus {number}",
+  "@trackBus": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackBusSearching": "Buscando posição do ônibus {number}",
+  "@trackBusSearching": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackBusActive": "Acompanhando ônibus {number}",
+  "@trackBusActive": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackBusUnavailable": "Ônibus {number} sem posição",
+  "@trackBusUnavailable": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackBusFailing": "Reconectando ao ônibus {number}",
+  "@trackBusFailing": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingHeaderSubtitle": "Acompanhe um veículo em tempo real",
+  "@trackingHeaderSubtitle": {},
+  "trackingHeaderSemantics": "Meu ônibus: ônibus {number}, {heading}",
+  "@trackingHeaderSemantics": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "heading": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingHeaderSemanticsRoute": "Meu ônibus: ônibus {number}, linha {route}, {heading}",
+  "@trackingHeaderSemanticsRoute": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "route": {
+        "type": "String"
+      },
+      "heading": {
+        "type": "String"
+      }
+    }
+  },
+  "busSemantics": "Ônibus {number}, {heading}",
+  "@busSemantics": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "heading": {
+        "type": "String"
+      }
+    }
+  },
+  "busSemanticsRoute": "Ônibus {number}, linha {route}, {heading}",
+  "@busSemanticsRoute": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "route": {
+        "type": "String"
+      },
+      "heading": {
+        "type": "String"
+      }
+    }
+  },
+  "stopTracking": "Parar de acompanhar",
+  "@stopTracking": {},
+  "noTrackedBusTitle": "Nenhum ônibus acompanhado",
+  "@noTrackedBusTitle": {},
+  "noTrackedBusBody": "Escolha um ônibus em tempo real nas chegadas de um ponto.",
+  "@noTrackedBusBody": {},
+  "noTrackedBusNote": "Só ônibus com GPS informado pela RMTC podem ser acompanhados. Horários programados não têm posição.",
+  "@noTrackedBusNote": {},
+  "trackingSearching": "Buscando posição",
+  "@trackingSearching": {},
+  "trackingFollowing": "Acompanhando",
+  "@trackingFollowing": {},
+  "stop": "Parar",
+  "@stop": {},
+  "following": "Seguindo",
+  "@following": {},
+  "center": "Centralizar",
+  "@center": {},
+  "centerBus": "Centralizar ônibus",
+  "@centerBus": {},
+  "centerBusFollowing": "Centralizar ônibus. Seguindo o ônibus",
+  "@centerBusFollowing": {},
+  "centerBusPaused": "Centralizar ônibus. Seguimento pausado",
+  "@centerBusPaused": {},
+  "trackThisBus": "Acompanhar este ônibus",
+  "@trackThisBus": {},
+  "trackingFootnote": "Posição informada pela RMTC, consultada a cada 15 s. Direção baseada no deslocamento observado; o rastro mostra só por onde o ônibus já passou. A fonte não informa o trajeto à frente nem a ordem dos próximos pontos, então o mapa não mostra percurso futuro.",
+  "@trackingFootnote": {},
+  "noticeEtaStillAvailable": "A previsão de chegada continua disponível.",
+  "@noticeEtaStillAvailable": {},
+  "noticeLocatingAgain": "Tentando localizar o ônibus novamente.",
+  "@noticeLocatingAgain": {},
+  "noticeLastKnownPosition": "O mapa mostra a última posição conhecida.",
+  "@noticeLastKnownPosition": {},
+  "noticeTemporaryFailure": "Falha temporária ao consultar a posição.",
+  "@noticeTemporaryFailure": {},
+  "noticeRetryEvery15": "Nova tentativa automática a cada 15 s.",
+  "@noticeRetryEvery15": {},
+  "busPositionSemantics": "Posição do ônibus: {status}",
+  "@busPositionSemantics": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "busDetails": "Detalhes do ônibus",
+  "@busDetails": {},
+  "busDetailsCollapseSemantics": "Detalhes do ônibus. Recolher",
+  "@busDetailsCollapseSemantics": {},
+  "busDetailsExpandSemantics": "Detalhes do ônibus. Expandir",
+  "@busDetailsExpandSemantics": {},
+  "detailBus": "Ônibus",
+  "@detailBus": {},
+  "detailLine": "Linha",
+  "@detailLine": {},
+  "detailDestination": "Destino",
+  "@detailDestination": {},
+  "detailReferenceStop": "Ponto de referência",
+  "@detailReferenceStop": {},
+  "detailPosition": "Posição",
+  "@detailPosition": {},
+  "detailPunctuality": "Pontualidade",
+  "@detailPunctuality": {},
+  "detailAccessibility": "Acessibilidade",
+  "@detailAccessibility": {},
+  "detailOccupancy": "Lotação",
+  "@detailOccupancy": {},
+  "detailMovement": "Movimento",
+  "@detailMovement": {},
+  "notProvidedF": "Não informada",
+  "@notProvidedF": {},
+  "notProvidedM": "Não informado",
+  "@notProvidedM": {},
+  "notIndicatedBySource": "Não indicada pela fonte",
+  "@notIndicatedBySource": {},
+  "infoUnavailable": "Informação não disponível",
+  "@infoUnavailable": {},
+  "movementNotObserved": "Direção ainda não observada",
+  "@movementNotObserved": {},
+  "movementObserved": "A seta no mapa indica a direção observada",
+  "@movementObserved": {},
+  "trailNote": "Rastro baseado nas posições observadas. Trajeto oficial ainda não disponível.",
+  "@trailNote": {},
+  "etaUnavailable": "Previsão para o ponto {stop} indisponível.",
+  "@etaUnavailable": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "etaToStopUnknown": "previsão até o ponto {stop}",
+  "@etaToStopUnknown": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "etaToStopMinutes": "min até o ponto {stop}",
+  "@etaToStopMinutes": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "etaFromQuery": "Previsão da consulta do ponto · {freshness}",
+  "@etaFromQuery": {
+    "placeholders": {
+      "freshness": {
+        "type": "String"
+      }
+    }
+  },
+  "mapPosition": "Mapa com a posição do ônibus {number} informada pela fonte",
+  "@mapPosition": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "mapPositionStale": "Mapa com a posição do ônibus {number} informada pela fonte, possivelmente desatualizada",
+  "@mapPositionStale": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "mapPositionPending": "Mapa. Posição do ônibus {number} ainda não disponível",
+  "@mapPositionPending": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "mapNoBus": "Mapa de Goiânia. Nenhum ônibus acompanhado",
+  "@mapNoBus": {},
+  "mapOthers": "{count, plural, =1{Mais 1 ônibus em tempo real a caminho do ponto} other{Mais {count} ônibus em tempo real a caminho do ponto}}",
+  "@mapOthers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteStopAdd": "Favoritar o ponto {code}",
+  "@favoriteStopAdd": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteStopRemove": "Remover o ponto {code} dos favoritos",
+  "@favoriteStopRemove": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteStopsLimit": "Limite de {limit} favoritos. Remova um para adicionar outro.",
+  "@favoriteStopsLimit": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteLinesLimit": "Limite de {limit} linhas favoritas. Remova uma para adicionar outra.",
+  "@favoriteLinesLimit": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "favoriteLineAdd": "Favoritar a linha {route} neste ponto",
+  "@favoriteLineAdd": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteLineRemove": "Remover a linha {route} do ponto {stop} dos favoritos",
+  "@favoriteLineRemove": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "favoriteLineOn": "Linha favorita",
+  "@favoriteLineOn": {},
+  "favoriteLineOff": "Favoritar esta linha",
+  "@favoriteLineOff": {},
+  "storageNotPersistent": "Este aparelho não guardou os pontos. Eles valem só até fechar o app.",
+  "@storageNotPersistent": {},
+  "storageReadFailed": "Não foi possível ler os pontos salvos. Começamos com a lista vazia.",
+  "@storageReadFailed": {},
+  "storageWriteFailed": "Não foi possível salvar agora. A lista vale até fechar o app.",
+  "@storageWriteFailed": {},
+  "stopOpenArrivals": "Consultar as chegadas do ponto {code}",
+  "@stopOpenArrivals": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "stopOpenArrivalsNamed": "Consultar as chegadas do ponto {code}, {name}",
+  "@stopOpenArrivalsNamed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lineOpenArrivals": "Consultar as chegadas da linha {route} no ponto {stop}",
+  "@lineOpenArrivals": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineHint": "Toque num ponto para consultar as chegadas. A consulta precisa de internet e nenhuma previsão fica salva no aparelho.",
+  "@offlineHint": {},
+  "favoritesEmptyTitle": "Seus pontos favoritos aparecerão aqui.",
+  "@favoritesEmptyTitle": {},
+  "favoritesEmptyBody": "Consulte um ponto e toque na estrela do cabeçalho para favoritá-lo.",
+  "@favoritesEmptyBody": {},
+  "favoriteStopsSection": "Pontos favoritos",
+  "@favoriteStopsSection": {},
+  "favoriteLinesSection": "Linhas favoritas",
+  "@favoriteLinesSection": {},
+  "clearRecentsTitle": "Limpar recentes?",
+  "@clearRecentsTitle": {},
+  "clearRecentsBody": "O histórico de pontos consultados neste aparelho será apagado. Seus favoritos não mudam.",
+  "@clearRecentsBody": {},
+  "recentsSection": "Recentes",
+  "@recentsSection": {},
+  "recentsEmpty": "Os pontos que você consultar aparecerão aqui.",
+  "@recentsEmpty": {},
+  "recentStopRemove": "Remover o ponto {code} dos recentes",
+  "@recentStopRemove": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingSavedStops": "Carregando pontos salvos",
+  "@loadingSavedStops": {},
+  "favoriteStatusLoading": "Consultando…",
+  "@favoriteStatusLoading": {},
+  "favoriteStatusOffline": "Sem conexão. Toque em Atualizar quando a internet voltar.",
+  "@favoriteStatusOffline": {},
+  "favoriteStatusFailed": "Não foi possível consultar agora.",
+  "@favoriteStatusFailed": {},
+  "lastValidData": "Último dado válido da fonte",
+  "@lastValidData": {},
+  "lastValidDataAt": "Último dado válido da fonte · consulta das {hour}",
+  "@lastValidDataAt": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "queriedNow": "Consulta feita agora",
+  "@queriedNow": {},
+  "queriedAtHour": "Consulta das {hour}",
+  "@queriedAtHour": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "lineSemantics": "Linha {route}, {minutes}, {quality}",
+  "@lineSemantics": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      },
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "linesSoonTitle": "As linhas estarão disponíveis em breve.",
+  "@linesSoonTitle": {},
+  "linesSoonBody": "Por enquanto, consulte as chegadas pelo código do ponto.",
+  "@linesSoonBody": {},
+  "seenLinesSection": "Linhas vistas",
+  "@seenLinesSection": {},
+  "seenLinesNote": "Linhas vistas nas suas consultas desta sessão e nos seus favoritos. A lista completa de linhas depende de autorização da RMTC.",
+  "@seenLinesNote": {},
+  "seenAtStop": "no ponto {stop}",
+  "@seenAtStop": {
+    "placeholders": {
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "seenAtStops": "nos pontos {stops}",
+  "@seenAtStops": {
+    "placeholders": {
+      "stops": {
+        "type": "String"
+      }
+    }
+  },
+  "seenAtStopsMore": "nos pontos {stops} e mais {more}",
+  "@seenAtStopsMore": {
+    "placeholders": {
+      "stops": {
+        "type": "String"
+      },
+      "more": {
+        "type": "int"
+      }
+    }
+  },
+  "seenLineSemantics": "Linha {route}, {label}. Consultar as chegadas do ponto {stop}",
+  "@seenLineSemantics": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeOffline": "Sem conexão. Você pode abrir seus pontos, mas as chegadas só aparecem com internet.",
+  "@noticeOffline": {},
+  "noticeQueryIncomplete": "A última consulta não foi concluída. Tente de novo em instantes.",
+  "@noticeQueryIncomplete": {},
+  "settingsAppearance": "Aparência",
+  "@settingsAppearance": {},
+  "settingsTheme": "Tema",
+  "@settingsTheme": {},
+  "settingsThemeBody": "O mapa acompanha o tema escolhido.",
+  "@settingsThemeBody": {},
+  "themeSystem": "Sistema",
+  "@themeSystem": {},
+  "themeNight": "Noturno",
+  "@themeNight": {},
+  "themeLight": "Claro",
+  "@themeLight": {},
+  "settingsAbout": "Sobre",
+  "@settingsAbout": {},
+  "settingsBusData": "Dados de ônibus",
+  "@settingsBusData": {},
+  "settingsBusDataBody": "RMTC, via API BusãoGyn. Posições e previsões em tempo real dependem do GPS informado pela fonte.",
+  "@settingsBusDataBody": {},
+  "settingsMap": "Mapa",
+  "@settingsMap": {},
+  "settingsMapBody": "OpenFreeMap · © OpenMapTiles · dados © OpenStreetMap",
+  "@settingsMapBody": {},
+  "settingsTypography": "Tipografia",
+  "@settingsTypography": {},
+  "settingsTypographyBody": "Geist e Geist Mono · SIL Open Font License 1.1",
+  "@settingsTypographyBody": {},
+  "settingsLicenses": "Licenças",
+  "@settingsLicenses": {},
+  "settingsLicensesBody": "Bibliotecas e fontes usadas pelo app.",
+  "@settingsLicensesBody": {}
+}

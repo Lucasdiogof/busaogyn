@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/busao_tokens.dart';
 
 /// Superfície que flutua sobre o mapa: quase opaca, borda fina e sombra.
@@ -139,7 +140,7 @@ class RoutePlate extends StatelessWidget {
     final tokens = context.tokens;
     final height = dense ? 36.0 : 44.0;
     return Semantics(
-      label: 'Linha $routeId',
+      label: l10n.routeNumber(routeId),
       excludeSemantics: true,
       child: Container(
         constraints: BoxConstraints(minWidth: dense ? 44 : 52),

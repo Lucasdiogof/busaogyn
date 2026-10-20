@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/settings/theme_mode_cubit.dart';
 import '../../../../core/theme/busao_tokens.dart';
 
@@ -13,27 +14,27 @@ class SettingsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _GroupLabel('Aparência'),
+        _GroupLabel(l10n.settingsAppearance),
         _Tile(
-          title: 'Tema',
-          body: 'O mapa acompanha o tema escolhido.',
+          title: l10n.settingsTheme,
+          body: l10n.settingsThemeBody,
           below: BlocBuilder<ThemeModeCubit, ThemeMode>(
             builder: (context, mode) => SizedBox(
               width: double.infinity,
               child: SegmentedButton<ThemeMode>(
                 showSelectedIcon: false,
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: ThemeMode.system,
-                    label: _SegmentLabel('Sistema'),
+                    label: _SegmentLabel(l10n.themeSystem),
                   ),
                   ButtonSegment(
                     value: ThemeMode.dark,
-                    label: _SegmentLabel('Noturno'),
+                    label: _SegmentLabel(l10n.themeNight),
                   ),
                   ButtonSegment(
                     value: ThemeMode.light,
-                    label: _SegmentLabel('Claro'),
+                    label: _SegmentLabel(l10n.themeLight),
                   ),
                 ],
                 selected: {mode},
@@ -44,27 +45,19 @@ class SettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Space.md),
-        const _GroupLabel('Sobre'),
-        const _Tile(
-          title: 'Dados de ônibus',
-          body:
-              'RMTC, via API BusãoGyn. Posições e previsões em tempo real '
-              'dependem do GPS informado pela fonte.',
-        ),
+        _GroupLabel(l10n.settingsAbout),
+        _Tile(title: l10n.settingsBusData, body: l10n.settingsBusDataBody),
         const SizedBox(height: Space.xs),
-        const _Tile(
-          title: 'Mapa',
-          body: 'OpenFreeMap · © OpenMapTiles · dados © OpenStreetMap',
-        ),
+        _Tile(title: l10n.settingsMap, body: l10n.settingsMapBody),
         const SizedBox(height: Space.xs),
-        const _Tile(
-          title: 'Tipografia',
-          body: 'Geist e Geist Mono · SIL Open Font License 1.1',
+        _Tile(
+          title: l10n.settingsTypography,
+          body: l10n.settingsTypographyBody,
         ),
         const SizedBox(height: Space.xs),
         _Tile(
-          title: 'Licenças',
-          body: 'Bibliotecas e fontes usadas pelo app.',
+          title: l10n.settingsLicenses,
+          body: l10n.settingsLicensesBody,
           onTap: () =>
               showLicensePage(context: context, applicationName: 'BusãoGyn'),
         ),

@@ -148,6 +148,7 @@ Future<void> _pumpApp(
 
   await tester.pumpWidget(
     BusaoGynApp(
+      locale: const Locale('pt'),
       repository: repository,
       trackingRefreshInterval: null,
       mapBuilder: _fakeMap,

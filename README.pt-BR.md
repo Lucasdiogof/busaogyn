@@ -56,6 +56,7 @@ docs/     Arquitetura, UX, deploy, publicação, privacidade e marca
 - **Chegadas:** busca pelo código do ponto (só dígitos, zeros à esquerda preservados) e lista as próximas chegadas por linha. Cada chegada traz a qualidade do dado: **tempo real** (GPS da fonte), **programado** (horário de tabela) ou **não confirmado**.
 - **Meu ônibus:** acompanha um ônibus com GPS. A posição é consultada a cada 15 s, a câmera segue o ônibus (para de seguir quando você mexe no mapa; **Centralizar** volta a seguir), e direção e rastro aparecem calculados a partir das posições observadas. Posição antiga ou fonte instável aparecem como desatualizadas, nunca como "ao vivo".
 - **Mapa:** outros ônibus em tempo real do mesmo ponto também aparecem no mapa, e somem quando a posição envelhece.
+- **Idiomas:** português, inglês e espanhol, pelo idioma do aparelho (português quando o do aparelho não é atendido). Os textos ficam nos ARB de `app/lib/l10n/` (`app_pt.arb` é o modelo) e o `flutter gen-l10n` gera as classes, que são versionadas; `app/test/core/l10n_test.dart` confere que as três línguas têm as mesmas chaves e placeholders.
 - **Ajustes:** tema (Sistema, Noturno ou Claro, com o mapa acompanhando) e informações sobre fontes de dados, mapa, fontes tipográficas e licenças.
 
 O status do topo só diz **Ao vivo** quando há dado em tempo real recente. Uma resposta da API sem GPS aparece como programado, e um dado envelhecido aparece como desatualizado.

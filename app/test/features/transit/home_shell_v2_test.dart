@@ -114,6 +114,7 @@ Future<void> _pump(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     BusaoGynApp(
+      locale: const Locale('pt'),
       repository: repository,
       trackingRefreshInterval: null,
       mapBuilder: _countingMap,

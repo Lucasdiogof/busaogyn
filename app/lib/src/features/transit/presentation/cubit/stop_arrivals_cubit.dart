@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../../domain/models/observed_movement.dart';
@@ -509,7 +510,7 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
             phase: TrackingPhase.unavailable,
             vehicle: previous?.vehicle,
             receivedAt: previous?.receivedAt,
-            message: 'A fonte não informou a posição deste ônibus agora.',
+            message: l10n.errPositionNotReported,
             movement: previous?.movement ?? ObservedMovement.empty,
           ),
         );
@@ -538,10 +539,10 @@ class StopArrivalsCubit extends Cubit<StopArrivalsState> {
       // Resposta sem dado utilizável do ônibus não é "conexão instável".
       final connectivity = isConnectivityError(error);
       final message = !connectivity
-          ? 'A fonte não informou a posição deste ônibus agora.'
+          ? l10n.errPositionNotReported
           : showInitialError
           ? friendlyErrorMessage(error, ErrorSubject.position)
-          : 'Posição temporariamente indisponível.';
+          : l10n.errPositionUnavailable;
       _emitTracking(
         generation,
         (previous) => TrackingInfo(

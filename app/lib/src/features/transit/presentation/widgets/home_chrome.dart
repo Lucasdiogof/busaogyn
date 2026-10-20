@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../formatters/transit_labels.dart';
@@ -86,7 +87,7 @@ class _DockItem extends StatelessWidget {
         container: true,
         selected: selected,
         button: true,
-        label: badge ? '$label, ônibus acompanhado' : label,
+        label: badge ? l10n.dockTrackedBadge(label) : label,
         excludeSemantics: true,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
@@ -161,16 +162,24 @@ class NavDock extends StatelessWidget {
         height: layout.height - 12,
         child: Row(
           children: [
-            item(HomeTab.lines, Icons.format_list_bulleted_rounded, 'Linhas'),
+            item(
+              HomeTab.lines,
+              Icons.format_list_bulleted_rounded,
+              l10n.dockLines,
+            ),
             const SizedBox(width: 4),
-            item(HomeTab.stop, Icons.location_on_outlined, 'Pontos'),
+            item(HomeTab.stop, Icons.location_on_outlined, l10n.dockStops),
             const SizedBox(width: 4),
-            item(HomeTab.favorites, Icons.star_outline_rounded, 'Favoritos'),
+            item(
+              HomeTab.favorites,
+              Icons.star_outline_rounded,
+              l10n.dockFavorites,
+            ),
             const SizedBox(width: 4),
             item(
               HomeTab.tracking,
               Icons.directions_bus_outlined,
-              'Meu ônibus',
+              l10n.dockTracking,
               badge: trackingActive,
             ),
           ],
@@ -267,10 +276,10 @@ class _SettingsButton extends StatelessWidget {
       container: true,
       button: true,
       selected: selected,
-      label: 'Ajustes',
+      label: l10n.settings,
       excludeSemantics: true,
       child: Tooltip(
-        message: 'Ajustes',
+        message: l10n.settings,
         excludeFromSemantics: true,
         child: SizedBox.square(
           dimension: 48,
@@ -349,13 +358,18 @@ class LiveStatusPill extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
+              // Textos mais longos (es: "hace 13 s") encolhem em vez de
+              // serem cortados com reticências.
               Flexible(
-                child: Text(
-                  status.detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: monoStyle(
-                    TextStyle(fontSize: 11, color: tokens.mutedText),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    status.detail,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: monoStyle(
+                      TextStyle(fontSize: 11, color: tokens.mutedText),
+                    ),
                   ),
                 ),
               ),

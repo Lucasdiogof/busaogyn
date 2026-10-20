@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   http: ^1.5.0
   flutter_bloc: ^9.1.1
   maplibre_gl: ^0.27.1
@@ -22,6 +25,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
 
   assets:
     # Estilos do mapa gerados por tool/build_map_styles.dart.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
@@ -126,7 +127,7 @@ class ArrivalCard extends StatelessWidget {
       children: [
         DestinationText(
           group.destination == null
-              ? 'Destino não informado'
+              ? l10n.destinationUnknown
               : destinationLabel(group.destination!),
           style: theme.textTheme.titleSmall?.copyWith(
             fontSize: 14,
@@ -136,7 +137,7 @@ class ArrivalCard extends StatelessWidget {
         if (following == null) ...[
           const SizedBox(height: 3),
           Text(
-            'sem seguinte',
+            l10n.noFollowing,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: monoStyle(
@@ -177,9 +178,10 @@ class ArrivalCard extends StatelessWidget {
                   const SizedBox(width: Space.xs),
                   Semantics(
                     container: true,
-                    label:
-                        'Próximo: ${minutesSemantics(next.minutes)}, '
-                        '${qualityLabel(nextQuality)}',
+                    label: l10n.nextSemantics(
+                      minutesSemantics(next.minutes),
+                      qualityLabel(nextQuality),
+                    ),
                     excludeSemantics: true,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -279,15 +281,16 @@ class _FollowingStrip extends StatelessWidget {
           Expanded(
             child: Semantics(
               container: true,
-              label:
-                  'Seguinte: ${minutesSemantics(arrival.minutes)}, '
-                  '${qualityLabel(displayQuality(arrival))}, '
-                  'ônibus ${arrival.vehicleNumber}',
+              label: l10n.followingSemantics(
+                minutesSemantics(arrival.minutes),
+                qualityLabel(displayQuality(arrival)),
+                arrival.vehicleNumber ?? '',
+              ),
               excludeSemantics: true,
               child: Row(
                 children: [
                   Text(
-                    'SEGUINTE',
+                    l10n.followingUpper,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -346,7 +349,7 @@ class VehicleTrackBox extends StatelessWidget {
     if (!trackable) {
       return Semantics(
         container: true,
-        label: 'Acompanhamento indisponível: chegada sem GPS da fonte',
+        label: l10n.trackingUnavailableSemantics,
         excludeSemantics: true,
         child: Opacity(
           opacity: 0.45,
@@ -396,11 +399,11 @@ class VehicleTrackBox extends StatelessWidget {
       ),
     };
     final label = switch (phase) {
-      null => 'Acompanhar ônibus $number',
-      TrackingPhase.searching => 'Buscando posição do ônibus $number',
-      TrackingPhase.active => 'Acompanhando ônibus $number',
-      TrackingPhase.unavailable => 'Ônibus $number sem posição',
-      TrackingPhase.failing => 'Reconectando ao ônibus $number',
+      null => l10n.trackBus(number!),
+      TrackingPhase.searching => l10n.trackBusSearching(number!),
+      TrackingPhase.active => l10n.trackBusActive(number!),
+      TrackingPhase.unavailable => l10n.trackBusUnavailable(number!),
+      TrackingPhase.failing => l10n.trackBusFailing(number!),
     };
 
     return Tooltip(
@@ -420,14 +423,14 @@ class VehicleTrackBox extends StatelessWidget {
           // de ônibus), útil depois de uma falha.
           onTap: phase == TrackingPhase.searching
               ? null
-              : () => onTrack(number!),
+              : () => onTrack(number),
           children: [
             // O número é a identidade do ônibus: nunca quebra em duas linhas
             // ("2052/9"); com fonte grande ele reduz para caber na caixa.
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                number!,
+                number,
                 maxLines: 1,
                 softWrap: false,
                 style: _numberStyle(tokens),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../domain/entities/map_vehicle.dart';
@@ -63,14 +64,14 @@ class SecondaryVehicleCallout extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Ônibus ${vehicle.vehicleNumber}',
+                      l10n.busNumber(vehicle.vehicleNumber),
                       style: theme.textTheme.titleSmall,
                     ),
                     if (destinationText != null && !stackDestination)
                       destinationText,
                     if (vehicle.stale)
                       Text(
-                        'Posição possivelmente desatualizada',
+                        l10n.positionMaybeOutdated,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: tokens.unconfirmed,
                         ),
@@ -79,7 +80,7 @@ class SecondaryVehicleCallout extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Fechar',
+                tooltip: l10n.close,
                 onPressed: onClose,
                 icon: const Icon(Icons.close_rounded),
               ),
@@ -96,7 +97,7 @@ class SecondaryVehicleCallout extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onTrack,
               icon: const Icon(Icons.my_location_rounded, size: 20),
-              label: const Text('Acompanhar este ônibus'),
+              label: Text(l10n.trackThisBus),
             ),
           ),
         ],

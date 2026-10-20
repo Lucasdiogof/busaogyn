@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../domain/entities/arrival.dart';
@@ -51,7 +52,8 @@ class TrackingCard extends StatelessWidget {
       const SizedBox(width: Space.xs),
       Expanded(
         child: Text(
-          (searching ? 'Buscando posição' : 'Acompanhando').toUpperCase(),
+          (searching ? l10n.trackingSearching : l10n.trackingFollowing)
+              .toUpperCase(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -132,7 +134,7 @@ class TrackingCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onStop,
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Parar'),
+                label: Text(l10n.stop),
               ),
             ),
           ],
@@ -150,15 +152,7 @@ class TrackingCard extends StatelessWidget {
           ),
         ],
         const SizedBox(height: Space.sm),
-        const FootNote(
-          child: Text(
-            'Posição informada pela RMTC, consultada a cada 15 s. Direção '
-            'baseada no deslocamento observado; o rastro mostra só por onde '
-            'o ônibus já passou. A fonte não informa o trajeto à frente nem '
-            'a ordem dos próximos pontos, então o mapa não mostra percurso '
-            'futuro.',
-          ),
-        ),
+        FootNote(child: Text(l10n.trackingFootnote)),
       ],
     );
   }
@@ -167,18 +161,21 @@ class TrackingCard extends StatelessWidget {
   /// e previsão continuam valendo.
   String? _positionNotice({required bool hasEta}) {
     final hasPosition = tracking.vehicle?.data?.position != null;
-    final lastKnown = hasPosition
-        ? ' O mapa mostra a última posição conhecida.'
-        : '';
-    return switch (tracking.phase) {
-      TrackingPhase.unavailable =>
-        '${hasEta ? 'A previsão de chegada continua disponível. ' : ''}'
-            'Tentando localizar o ônibus novamente.$lastKnown',
-      TrackingPhase.failing =>
-        '${tracking.message ?? 'Falha temporária ao consultar a posição.'} '
-            'Nova tentativa automática a cada 15 s.$lastKnown',
+    final lastKnown = hasPosition ? l10n.noticeLastKnownPosition : null;
+    final parts = switch (tracking.phase) {
+      TrackingPhase.unavailable => [
+        if (hasEta) l10n.noticeEtaStillAvailable,
+        l10n.noticeLocatingAgain,
+        ?lastKnown,
+      ],
+      TrackingPhase.failing => [
+        tracking.message ?? l10n.noticeTemporaryFailure,
+        l10n.noticeRetryEvery15,
+        ?lastKnown,
+      ],
       _ => null,
     };
+    return parts?.join(' ');
   }
 
   /// Só selos com dado real: pontualidade conhecida e acessibilidade
@@ -245,7 +242,7 @@ class _PositionLine extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       container: true,
-      label: 'Posição do ônibus: ${status.text}',
+      label: l10n.busPositionSemantics(status.text),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
@@ -283,8 +280,8 @@ class _DetailsToggle extends StatelessWidget {
       button: true,
       expanded: expanded,
       label: expanded
-          ? 'Detalhes do ônibus. Recolher'
-          : 'Detalhes do ônibus. Expandir',
+          ? l10n.busDetailsCollapseSemantics
+          : l10n.busDetailsExpandSemantics,
       excludeSemantics: true,
       child: Material(
         type: MaterialType.transparency,
@@ -305,7 +302,7 @@ class _DetailsToggle extends StatelessWidget {
                   const SizedBox(width: Space.xs),
                   Expanded(
                     child: Text(
-                      'Detalhes do ônibus',
+                      l10n.busDetails,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -369,56 +366,60 @@ class _VehicleDetails extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _DetailRow('Ônibus', tracking.vehicleNumber, mono: true),
+            _DetailRow(l10n.detailBus, tracking.vehicleNumber, mono: true),
             _DetailRow(
-              'Linha',
-              routeId ?? 'Não informada',
+              l10n.detailLine,
+              routeId ?? l10n.notProvidedF,
               secondary: routeName == null || routeName.isEmpty
                   ? null
                   : routeName,
               missing: routeId == null,
             ),
             _DetailRow(
-              'Destino',
+              l10n.detailDestination,
               destination == null
-                  ? 'Não informado'
+                  ? l10n.notProvidedM
                   : destinationLabel(destination!),
               missing: destination == null,
             ),
-            _DetailRow('Ponto de referência', 'Ponto ${state.stopId}'),
+            _DetailRow(
+              l10n.detailReferenceStop,
+              '${l10n.stopWord} ${state.stopId}',
+            ),
             PeriodicRebuild(
-              builder: (context) =>
-                  _DetailRow('Posição', positionStatus(tracking, clock()).text),
+              builder: (context) => _DetailRow(
+                l10n.detailPosition,
+                positionStatus(tracking, clock()).text,
+              ),
             ),
             _DetailRow(
-              'Pontualidade',
+              l10n.detailPunctuality,
               punctuality == VehiclePunctuality.unknown
-                  ? 'Não informada'
+                  ? l10n.notProvidedF
                   : punctualityLabel(punctuality),
               missing: punctuality == VehiclePunctuality.unknown,
             ),
-            _DetailRow('Acessibilidade', switch (vehicle?.accessible) {
-              true => 'Acessível',
-              false => 'Não indicada pela fonte',
-              null => 'Não informada',
+            _DetailRow(l10n.detailAccessibility, switch (vehicle?.accessible) {
+              true => l10n.accessible,
+              false => l10n.notIndicatedBySource,
+              null => l10n.notProvidedF,
             }, missing: vehicle?.accessible != true),
             // A fonte ainda não informa lotação: nada é estimado.
-            const _DetailRow(
-              'Lotação',
-              'Informação não disponível',
+            _DetailRow(
+              l10n.detailOccupancy,
+              l10n.infoUnavailable,
               missing: true,
             ),
             _DetailRow(
-              'Movimento',
+              l10n.detailMovement,
               heading == null
-                  ? 'Direção ainda não observada'
-                  : 'A seta no mapa indica a direção observada',
+                  ? l10n.movementNotObserved
+                  : l10n.movementObserved,
               missing: heading == null,
             ),
             const SizedBox(height: Space.xs),
             Text(
-              'Rastro baseado nas posições observadas. Trajeto oficial ainda '
-              'não disponível.',
+              l10n.trailNote,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
@@ -512,10 +513,13 @@ class _Identity extends StatelessWidget {
     final tokens = context.tokens;
     return Semantics(
       container: true,
-      label:
-          'Ônibus $vehicleNumber'
-          '${routeId != null ? ', linha $routeId' : ''}'
-          ', ${headingToLabel(destination)}',
+      label: routeId != null
+          ? l10n.busSemanticsRoute(
+              vehicleNumber,
+              routeId!,
+              headingToLabel(destination),
+            )
+          : l10n.busSemantics(vehicleNumber, headingToLabel(destination)),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
@@ -524,7 +528,9 @@ class _Identity extends StatelessWidget {
           children: [
             // O número do ônibus já está no cabeçalho logo acima.
             Text(
-              routeId != null ? 'Linha $routeId' : 'Linha não informada',
+              routeId != null
+                  ? l10n.routeNumber(routeId!)
+                  : l10n.routeNotProvided,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -567,7 +573,7 @@ class _Eta extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
         child: Text(
-          'Previsão para o ponto ${state.stopId} indisponível.',
+          l10n.etaUnavailable(state.stopId),
           style: TextStyle(fontSize: 14, color: tokens.softText),
         ),
       );
@@ -587,8 +593,8 @@ class _Eta extends StatelessWidget {
               Expanded(
                 child: Text(
                   match.arrival.minutes == null
-                      ? 'previsão até o ponto ${state.stopId}'
-                      : 'min até o ponto ${state.stopId}',
+                      ? l10n.etaToStopUnknown(state.stopId)
+                      : l10n.etaToStopMinutes(state.stopId),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 14, color: tokens.softText),
@@ -605,8 +611,7 @@ class _Eta extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                  'Previsão da consulta do ponto · '
-                  '${freshness.text.toLowerCase()}',
+                  l10n.etaFromQuery(freshness.text.toLowerCase()),
                   style: monoStyle(
                     TextStyle(
                       fontSize: 11,
@@ -645,7 +650,7 @@ class _CenterButton extends StatelessWidget {
             following ? Icons.gps_fixed_rounded : Icons.my_location_rounded,
             size: 18,
           ),
-          label: Text(following && enabled ? 'Seguindo' : 'Centralizar'),
+          label: Text(following && enabled ? l10n.following : l10n.center),
         );
       },
     );

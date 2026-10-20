@@ -1,3 +1,4 @@
+import '../../../../core/l10n/l10n.dart';
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../cubit/stop_arrivals_cubit.dart';
@@ -16,18 +17,18 @@ ArrivalQuality displayQuality(Arrival arrival) {
 
 String qualityLabel(ArrivalQuality quality) {
   return switch (quality) {
-    ArrivalQuality.realtime => 'Tempo real',
-    ArrivalQuality.scheduled => 'Programado',
-    ArrivalQuality.unknown => 'Informação não confirmada',
+    ArrivalQuality.realtime => l10n.qualityRealtime,
+    ArrivalQuality.scheduled => l10n.qualityScheduled,
+    ArrivalQuality.unknown => l10n.qualityUnknownLong,
   };
 }
 
 /// Rótulo curto para os selos compactos das chegadas.
 String qualityShortLabel(ArrivalQuality quality) {
   return switch (quality) {
-    ArrivalQuality.realtime => 'Tempo real',
-    ArrivalQuality.scheduled => 'Programado',
-    ArrivalQuality.unknown => 'Não confirmado',
+    ArrivalQuality.realtime => l10n.qualityRealtime,
+    ArrivalQuality.scheduled => l10n.qualityScheduled,
+    ArrivalQuality.unknown => l10n.qualityUnknownShort,
   };
 }
 
@@ -37,26 +38,25 @@ bool canTrack(Arrival arrival) {
 }
 
 String minutesSemantics(int? minutes) {
-  if (minutes == null) return 'tempo não informado';
-  if (minutes <= 0) return 'menos de 1 minuto';
-  if (minutes == 1) return '1 minuto';
-  return '$minutes minutos';
+  if (minutes == null) return l10n.minutesUnknown;
+  if (minutes <= 0) return l10n.minutesLessThanOneLong;
+  return l10n.minutesLong(minutes);
 }
 
 String punctualityLabel(VehiclePunctuality punctuality) {
   return switch (punctuality) {
-    VehiclePunctuality.onTime => 'No horário',
-    VehiclePunctuality.delayed => 'Atrasado',
-    VehiclePunctuality.early => 'Adiantado',
-    VehiclePunctuality.unknown => 'Pontualidade não informada',
+    VehiclePunctuality.onTime => l10n.punctualityOnTime,
+    VehiclePunctuality.delayed => l10n.punctualityDelayed,
+    VehiclePunctuality.early => l10n.punctualityEarly,
+    VehiclePunctuality.unknown => l10n.punctualityUnknown,
   };
 }
 
 String accessibilityLabel(bool? accessible) {
   return switch (accessible) {
-    true => 'Acessível',
-    false => 'Acessibilidade não indicada',
-    null => 'Acessibilidade não informada',
+    true => l10n.accessible,
+    false => l10n.accessibilityNotIndicated,
+    null => l10n.accessibilityUnknown,
   };
 }
 
@@ -115,18 +115,15 @@ PositionStatus positionStatus(TrackingInfo tracking, DateTime now) {
   final vehicle = tracking.vehicle;
   if (vehicle?.data?.position == null) {
     return switch (tracking.phase) {
-      TrackingPhase.searching => const PositionStatus(
+      TrackingPhase.searching => PositionStatus(
         PositionState.searching,
-        'Buscando posição do ônibus',
+        l10n.positionSearching,
       ),
-      TrackingPhase.failing => const PositionStatus(
+      TrackingPhase.failing => PositionStatus(
         PositionState.connection,
-        'Conexão instável',
+        l10n.positionConnection,
       ),
-      _ => const PositionStatus(
-        PositionState.unavailable,
-        'Posição temporariamente indisponível',
-      ),
+      _ => PositionStatus(PositionState.unavailable, l10n.positionUnavailable),
     };
   }
 
@@ -138,16 +135,13 @@ PositionStatus positionStatus(TrackingInfo tracking, DateTime now) {
   if (vehicle.stale || tracking.phase != TrackingPhase.active) {
     return PositionStatus(
       PositionState.stale,
-      'Posição desatualizada · há ${ageLabel(age)}',
+      l10n.positionOutdated(ageLabel(age)),
     );
   }
   if (age <= recentThresholdSeconds) {
-    return PositionStatus(PositionState.live, 'Ao vivo · há ${ageLabel(age)}');
+    return PositionStatus(PositionState.live, l10n.positionLive(ageLabel(age)));
   }
-  return PositionStatus(
-    PositionState.aging,
-    'Última posição há ${ageLabel(age)}',
-  );
+  return PositionStatus(PositionState.aging, l10n.positionLast(ageLabel(age)));
 }
 
 Freshness arrivalsFreshness(StopArrivalsLoaded state, DateTime now) {
@@ -157,15 +151,12 @@ Freshness arrivalsFreshness(StopArrivalsLoaded state, DateTime now) {
     now: now,
   );
   if (state.arrivals.stale) {
-    return Freshness(
-      'Dados temporariamente desatualizados · há ${ageLabel(age)}',
-      FreshnessTone.stale,
-    );
+    return Freshness(l10n.freshnessStale(ageLabel(age)), FreshnessTone.stale);
   }
   if (age <= recentThresholdSeconds) {
-    return const Freshness('Atualizado agora', FreshnessTone.fresh);
+    return Freshness(l10n.freshnessNow, FreshnessTone.fresh);
   }
-  return Freshness('Atualizado há ${ageLabel(age)}', FreshnessTone.aging);
+  return Freshness(l10n.freshnessAge(ageLabel(age)), FreshnessTone.aging);
 }
 
 /// Tom do indicador de status no topo do mapa.
@@ -220,18 +211,22 @@ LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
     final snapshot = tracking.vehicle;
     if (snapshot?.data?.position == null) {
       return switch (tracking.phase) {
-        TrackingPhase.searching => const LiveStatus(
-          'Buscando',
-          'posição',
+        TrackingPhase.searching => LiveStatus(
+          l10n.liveSearchingLabel,
+          l10n.liveSearchingDetail,
           LiveTone.scheduled,
         ),
-        TrackingPhase.failing => const LiveStatus(
-          'Conexão',
-          'instável',
+        TrackingPhase.failing => LiveStatus(
+          l10n.liveConnectionLabel,
+          l10n.liveConnectionDetail,
           LiveTone.stale,
         ),
         // A fonte não informou a posição agora; o app segue tentando.
-        _ => const LiveStatus('Localizando', 'ônibus', LiveTone.stale),
+        _ => LiveStatus(
+          l10n.liveLocatingLabel,
+          l10n.liveLocatingDetail,
+          LiveTone.stale,
+        ),
       };
     }
     final age = snapshotAgeSeconds(
@@ -240,17 +235,25 @@ LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
       now: now,
     );
     if (snapshot.stale || tracking.phase != TrackingPhase.active) {
-      return LiveStatus('Desatualizado', 'há ${ageLabel(age)}', LiveTone.stale);
+      return LiveStatus(
+        l10n.liveOutdated,
+        l10n.ago(ageLabel(age)),
+        LiveTone.stale,
+      );
     }
     if (age <= recentThresholdSeconds) {
       return LiveStatus(
-        'Ao vivo',
-        'há ${ageLabel(age)}',
+        l10n.liveLabel,
+        l10n.ago(ageLabel(age)),
         LiveTone.live,
         receivedAt: tracking.receivedAt,
       );
     }
-    return LiveStatus('Posição', 'há ${ageLabel(age)}', LiveTone.aging);
+    return LiveStatus(
+      l10n.livePosition,
+      l10n.ago(ageLabel(age)),
+      LiveTone.aging,
+    );
   }
 
   final age = snapshotAgeSeconds(
@@ -259,24 +262,32 @@ LiveStatus? liveStatus(StopArrivalsState state, DateTime now) {
     now: now,
   );
   if (state.arrivals.stale || state.refreshError != null) {
-    return LiveStatus('Desatualizado', 'há ${ageLabel(age)}', LiveTone.stale);
+    return LiveStatus(
+      l10n.liveOutdated,
+      l10n.ago(ageLabel(age)),
+      LiveTone.stale,
+    );
   }
   final groups = state.arrivals.data;
   if (groups.isEmpty) {
-    return const LiveStatus('Sem previsão', 'agora', LiveTone.scheduled);
+    return LiveStatus(l10n.liveNoEstimate, l10n.now, LiveTone.scheduled);
   }
   if (!hasRealtimeArrival(groups)) {
-    return const LiveStatus('Programado', 'sem GPS', LiveTone.scheduled);
+    return LiveStatus(
+      l10n.qualityScheduled,
+      l10n.liveNoGps,
+      LiveTone.scheduled,
+    );
   }
   if (age <= recentThresholdSeconds) {
     return LiveStatus(
-      'Ao vivo',
-      age <= 5 ? 'agora' : 'há ${ageLabel(age)}',
+      l10n.liveLabel,
+      age <= 5 ? l10n.now : l10n.ago(ageLabel(age)),
       LiveTone.live,
       receivedAt: state.arrivalsReceivedAt,
     );
   }
-  return LiveStatus('Previsão', 'há ${ageLabel(age)}', LiveTone.aging);
+  return LiveStatus(l10n.liveEstimate, l10n.ago(ageLabel(age)), LiveTone.aging);
 }
 
 /// "posição há 8 s" para o cabeçalho do acompanhamento.
@@ -288,7 +299,7 @@ String? positionAgeLabel(TrackingInfo tracking, DateTime now) {
     receivedAt: tracking.receivedAt,
     now: now,
   );
-  return 'posição há ${ageLabel(age)}';
+  return l10n.positionAgeShort(ageLabel(age));
 }
 
 /// Chegada do ônibus acompanhado entre as chegadas do ponto consultado.
@@ -320,6 +331,6 @@ String destinationLabel(String destination) {
 /// "Indo para T MARANATA"; sem destino informado, não inventa um.
 String headingToLabel(String? destination) {
   final value = destination?.trim();
-  if (value == null || value.isEmpty) return 'Destino não informado';
-  return 'Indo para ${destinationLabel(value)}';
+  if (value == null || value.isEmpty) return l10n.destinationUnknown;
+  return l10n.headingTo(destinationLabel(value));
 }
