@@ -75,5 +75,6 @@ Esta seção descreve intenção para as próximas versões ([plano](v2/PLANO_BU
 
 ## Pendências
 
+- **Páginas públicas em três idiomas** (privacidade, exclusão de dados e suporte) em https://lucksrei.com/projects/busaogyn/ (repositório do site). Contato: marketing@lucksrei.com. Mantenha-as iguais a este documento quando algo mudar.
 - **Política de privacidade publicada**: o texto público está em `app/web/privacidade.html` (servido em `/privacidade.html` com o app Web). Falta só publicar o app Web e informar essa URL nas duas lojas. Mantenha a página igual a este documento quando algo mudar.
 - Revisar este documento sempre que mudarem as dependências de rede (estilo do mapa, CDN, API) ou entrar qualquer SDK novo.
