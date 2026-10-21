@@ -1,6 +1,9 @@
-// Percorre o app real no tema escuro (API e mapa de produção) para gerar as capturas da
-// loja. Cada `BUSAOGYN_SHOT <nome>` no log avisa o script do host, que tira a
-// captura do emulador com `adb exec-out screencap` (com barra de status).
+// Percorre o app real no tema escuro (API e mapa de produção) para gerar as
+// capturas da loja. Para cada tela o teste grava o nome em
+// `<systemTemp>/busaogyn_shot`; o script do host lê o arquivo com `run-as`,
+// tira a captura do emulador (com barra de status) e apaga o arquivo.
+import 'dart:io';
+
 import 'package:busaogyn/src/app.dart';
 import 'package:busaogyn/src/core/config/api_config.dart';
 import 'package:busaogyn/src/core/network/api_client.dart';
@@ -114,9 +117,19 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
   await _idle(tester, const Duration(milliseconds: 800));
 }
 
-/// Avisa o host e segura a tela parada enquanto ele captura.
+/// Avisa o host e espera ele confirmar a captura (apagando o arquivo).
 Future<void> _shot(WidgetTester tester, String name) async {
   await _idle(tester, const Duration(seconds: 1));
-  debugPrint('BUSAOGYN_SHOT $name');
-  await _idle(tester, const Duration(seconds: 4));
+  final signal = File('${Directory.systemTemp.path}/busaogyn_shot');
+  await signal.writeAsString(name, flush: true);
+  final end = DateTime.now().add(const Duration(seconds: 30));
+  while (signal.existsSync() && DateTime.now().isBefore(end)) {
+    await _idle(tester, const Duration(milliseconds: 200));
+  }
+  if (signal.existsSync()) {
+    _log('captura não confirmada: $name (${signal.path})');
+    signal.deleteSync();
+  } else {
+    _log('capturada: $name');
+  }
 }

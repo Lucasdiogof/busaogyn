@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Roda dentro do emulador (android-emulator-runner), a partir de app/.
 # Deixa a barra de status limpa (modo demo), executa o roteiro de telas e tira
-# uma captura do aparelho a cada `BUSAOGYN_SHOT <nome>` impresso pelo teste.
+# uma captura do aparelho sempre que o teste grava o nome da tela em
+# <systemTemp>/busaogyn_shot (lido com run-as; o app de teste é debuggable).
 set -euo pipefail
 
 demo() { adb shell am broadcast -a com.android.systemui.demo -e command "$@" > /dev/null; }
@@ -17,18 +18,23 @@ demo notifications -e visible false
 demo status -e volume hide -e bluetooth hide -e location hide -e alarm hide -e sync hide -e mute hide -e speakerphone hide
 
 mkdir -p ../store-screenshots/raw
-adb logcat -c
+pkg=com.lucksrei.busaogyn
+check="run-as $pkg sh -c 'for f in code_cache/busaogyn_shot cache/busaogyn_shot; do if [ -f \$f ]; then echo \$f; cat \$f; echo; break; fi; done'"
 (
-  adb logcat -v raw -s flutter:I | while IFS= read -r line; do
-    case "$line" in
-      *BUSAOGYN_SHOT*)
-        name=$(printf '%s' "${line##*BUSAOGYN_SHOT }" | tr -dc 'a-z0-9_')
-        sleep 0.5
+  set +e
+  while true; do
+    found=$(adb shell "$check" 2> /dev/null)
+    if [ -n "$found" ]; then
+      file=$(printf '%s\n' "$found" | sed -n 1p | tr -d '\r')
+      name=$(printf '%s\n' "$found" | sed -n 2p | tr -dc 'a-z0-9_')
+      if [ -n "$name" ]; then
+        sleep 0.3
         adb exec-out screencap -p > "../store-screenshots/raw/$name.png"
-        echo "captura: $name"
-        ;;
-      *BUSAOGYN_LOG*) echo "$line" ;;
-    esac
+        echo "captura: $name ($file)"
+      fi
+      adb shell run-as "$pkg" rm -f "$file"
+    fi
+    sleep 0.3
   done
 ) &
 watcher=$!
