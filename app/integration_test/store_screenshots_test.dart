@@ -1,4 +1,4 @@
-// Percorre o app real (API e mapa de produção) para gerar as capturas da
+// Percorre o app real no tema escuro (API e mapa de produção) para gerar as capturas da
 // loja. Cada `BUSAOGYN_SHOT <nome>` no log avisa o script do host, que tira a
 // captura do emulador com `adb exec-out screencap` (com barra de status).
 import 'package:busaogyn/src/app.dart';
@@ -25,7 +25,7 @@ void main() {
           ApiClient(baseUrl: ApiConfig.baseUrl),
         ),
         locale: const Locale('pt'),
-        themeStore: MemoryThemePreferenceStore(ThemeMode.light),
+        themeStore: MemoryThemePreferenceStore(ThemeMode.dark),
         savedStopsStore: MemorySavedStopsStore(),
       ),
     );
@@ -67,20 +67,6 @@ void main() {
     await _tap(tester, find.byTooltip('Ajustes'));
     await _idle(tester, const Duration(seconds: 3));
     await _shot(tester, '06_ajustes');
-
-    await _tap(tester, find.text('Noturno'));
-    await _idle(tester, const Duration(seconds: 4));
-    await _tap(tester, find.byTooltip('Fechar ajustes'));
-    await _tap(tester, _dock('Pontos'));
-    await _idle(tester, const Duration(seconds: 10));
-    await _shot(tester, '07_chegadas_noturno');
-
-    if (track.evaluate().isNotEmpty ||
-        find.text('ACOMPANHANDO').evaluate().isNotEmpty) {
-      await _tap(tester, _dock('Meu'));
-      await _idle(tester, const Duration(seconds: 10));
-      await _shot(tester, '08_meu_onibus_noturno');
-    }
   }, timeout: const Timeout(Duration(minutes: 10)));
 }
 

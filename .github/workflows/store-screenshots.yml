@@ -1,7 +1,7 @@
 name: Store screenshots (Android)
 
 # Capturas da Play Store num emulador Android (perfil Pixel, 1080x1920), com o
-# app real em pt-BR, API e mapa de produção e barra de status em modo demo.
+# app real em pt-BR no tema escuro, API e mapa de produção e barra de status em modo demo.
 on:
   push:
     branches:
@@ -59,7 +59,7 @@ jobs:
           from pathlib import Path
           from PIL import Image
           raw = Path('../store-screenshots/raw')
-          out = Path('../store-screenshots/android-phone')
+          out = Path('../store-screenshots/android-phone-dark')
           out.mkdir(parents=True, exist_ok=True)
           for png in sorted(raw.glob('*.png')):
               image = Image.open(png).convert('RGB')
@@ -68,8 +68,8 @@ jobs:
           EOF
       - uses: actions/upload-artifact@v4
         with:
-          name: busaogyn-screenshots-android
-          path: store-screenshots/android-phone
+          name: busaogyn-screenshots-android-dark
+          path: store-screenshots/android-phone-dark
           retention-days: 7
           if-no-files-found: error
       - name: Salvar as capturas na branch
@@ -77,6 +77,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add store-screenshots/android-phone
-          git commit -m "chore: store screenshots (Android phone)"
+          git add store-screenshots/android-phone-dark
+          git commit -m "chore: store screenshots (Android phone, dark)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
