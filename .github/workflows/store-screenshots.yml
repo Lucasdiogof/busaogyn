@@ -1,0 +1,82 @@
+name: Store screenshots (Android)
+
+# Capturas da Play Store num emulador Android (perfil Pixel, 1080x1920), com o
+# app real em pt-BR, API e mapa de produção e barra de status em modo demo.
+on:
+  push:
+    branches:
+      - claude/charming-pascal-4rvfwo
+    paths:
+      - '.github/workflows/store-screenshots.yml'
+      - '.github/scripts/store_screenshots.sh'
+      - 'app/integration_test/**'
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.38.5'
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -timezone America/Sao_Paulo
+          working-directory: app
+          script: bash ../.github/scripts/store_screenshots.sh
+      - name: PNG 24 bits (sem alfa), como a Play exige
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'EOF'
+          from pathlib import Path
+          from PIL import Image
+          raw = Path('../store-screenshots/raw')
+          out = Path('../store-screenshots/android-phone')
+          out.mkdir(parents=True, exist_ok=True)
+          for png in sorted(raw.glob('*.png')):
+              image = Image.open(png).convert('RGB')
+              image.save(out / png.name, optimize=True)
+              print(png.name, image.size)
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: busaogyn-screenshots-android
+          path: store-screenshots/android-phone
+          retention-days: 7
+          if-no-files-found: error
+      - name: Salvar as capturas na branch
+        working-directory: .
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add store-screenshots/android-phone
+          git commit -m "chore: store screenshots (Android phone)"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
