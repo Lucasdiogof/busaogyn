@@ -1,0 +1,57 @@
+name: Store bundle split
+
+# Divide o app-release.aab do run 39686551630 (main 7beee14) em partes de
+# 20 MB, para caber no limite de anexo do chat. As partes são juntadas e
+# conferidas pelo SHA-256 antes de assinar com a chave de upload.
+on:
+  push:
+    branches:
+      - claude/charming-pascal-4rvfwo
+    paths:
+      - '.github/workflows/store-bundle-split.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  RUN_ID: '39686551630'
+  AAB_SHA256: e3a3294e3f0f80a92dafb6d36b99318baa9020636dc2793d4be5c9952003e8ae
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: bundle
+      - run: echo "${AAB_SHA256}  bundle/app-release.aab" | sha256sum -c -
+      - run: |
+          mkdir parts
+          split -b 20m -d -a 1 bundle/app-release.aab parts/busaogyn-aab.part
+          ls -l parts
+          cat parts/busaogyn-aab.part* | sha256sum
+      - uses: actions/upload-artifact@v4
+        with:
+          name: busaogyn-aab-parte-1
+          path: parts/busaogyn-aab.part0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: busaogyn-aab-parte-2
+          path: parts/busaogyn-aab.part1
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: busaogyn-aab-parte-3
+          path: parts/busaogyn-aab.part2
+          retention-days: 3
+          if-no-files-found: error
