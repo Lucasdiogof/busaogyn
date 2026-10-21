@@ -117,8 +117,29 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
   await _idle(tester, const Duration(milliseconds: 800));
 }
 
+/// O painel guarda a rolagem entre abas; cada captura começa do topo.
+void _scrollPanelToTop(WidgetTester tester) {
+  final panel = find.byWidgetPredicate(
+    (widget) =>
+        widget.key == const ValueKey('sheet') ||
+        widget.key == const ValueKey('column-panel'),
+  );
+  final scrollables = find.descendant(
+    of: panel,
+    matching: find.byType(Scrollable),
+  );
+  for (final element in scrollables.evaluate()) {
+    final state = (element as StatefulElement).state as ScrollableState;
+    final scroll = state.position;
+    if (scroll.pixels != scroll.minScrollExtent) {
+      scroll.jumpTo(scroll.minScrollExtent);
+    }
+  }
+}
+
 /// Avisa o host e espera ele confirmar a captura (apagando o arquivo).
 Future<void> _shot(WidgetTester tester, String name) async {
+  _scrollPanelToTop(tester);
   await _idle(tester, const Duration(seconds: 1));
   final signal = File('${Directory.systemTemp.path}/busaogyn_shot');
   await signal.writeAsString(name, flush: true);
