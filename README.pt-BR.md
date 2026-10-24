@@ -11,9 +11,10 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white" alt="Flutter">
   <img src="https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white" alt="Dart">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Workers">
   <img src="https://img.shields.io/badge/MapLibre-396CB2" alt="MapLibre">
-  <img src="https://img.shields.io/badge/platforms-Android_·_iOS_·_Web-555555" alt="Platforms: Android, iOS and Web">
+  <img src="https://img.shields.io/badge/platforms-Android_·_iOS_·_Web-555555" alt="Plataformas: Android, iOS e Web">
 </p>
 
 <p align="center">
@@ -22,84 +23,91 @@
 
 ---
 
-**BusãoGyn — saiba onde seu ônibus está.**
+O BusãoGyn mostra as próximas chegadas de cada linha num ponto e acompanha, num mapa em tela cheia, o ônibus que tem GPS informado pela fonte. Cobre o transporte coletivo da RMTC de Goiânia e Região Metropolitana. É um app independente, sem vínculo com as operadoras.
 
-App Flutter (Android, iOS e Web) + Cloudflare Worker para o transporte público da RMTC de Goiânia e Região Metropolitana. Você digita o código do ponto, vê as próximas chegadas de cada linha e acompanha no mapa o ônibus que tem GPS informado pela fonte.
+**Web:** [busaogyn.lucksrei.com](https://busaogyn.lucksrei.com)
+
+## Índice
+
+- [Estado atual](#estado-atual)
+- [O que o app faz](#o-que-o-app-faz)
+- [Arquitetura](#arquitetura)
+- [Mapa](#mapa)
+- [Rodar e validar](#rodar-e-validar)
+- [API (Worker)](#api-worker)
+- [Deploy e CI](#deploy-e-ci)
+- [Documentação](#documentação)
+- [Privacidade e suporte](#privacidade-e-suporte)
 
 ## Estado atual
 
-- **App:** versão `1.0.0+1`, experiência map-first redesenhada (mapa em tela cheia, painéis flutuantes, tema claro e noturno) e acompanhamento em tempo real. Já roda em Android, iOS (já compilado em release num iPhone físico) e Web.
-- **API:** o Worker em `worker/` está publicado no Cloudflare Workers. O app consome exclusivamente a API BusãoGyn; nenhuma tela chama endpoints da RMTC diretamente.
-- **Sem dados estáticos oficiais ainda:** enquanto o GTFS não chega, o app não mostra trajeto, sentido, pontos próximos, favoritos nem ocupação, e não inventa esses dados.
+- **App** `1.0.0+1`: experiência map-first (mapa em tela cheia, painéis flutuantes, tema claro e noturno) com acompanhamento em tempo real. Roda em Android, iOS (release já testado em iPhone físico) e Web.
+- **Navegação v2** é a padrão: **Linhas, Pontos, Favoritos e Meu ônibus** no dock, com **Ajustes** na barra de topo ([ADR-0001](docs/adr/0001-navegacao-e-catalogo-v2.md)).
+- **API** publicada no Cloudflare Workers. O app consome só a API BusãoGyn; nenhuma tela chama a RMTC diretamente.
+- **Sem dados estáticos oficiais ainda.** Enquanto o GTFS não chega, o app não mostra trajeto, sentido, pontos próximos nem ocupação, e não inventa esses dados ([ADR-0002](docs/adr/0002-dados-confiaveis-e-nao-inferencia.md)).
 
-### Protocolos oficiais em andamento
+Protocolos oficiais em andamento:
 
-- Rede estática / GTFS: `2026106554419306`
-- Lotação / SIRI / capacidade: `2026106602705606`
+| Pedido | Protocolo |
+| --- | --- |
+| Rede estática / GTFS | `2026106554419306` |
+| Lotação / SIRI / capacidade | `2026106602705606` |
 
-## BusãoGyn v2 (planejamento)
+Escopo, backlog e riscos da v2: [`docs/v2/PLANO_BUSAOGYN_V2.md`](docs/v2/PLANO_BUSAOGYN_V2.md).
 
-A navegação (Linhas, Pontos, Favoritos e Meu ônibus, com Ajustes na TopBar) é a **padrão do app**; Favoritos e Recentes de pontos já funcionam nela (guardados só no aparelho); Linhas ainda não tem dados. Decisões em [`docs/adr/`](docs/adr/README.md); escopo, backlog e riscos em [`docs/v2/PLANO_BUSAOGYN_V2.md`](docs/v2/PLANO_BUSAOGYN_V2.md).
+## O que o app faz
 
-## Estrutura
+- **Pontos (chegadas):** busca pelo código do ponto (só dígitos, zeros à esquerda preservados) e lista as próximas chegadas por linha. Cada chegada traz a qualidade do dado: **tempo real** (GPS da fonte), **programado** (horário de tabela) ou **não confirmado**.
+- **Meu ônibus:** acompanha um ônibus com GPS. A posição é consultada a cada 15 s e a câmera segue o ônibus (para de seguir quando você mexe no mapa; **Centralizar** volta a seguir). Direção e rastro são calculados a partir das posições observadas. Posição antiga ou fonte instável aparecem como desatualizadas, nunca como "ao vivo".
+- **Mapa:** outros ônibus em tempo real do mesmo ponto também aparecem, e somem quando a posição envelhece.
+- **Favoritos e recentes:** pontos e linhas favoritos (com as próximas chegadas de cada um) e pontos recentes, guardados só no aparelho ([ADR-0004](docs/adr/0004-persistencia-local-de-pontos.md)).
+- **Linhas:** por enquanto mostra as **linhas vistas** nas consultas da sessão e nos favoritos. A lista completa depende de autorização da RMTC.
+- **Idiomas:** português, inglês e espanhol, pelo idioma do aparelho (português quando o do aparelho não é atendido).
+- **Ajustes:** tema (Sistema, Noturno ou Claro, com o mapa acompanhando) e informações sobre fontes de dados, mapa, tipografia e licenças.
+
+O status do topo só diz **Ao vivo** quando há dado em tempo real recente. Uma resposta sem GPS aparece como programado, e um dado envelhecido aparece como desatualizado.
+
+### Layout e visual
+
+- **Celular:** mapa em tela cheia, cabeçalho e status flutuantes, bottom sheet e dock inferior.
+- **Tablet e desktop (≥ 720 px):** mapa em tela cheia com uma coluna central flutuante, sem barra lateral fixa.
+- Acento âmbar na interface; o verde fica reservado a tempo real e estados positivos.
+- Tipografia [Geist e Geist Mono](https://vercel.com/font), empacotadas em `app/assets/fonts/geist` (SIL OFL 1.1). Geist Mono nos números: linha, minutos, ônibus e idades.
+- Marca oficial em `docs/brand/`; os PNGs do app são gerados por `app/tool/generate_brand_assets.py`.
+
+## Arquitetura
 
 ```text
 app/      App Flutter (Cubit + repositories, MapLibre)
 worker/   Cloudflare Worker em TypeScript (API BusãoGyn)
-docs/     Arquitetura, UX, deploy, publicação, privacidade e marca
+docs/     Arquitetura, ADRs, UX, deploy, publicação, privacidade e marca
 ```
 
-## App Flutter
+- **App:** camadas por feature (`app/lib/src/features/{transit,saved_stops}` com `domain/data/presentation`) e `core/` para config, rede, mapa, tema e l10n. Estado com `flutter_bloc` (Cubit); `StopArrivalsCubit` e `MapVehiclesCubit` são os donos de ETA e posição.
+- **API:** Worker em TypeScript que normaliza as respostas da fonte, usa a Cache API como único armazenamento e marca cada resposta com a idade do dado.
+- **i18n:** ARB em `app/lib/l10n/` (`app_pt.arb` é o modelo); `flutter gen-l10n` gera as classes, que são versionadas. `app/test/core/l10n_test.dart` confere que as três línguas têm as mesmas chaves e placeholders.
 
-### O que o app faz
+Detalhes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- **Chegadas:** busca pelo código do ponto (só dígitos, zeros à esquerda preservados) e lista as próximas chegadas por linha. Cada chegada traz a qualidade do dado: **tempo real** (GPS da fonte), **programado** (horário de tabela) ou **não confirmado**.
-- **Meu ônibus:** acompanha um ônibus com GPS. A posição é consultada a cada 15 s, a câmera segue o ônibus (para de seguir quando você mexe no mapa; **Centralizar** volta a seguir), e direção e rastro aparecem calculados a partir das posições observadas. Posição antiga ou fonte instável aparecem como desatualizadas, nunca como "ao vivo".
-- **Mapa:** outros ônibus em tempo real do mesmo ponto também aparecem no mapa, e somem quando a posição envelhece.
-- **Idiomas:** português, inglês e espanhol, pelo idioma do aparelho (português quando o do aparelho não é atendido). Os textos ficam nos ARB de `app/lib/l10n/` (`app_pt.arb` é o modelo) e o `flutter gen-l10n` gera as classes, que são versionadas; `app/test/core/l10n_test.dart` confere que as três línguas têm as mesmas chaves e placeholders.
-- **Ajustes:** tema (Sistema, Noturno ou Claro, com o mapa acompanhando) e informações sobre fontes de dados, mapa, fontes tipográficas e licenças.
+## Mapa
 
-O status do topo só diz **Ao vivo** quando há dado em tempo real recente. Uma resposta da API sem GPS aparece como programado, e um dado envelhecido aparece como desatualizado.
+[MapLibre](https://maplibre.org) (`maplibre_gl` 0.27.1) com dados do [OpenFreeMap](https://openfreemap.org), sem chave de API.
 
-### Layout e visual
-
-- Celular: mapa em tela cheia, cabeçalho e status flutuantes, bottom sheet e dock inferior (**Chegadas / Meu ônibus / Ajustes**).
-- Tablet e desktop (≥ 720 px): mapa em tela cheia com uma coluna central flutuante, sem barra lateral fixa.
-- Acento âmbar para a interface. O verde fica reservado a tempo real e estados positivos.
-- Tipografia [Geist e Geist Mono](https://vercel.com/font) empacotadas em `app/assets/fonts/geist` (SIL Open Font License 1.1, texto em `OFL.txt`). Geist Mono é usada em números: linha, minutos, ônibus e idades.
-- Marca oficial em `docs/brand/`; os PNGs do app são gerados por `app/tool/generate_brand_assets.py`.
-
-### Mapa
-
-O mapa usa [MapLibre](https://maplibre.org) (`maplibre_gl` 0.27.1) com dados do [OpenFreeMap](https://openfreemap.org), sem chave de API.
-
-- Os estilos claro e escuro do BusãoGyn (`app/assets/map/busao-light.json` e `busao-dark.json`) são pré-gerados a partir do OpenFreeMap Liberty por `app/tool/build_map_styles.dart`. O app não processa estilo ao abrir.
-- Os estilos mantêm as mesmas sources, fontes e sprites do Liberty. A atribuição (OpenFreeMap, OpenMapTiles, OpenStreetMap) vem das sources e aparece no controle nativo do MapLibre.
+- Os estilos claro e escuro (`app/assets/map/busao-light.json` e `busao-dark.json`) são pré-gerados a partir do OpenFreeMap Liberty por `app/tool/build_map_styles.dart`. O app não processa estilo ao abrir.
+- Os estilos mantêm as sources, fontes e sprites do Liberty. A atribuição (OpenFreeMap, OpenMapTiles, OpenStreetMap) aparece no controle nativo do MapLibre.
 - Se um estilo empacotado não carregar, o mapa volta para o Liberty por URL.
-- Para usar outro estilo:
 
 ```bash
-flutter run --dart-define=MAP_STYLE_URL=https://exemplo.com/estilo.json
-# opcional: estilo próprio para o tema noturno
+# outro estilo (opcional: um próprio para o tema noturno)
 flutter run --dart-define=MAP_STYLE_URL=https://exemplo.com/dia.json --dart-define=MAP_STYLE_DARK_URL=https://exemplo.com/noite.json
+
+# regenerar os estilos depois de uma mudança no Liberty
+cd app && dart run tool/build_map_styles.dart
 ```
 
-Para regenerar os estilos depois de uma mudança no Liberty:
+## Rodar e validar
 
-```bash
-cd app
-dart run tool/build_map_styles.dart
-```
-
-### Plataformas e toolchain
-
-- Identificador Android/iOS: `com.lucksrei.busaogyn`.
-- Baseline: **Flutter 3.38.5** (Dart 3.10). Os arquivos de Android/iOS seguem o template dessa versão: AGP 8.11.1, Kotlin 2.2.20, Gradle 8.14.
-- Android: minSdk 24 (vem de `flutter.minSdkVersion`; o `maplibre_gl` exigiria só 21). O build exige **JDK 21**.
-- iOS: deployment target **15.0** no Runner e em todos os pods (`app/ios/Podfile`). O Xcode atual recusa pods que declaram iOS 12/13.
-- Web: o controle de atribuição do MapLibre fica acima do painel via a variável CSS `--busao-map-attribution-bottom` (`app/web/index.html`).
-
-### Rodar e validar
+Requisitos: **Flutter 3.38.5** (Dart 3.10), **JDK 21** para Android, Xcode atual para iOS, Node.js para o Worker.
 
 ```bash
 cd app
@@ -108,21 +116,26 @@ flutter run                      # usa a API de produção
 dart format --set-exit-if-changed .
 flutter analyze
 flutter test
-flutter build apk --debug
-flutter build web --release
 ```
 
-Para apontar para um Worker local:
+Apontar para um Worker local:
 
 ```bash
 flutter run --dart-define=BUSAOGYN_API_BASE_URL=http://127.0.0.1:8787
 ```
 
-Versão em `app/pubspec.yaml` (`version`), que define `versionName`/`versionCode` no Android e `CFBundleShortVersionString`/`CFBundleVersion` no iOS.
+### Plataformas
 
-Publicação nas lojas e no Web, assinatura, ícones e checklist: [docs/MOBILE_RELEASE.md](docs/MOBILE_RELEASE.md). Privacidade (dados, rede e serviços externos): [docs/PRIVACY.md](docs/PRIVACY.md). Comportamento esperado das telas: [docs/MVP_UX.md](docs/MVP_UX.md).
+| | |
+| --- | --- |
+| Identificador | `com.lucksrei.busaogyn` |
+| Android | minSdk 24, AGP 8.11.1, Kotlin 2.2.20, Gradle 8.14 |
+| iOS | deployment target 15.0 (Runner e pods), ciclo de vida UIScene |
+| Web | controle de atribuição posicionado pela variável CSS `--busao-map-attribution-bottom` (`app/web/index.html`) |
 
-## Worker
+A versão fica em `app/pubspec.yaml` (`version`) e define `versionName`/`versionCode` no Android e `CFBundleShortVersionString`/`CFBundleVersion` no iOS.
+
+## API (Worker)
 
 ```bash
 cd worker
@@ -131,8 +144,6 @@ npm run typecheck
 npm test
 npm run dev
 ```
-
-Endpoints:
 
 ```text
 GET /v1/health
@@ -143,22 +154,36 @@ GET /v1/vehicles                  experimental (frota RMTC restrita server-to-se
 GET /v1/routes/{routeId}/vehicles experimental (mesma restrição)
 ```
 
-As respostas trazem `meta` com `fetchedAt`, `stale` e `ageSeconds`. O app usa isso para nunca apresentar dado antigo como atual.
+As respostas trazem `meta` com `fetchedAt`, `stale` e `ageSeconds`; o app usa isso para nunca apresentar dado antigo como atual.
 
-A busca direta por número do ônibus está **bloqueada**: a fonte exige o código do ponto e o app não envia ponto falso. Detalhes e o que destrava a busca: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+A busca direta por número do ônibus está **bloqueada**: a fonte exige o código do ponto e o app não envia ponto falso. O que destrava a busca está em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Produção
+Produção: `https://busaogyn-api.lively-cloud-f009.workers.dev` (padrão do app).
 
-API pública:
+## Deploy e CI
 
-```text
-https://busaogyn-api.lively-cloud-f009.workers.dev
-```
+| Workflow | O que faz |
+| --- | --- |
+| `flutter-ci` | format, analyze e testes do app |
+| `worker-ci` | typecheck e testes do Worker |
+| `worker-deploy` | deploy da API + smoke de produção (health, ETA do ponto canário 30402, veículo realtime da linha 020, posição e cache) |
+| `worker-integration-smoke` | sobe o Worker local (`wrangler dev`) e roda o smoke da API contra a fonte real (manual) |
+| `deploy-web` / `rollback-web` | publica ou reverte o app Web, com smoke nas rotas `/ponto/30402` e `/linhas` |
+| `rmtc-probe` | sonda única das fontes da RMTC (manual) |
 
-O app usa essa URL por padrão. O deploy do Worker roda um smoke de produção: health, ETA do ponto canário 30402, seleção de veículo realtime da linha 020, posição individual e cache. Deploy e CI: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) e `.github/workflows/`.
+## Documentação
+
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md): camadas, contrato da API e limitações da fonte
+- [adr/](docs/adr/README.md): decisões de navegação, dados, mapa e persistência
+- [MVP_UX.md](docs/MVP_UX.md): comportamento esperado das telas
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) e [WEB.md](docs/WEB.md): deploy da API e do Web
+- [MOBILE_RELEASE.md](docs/MOBILE_RELEASE.md): lojas, assinatura, ícones e checklist
+- [PRIVACY.md](docs/PRIVACY.md): dados, rede e serviços externos
 
 ## Privacidade e suporte
 
-O app não tem conta e não usa localização. Política de privacidade, exclusão de dados e suporte: [lucksrei.com/projects/busaogyn/privacy](https://lucksrei.com/projects/busaogyn/privacy/), [data-deletion](https://lucksrei.com/projects/busaogyn/data-deletion/) e [support](https://lucksrei.com/projects/busaogyn/support/). Contato: marketing@lucksrei.com.
+O app não tem conta e não usa localização. Não tem anúncios, analytics nem relatório de falhas, e guarda os dados só no aparelho. [Política de privacidade](https://lucksrei.com/projects/busaogyn/privacy/), [exclusão de dados](https://lucksrei.com/projects/busaogyn/data-deletion/) e [suporte](https://lucksrei.com/projects/busaogyn/support/). Contato: marketing@lucksrei.com.
 
-Criado por Lucas Diogo França, produto da [Lucksrei](https://lucksrei.com).
+---
+
+Criado por Lucas Diogo França, um produto [Lucksrei](https://lucksrei.com).
