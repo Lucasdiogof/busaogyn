@@ -1687,11 +1687,11 @@ class _MapBinding extends StatelessWidget {
     );
   }
 
-  NetworkOverlay? _overlay(_MapData data) {
+  RouteMatch? _match(_MapData data) {
     final builder = network;
     if (builder == null) return null;
     // Trajeto do ônibus só com associação confirmada (ver route_match.dart).
-    final match = data.vehicleNumber == null
+    return data.vehicleNumber == null
         ? null
         : matchTrackedRoute(
             catalog: builder.catalog,
@@ -1701,6 +1701,11 @@ class _MapBinding extends StatelessWidget {
             position: data.stale ? null : data.position,
             trail: data.trail,
           );
+  }
+
+  NetworkOverlay? _overlay(_MapData data, RouteMatch? match) {
+    final builder = network;
+    if (builder == null) return null;
     return builder.build(
       selectedStopId: previewStopId ?? data.stopId,
       routeLineId: routeLineId,
@@ -1716,31 +1721,39 @@ class _MapBinding extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocSelector<StopArrivalsCubit, StopArrivalsState, _MapData>(
       selector: _select,
-      builder: (context, data) =>
-          BlocSelector<MapVehiclesCubit, MapVehiclesState, List<MapVehicle>>(
-            selector: (state) => state.secondaries,
-            builder: (context, secondaries) => TransitMap(
-              network: _overlay(data),
-              onStopTap: onStopTap,
-              secondaryVehicles: secondaries,
-              onSecondaryTap: onSecondaryTap,
-              onTrackedTap: onTrackedTap,
-              onMapTap: onMapTap,
-              vehicleNumber: data.vehicleNumber,
-              position: data.position,
-              stale: data.stale,
-              observedHeading: data.heading,
-              observedTrail: data.trail,
-              styleString: styleString,
-              fallbackStyleString: fallbackStyleString,
-              followController: followController,
-              cameraPadding: layout.cameraPadding,
-              controlsPadding: layout.controlsPadding,
-              attributionBottom: layout.attributionBottom,
-              showControls: layout.showControls,
-              mapBuilder: mapBuilder,
-            ),
+      builder: (context, data) {
+        final match = _match(data);
+        // Confirmado: o já percorrido segue as ruas do trajeto oficial.
+        final traveled = match?.traveled ?? const <GeoPosition>[];
+        return BlocSelector<
+          MapVehiclesCubit,
+          MapVehiclesState,
+          List<MapVehicle>
+        >(
+          selector: (state) => state.secondaries,
+          builder: (context, secondaries) => TransitMap(
+            network: _overlay(data, match),
+            onStopTap: onStopTap,
+            secondaryVehicles: secondaries,
+            onSecondaryTap: onSecondaryTap,
+            onTrackedTap: onTrackedTap,
+            onMapTap: onMapTap,
+            vehicleNumber: data.vehicleNumber,
+            position: data.position,
+            stale: data.stale,
+            observedHeading: data.heading,
+            observedTrail: traveled.length >= 2 ? traveled : data.trail,
+            styleString: styleString,
+            fallbackStyleString: fallbackStyleString,
+            followController: followController,
+            cameraPadding: layout.cameraPadding,
+            controlsPadding: layout.controlsPadding,
+            attributionBottom: layout.attributionBottom,
+            showControls: layout.showControls,
+            mapBuilder: mapBuilder,
           ),
+        );
+      },
     );
   }
 }

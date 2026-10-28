@@ -50,6 +50,7 @@ class RouteMatch {
     this.shape,
     this.alongM,
     this.future = const [],
+    this.traveled = const [],
   });
 
   final RouteMatchLevel level;
@@ -63,6 +64,11 @@ class RouteMatch {
 
   /// Trecho do trajeto à frente do ônibus (só com [RouteMatchLevel.confirmed]).
   final List<GeoPosition> future;
+
+  /// Trecho do trajeto já percorrido desde a 1ª posição observada (só com
+  /// [RouteMatchLevel.confirmed]). Desenhado no lugar do rastro em linha
+  /// reta, que cortava quarteirões quando o ônibus virava entre leituras.
+  final List<GeoPosition> traveled;
 
   bool get confirmed => level == RouteMatchLevel.confirmed;
 }
@@ -235,6 +241,7 @@ RouteMatch matchTrackedRoute({
     shape: shape,
     alongM: current,
     future: shape.line.sliceFrom(current),
+    traveled: shape.line.slice(along.first, current),
   );
 }
 
@@ -294,6 +301,7 @@ RouteMatch _byMovement(List<CatalogShape> shapes, List<GeoPosition> points) {
     shape: shape,
     alongM: current,
     future: shape.line.sliceFrom(current),
+    traveled: shape.line.slice(along.first, current),
   );
 }
 

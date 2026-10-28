@@ -389,8 +389,14 @@ void main() {
       findsOneWidget,
     );
 
-    // Rastro observado continua sendo do tracking, intacto.
-    expect(_map(tester).observedTrail, hasLength(3));
+    // Confirmado: o rastro desenhado segue o trajeto oficial (não corta
+    // quarteirões entre leituras do GPS).
+    final trail = _map(tester).observedTrail;
+    expect(trail.length, greaterThanOrEqualTo(2));
+    expect(
+      trail.last.longitude,
+      closeTo(_map(tester).position!.longitude, 1e-3),
+    );
     expect(_map(tester).vehicleNumber, '90001');
     expect(_CountingMap.created, 1);
     context(tester).read<StopArrivalsCubit>().stopTracking();

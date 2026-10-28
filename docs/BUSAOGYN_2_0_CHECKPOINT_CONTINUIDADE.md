@@ -80,11 +80,12 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   - F-5 teclado cobria o planejador;
   - F-6 viagem enquadrada pela metade (iOS);
   - F-7 painel recolhido sem alça;
-  - F-8 ônibus maior no mapa.
+  - F-8 ônibus maior no mapa;
+  - F-9 rastro seguindo o trajeto confirmado (não corta quarteirões).
 
 ## Testes e builds (último ciclo, Etapa F)
 
-- 641 testes Flutter (inclui diretrizes de acessibilidade), 52 Python, 30 do
+- 642 testes Flutter (inclui diretrizes de acessibilidade), 52 Python, 30 do
   Worker, `flutter analyze` limpo, formatação ok.
 - Builds de produção (Web, APK, AAB, iOS release) sem dados da CMTC
   (`app/scripts/check-no-official-catalog.sh <artefatos>`); Web e APK de

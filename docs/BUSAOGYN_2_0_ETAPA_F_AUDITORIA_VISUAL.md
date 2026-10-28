@@ -81,6 +81,7 @@ Cada correção tem teste de regressão. Os marcados com "mutação" foram confe
 | F-6 | **iOS:** depois de "Ver no mapa", o mapa parava num pedaço da viagem | Planejador | A troca de inset interrompia a animação. Se o painel muda em até 3 s depois de um enquadramento, ele é refeito; toque no mapa cancela. Tocar de novo em "Ver no mapa" reenquadra | 2 testes (mutação); antes/depois |
 | F-7 | Painel recolhido mostrava um pedaço cortado de cartão, sem alça nem resumo | Painel (celular) | Ao recolher, a lista volta ao topo | Teste (mutação); antes/depois |
 | F-8 | Ônibus pequeno no mapa (pedido do usuário) | Mapa | Acompanhado +40% (0,30 → 0,42), secundários +30% (0,20 → 0,26), halo 30 → 40 | Simulador iOS com ônibus real |
+| F-9 | Rastro **cortava quarteirões** (relato do usuário, linha 016): as leituras do GPS, a cada 15 s, eram ligadas em linha reta, e uma curva entre duas leituras virava uma diagonal pelo quarteirão | Acompanhamento | Com o trajeto oficial **confirmado**, o já percorrido é desenhado pela geometria do trajeto, da 1ª posição observada até a atual (`RouteMatch.traveled`). Sem confirmação, continua o rastro observado (nada é inventado) | Testes de domínio e de tela; simulador iOS com ônibus real da 016 (antes: captura do usuário) |
 
 **Observado e não alterado (documentado):**
 
@@ -93,7 +94,8 @@ Cada correção tem teste de regressão. Os marcados com "mutação" foram confe
 - **Caso real equivalente:** outro ônibus em circulação na 016, com destino "ST AEROPORTO", o mesmo trecho do meio da denominação que causava o problema. Ele foi acompanhado no app nativo de desenvolvimento, no simulador iOS, com a API real e o catálogo local:
   - parado, o app não desenha percurso. É a regra conservadora: precisa andar 20 m;
   - depois de andar cerca de 240 m, o **percurso oficial (cinza)** e o **trecho à frente (âmbar tracejado)** aparecem sobre a avenida, o rastro observado continua, e o cartão diz que o trecho à frente é estimado e sem horário por ponto;
-  - capturas: `ios_sim/iphone17_402x874/claro/11_016_real_*` e `12_016_real_*`.
+  - capturas: `ios_sim/iphone17_402x874/claro/11_016_real_*`, `12_016_real_*` e `13_016_real_rastro_pelo_trajeto_*`;
+  - com o F-9, o trecho já percorrido segue a avenida, sem cortar quarteirões.
 - **Cenário reproduzível (SIMULADO):**
   - ônibus fictício 90016, com o itinerário e o destino reais da RMTC, andando a cada 15 s sobre a geometria oficial da ida (`sim016.json`);
   - capturado no Web em 390×844, 768×1024 e 1440×900, claro e escuro;
@@ -118,7 +120,33 @@ Cada correção tem teste de regressão. Os marcados com "mutação" foram confe
 
 ## 7. Testes e builds
 
-Os resultados finais estão no checkpoint (`docs/BUSAOGYN_2_0_CHECKPOINT_CONTINUIDADE.md`) e no fim deste documento.
+**Capturas:** 342 PNG.
+
+- Por plataforma:
+  - Web de desenvolvimento: 206;
+  - Web de produção: 78;
+  - estados de exceção: 44;
+  - simulador iOS: 14.
+- Por tamanho, no Web:
+  - 375×812: 58;
+  - 390×844: 66;
+  - 768×1024: 56;
+  - 1024×1366: 48;
+  - 1440×900: 56.
+- 228 mostram o catálogo restrito.
+- 7 pares antes/depois.
+- ZIP de 259 MB.
+- **Ausente:** "linha: volta no mapa" no Web. O chip Volta não foi encontrado de forma confiável pela automação. A volta aparece na visão de linha do iOS e em F-3.
+
+**Verificação final** (Flutter 3.38.5):
+
+- 642 testes Flutter;
+- 52 Python;
+- 30 do Worker;
+- analyze e formatação limpos;
+- Web, APK, AAB e iOS release sem dados da CMTC;
+- Web de desenvolvimento acusado pelo verificador, como controle positivo;
+- APK só com permissões de rede.
 
 ## 8. Limitações
 
