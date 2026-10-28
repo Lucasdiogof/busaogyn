@@ -94,7 +94,7 @@ Regras, em ordem — qualquer falha encerra **sem desenhar nada**:
 1. A linha (`routeId`) tem trajetos no catálogo (senão: *indisponível — sem trajetos*).
 2. Há posição atual não expirada e o acompanhamento está ativo (senão: *indisponível — sem posição*).
 3. O `routeName` da RMTC é igual (palavras normalizadas, ≥ 3 letras, sem "terminal") à DENOMINAÇÃO de **exatamente uma** variante (senão: *ambíguo*).
-4. O destino aponta um sentido: casa com o último trecho da denominação → ida; com o primeiro → volta; com os dois ou nenhum → *ambíguo*.
+4. O destino aponta um sentido: casa com o último trecho da denominação → ida; com o primeiro → volta; com nenhum trecho → *ambíguo*. **Desde a Etapa E (28/10/2026):** se casa só com um trecho do meio (ex.: "ST AEROPORTO" em "T. Cruzeiro / St. Aeroporto / Eixo T-8", linha 016) ou com os dois extremos, decide o deslocamento: confirma só se, entre ida e volta, exatamente um sentido é coerente com as posições observadas e já avançou 20 m; os dois coerentes depois de andar → *ambíguo*.
 5. Existe exatamente um trajeto dessa variante nesse sentido.
 6. Posição atual e rastro observado a até **50 m** do trajeto (senão: *ambíguo — fora do trajeto*).
 7. Rastro avança ≥ **20 m** no sentido do trajeto, sem recuar mais de 15 m entre amostras (senão: *pendente — aguardando deslocamento* ou *ambíguo — andando no sentido contrário*).

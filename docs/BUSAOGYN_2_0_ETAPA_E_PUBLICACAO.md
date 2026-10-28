@@ -217,10 +217,7 @@ Público-alvo: maiores de 13 anos (o app não é direcionado a crianças). Anún
 
 **Risco E-8 (capacidade):** o plano gratuito do Cloudflare Workers aceita 100 mil requisições por dia. Com cerca de 16 requisições por minuto por pessoa parada num ponto, isso dá em torno de 100 horas de uso por dia. Acima disso, a API devolve erro até virar o dia.
 
-Opções sem serviço pago, a decidir antes de divulgar amplamente:
-
-- consultar a posição dos outros ônibus com menos frequência;
-- criar um endpoint que devolva as posições de um ponto numa só chamada (mudança de API, precisa de justificativa e ADR).
+**Atualização (complemento, seção 16):** implementado o lote do [ADR-0006](adr/0006-posicoes-em-lote.md). Parado num ponto, as requisições caíram de 15 para 4,5 por minuto (−70%), o que leva a capacidade a cerca de 370 horas de uso por dia. Só vale depois do deploy autorizado do Worker.
 
 ## 11. Dependências e builds
 
@@ -308,3 +305,76 @@ Os testes de regressão de E-2 foram conferidos por mutação: sem a correção,
 - Resposta da CMTC (licença, sequência, vigência, calendário).
 - Atualização da política pública em lucksrei.com (proposta na seção 7).
 - Contas e chaves das lojas.
+
+## 16. Complemento (28/10/2026): acompanhamento da linha 016 e requisições
+
+### 16.1 Percurso futuro na linha 016
+
+**Sintoma:** acompanhando um ônibus da linha 016 (build de desenvolvimento, com catálogo), o mapa mostrava só o rastro fino observado e nunca o percurso à frente.
+
+**Causa (dados reais, 2 consultas de chegadas e 1 de posição à API):**
+
+- O itinerário da RMTC ("T. Cruzeiro / St. Aeroporto - Eixo T-8") casa com a única variante do cadastro ("T. Cruzeiro / St. Aeroporto / Eixo T-8"). Até aí, tudo certo.
+- Na ida, o destino informado pela RMTC é "ST AEROPORTO", que é o trecho **do meio** da denominação.
+- A regra de sentido só olhava o primeiro e o último trecho. Dava "ambíguo — o destino não indica o sentido" durante toda a viagem, e por isso nada além do rastro era desenhado.
+- Na volta ("T CRUZEIRO") a regra já funcionava.
+
+**Correção** (`route_match.dart` e `tracking.py`, regras idênticas):
+
+- Quando o destino casa com um trecho do meio (ou com os dois extremos), o **deslocamento observado** decide.
+- Confirma só se, entre ida e volta, exatamente um sentido é coerente com as posições, sem recuo nem salto, e já avançou 20 m.
+- Os dois coerentes depois de andar continuam "ambíguo".
+- Destino que não casa com nenhum trecho continua "ambíguo".
+- Nada muda nos outros casos.
+- O percurso continua rotulado como **estimado**, sem horário por ponto.
+
+**Evidência:**
+
+| Tipo | Resultado |
+| --- | --- |
+| Testes | Dart: `network_test.dart` (ida, volta e parado com destino no meio). Python: `test_phase4.py` (os mesmos casos, mais ida e volta no mesmo traçado → ambíguo). Os casos de recusa anteriores continuam passando |
+| Dados reais | `match_eval.py` com 17 requisições, nos pontos da linha 016. Um ônibus da 016 com destino "ST AEROPORTO" foi de *pendente* (1ª amostra, os dois sentidos serviam) a **confirmado na ida** na 2ª amostra (~25 s), com 12 pontos estimados à frente. Pela regra anterior, ele ficaria *ambíguo* a viagem toda |
+
+**Limites:**
+
+- **Produção:** sem catálogo (licença CMTC pendente), o app não tem trajeto oficial e continua mostrando só posição e rastro, como manda o ADR-0002. O percurso futuro só pode ir para produção junto com o catálogo autorizado.
+- **Amostra pequena:** 1 ônibus da 016. Não serve para declarar precisão geral.
+- **Primeiros segundos:** logo depois de começar a acompanhar, o mapa espera o ônibus andar cerca de 20 m antes de desenhar o percurso.
+
+### 16.2 Requisições à API (ADR-0006)
+
+**Medição:**
+
+- Dois builds Web ao mesmo tempo, mesmo ponto (30402), mesmos 6 "outros ônibus" no mapa.
+- Mesmo Worker local (`wrangler dev`), 120 s parado no ponto.
+
+| Build | Chegadas | Posições | Total por minuto |
+| --- | --- | --- | --- |
+| Antes (`df29476`, um pedido por ônibus) | 4 | 26 | **15** |
+| Depois (lote) | 4 | 5 | **4,5** (−70%) |
+
+**O que não mudou:**
+
+- intervalo de 30 s dos outros ônibus e de 15 s do acompanhado;
+- limite de 6 ônibus;
+- expiração em 90 s;
+- pausa com o app oculto;
+- cache por ônibus no Worker (5 s fresco, 45 s antigo);
+- até 3 consultas simultâneas à RMTC.
+
+A precisão e a carga na RMTC são as mesmas.
+
+**Compatibilidade:** o Worker publicado ainda não tem o lote. O app recebe `404 NOT_FOUND`, passa a consultar por ônibus na sessão e funciona como antes. Isso está coberto por teste e foi conferido com o build de produção contra a API publicada (seção 16.3).
+
+### 16.3 Verificação final do complemento
+
+| Verificação | Resultado |
+| --- | --- |
+| `dart format` / `flutter analyze` | sem mudanças / sem problemas |
+| `flutter test` | **631 passaram** (625 + 6 novos: percurso com destino no meio, 3 do lote no cubit, 2 do lote no repositório) |
+| Python (`data/cmtc`) | 52 OK |
+| Worker | typecheck OK, **30 testes** (26 + 4 do lote) |
+| Builds de produção (Flutter 3.38.5) | Web (`main.dart.js` 3.933.370 bytes), APK 86.747.400 bytes, AAB 58.246.909 bytes, iOS 29,3 MB |
+| Verificador de catálogo | OK em Web, APK, AAB e `Runner.app`; segredos OK; APK só com permissões de rede; 16 KB OK |
+| Compatibilidade | Build Web de produção contra a API **publicada**, 60 s no ponto 30402: 2 chegadas + 12 posições individuais, 6 ônibus no mapa (o lote respondeu 404 antes da janela e o app voltou à consulta por ônibus) |
+

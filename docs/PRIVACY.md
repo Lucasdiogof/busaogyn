@@ -24,6 +24,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 | Pontos recentes | Mesma chave: código do ponto e hora da última consulta bem-sucedida. Máximo de 10, sem repetição; só entram consultas que deram certo | Até o usuário remover o item, limpar o histórico (com confirmação) ou apagar os dados do app | Não |
 | Código do ponto digitado | Memória, durante a sessão | Até fechar o app | Sim, na consulta à API BusãoGyn |
 | Número do ônibus acompanhado | Memória, durante a sessão | Até parar o acompanhamento ou fechar o app | Sim, na consulta de posição à API BusãoGyn |
+| Números dos outros ônibus do ponto (vêm da própria resposta de chegadas) | Memória, durante a sessão | Até trocar de ponto ou fechar o app | Sim, juntos num pedido à API BusãoGyn com o código do ponto (ADR‑0006), ou um por pedido se a API ainda não tiver o lote |
 | Posições observadas do ônibus (rastro e direção) | Memória, até 20 posições | Limpas ao trocar ou parar o acompanhamento | Não (vêm da API, não do aparelho) |
 
 ### 1.1 Builds de desenvolvimento (catálogo local, Etapa C)

@@ -249,6 +249,47 @@ void main() {
       expect(m.future, isEmpty);
     });
 
+    test('destino num trecho do meio: o deslocamento decide (caso da 016)', () {
+      // Como "ST AEROPORTO" em "T. Cruzeiro / St. Aeroporto / Eixo T-8".
+      const three = 'T. Fictício Norte / Bairro Meio / Centro Imaginário';
+      final map = fixtureCatalogMap();
+      final variants = map['variants']! as Map<String, Object?>;
+      map['variants'] = {
+        ...variants,
+        'rows': [
+          for (final row in variants['rows']! as List)
+            (row as List)[0] == '001-1' ? ([...row]..[3] = three) : row,
+        ],
+      };
+      final renamed = decodeCatalog(jsonEncode(map));
+      RouteMatch middle(List<GeoPosition> trail, GeoPosition position) =>
+          matchTrackedRoute(
+            catalog: renamed,
+            routeId: '001',
+            routeName: 'T. Fictício Norte / Bairro Meio - Centro Imaginário',
+            destination: 'BAIRRO MEIO',
+            position: position,
+            trail: trail,
+          );
+
+      final east = middle([
+        _p(-16.6801, -49.290),
+        _p(-16.6801, -49.286),
+      ], _p(-16.6801, -49.282));
+      expect(east.level, RouteMatchLevel.confirmed);
+      expect(east.shape!.direction, 'i');
+      expect(east.future, isNotEmpty);
+
+      final west = middle([_p(-16.6801, -49.282)], _p(-16.6801, -49.286));
+      expect(west.level, RouteMatchLevel.confirmed);
+      expect(west.shape!.direction, 'v');
+
+      // Parado: ida e volta servem; nada é desenhado ainda.
+      final still = middle(const [], _p(-16.6801, -49.282));
+      expect(still.level, RouteMatchLevel.pending);
+      expect(trackRouteCollection(still)['features'], isEmpty);
+    });
+
     test('recusa: ônibus fora do trajeto', () {
       final m = match(position: _p(-16.69, -49.282));
       expect(m.reason, RouteMatchReason.offRoute);

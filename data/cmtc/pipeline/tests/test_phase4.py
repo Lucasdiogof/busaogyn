@@ -171,11 +171,24 @@ class Tracking(unittest.TestCase):
         self.assertEqual(match(position=None).reason, 'noPosition')
         self.assertEqual(match(route_name=None).reason, 'routeNameMissing')
         self.assertEqual(match(route_name='Outro / Nome').reason, 'routeNameNoMatch')
-        self.assertEqual(match(destination='CENTRO').reason, 'directionUnknown')
+        self.assertEqual(match(destination='BAIRRO QUALQUER').reason, 'directionUnknown')
         self.assertEqual(match(position=at(0.5, 200)).reason, 'offRoute')
         self.assertEqual(match(trail=[at(0.7, 5), at(0.6, 5)]).reason, 'movingBackwards')
         self.assertEqual(match(trail=[at(0.495, 5)]).reason, 'waitingMovement')
         self.assertEqual(match(shapes=[]).reason, 'noShapes')
+
+    def test_direction_by_movement_when_destination_is_a_middle_part(self):
+        # Destino "CENTRO" é o trecho do meio de 'T. Alfa / Centro / T. Beta'
+        # (caso real: "ST AEROPORTO" na linha 016). Decide o deslocamento.
+        east = match(destination='CENTRO')
+        self.assertEqual((east.level, east.shape.id), ('confirmed', '999-1i'))
+        west = match(destination='CENTRO', trail=[at(0.7, 5), at(0.6, 5)])
+        self.assertEqual((west.level, west.shape.id), ('confirmed', '999-1v'))
+        # Sem deslocamento ainda: os dois sentidos servem -> aguarda.
+        self.assertEqual(match(destination='CENTRO', trail=[]).reason, 'waitingMovement')
+        # Ida e volta pelo mesmo traçado no mesmo sentido: indecidível.
+        same = [Shape('999-1i', '999-1', 'i', Polyline(EAST)), Shape('999-1v', '999-1', 'v', Polyline(EAST))]
+        self.assertEqual(match(destination='CENTRO', shapes=same).reason, 'directionUnknown')
 
     def test_gps_jump(self):
         # Trajeto em U (leste, norte 1 km, oeste): do início ao fim da volta são
