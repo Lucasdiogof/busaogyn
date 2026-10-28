@@ -40,22 +40,31 @@ class TripPlannerController extends ChangeNotifier {
 
   bool get canSearch => origin != null && destination != null;
 
-  void open() {
-    active = true;
+  /// A viagem só aparece no mapa e o toque no mapa só preenche campos com
+  /// Planejar aberto. Origem, destino e resultados ficam guardados.
+  void setActive(bool value) {
+    if (active == value) return;
+    active = value;
+    if (!value) picking = null;
     notifyListeners();
   }
 
-  void close() {
-    active = false;
+  /// Limpa origem, destino e resultados.
+  void clear() {
+    origin = null;
+    destination = null;
     picking = null;
-    plan = null;
-    selected = null;
+    _invalidate();
     notifyListeners();
   }
+
+  /// A alternativa atual foi escolhida pelo passageiro (não pela busca).
+  bool selectionByUser = false;
 
   void _invalidate() {
     plan = null;
     selected = null;
+    selectionByUser = false;
   }
 
   void set(PlannerField field, String? stopId) {
@@ -95,11 +104,13 @@ class TripPlannerController extends ChangeNotifier {
     if (!canSearch) return;
     plan = planner.plan(origin!, destination!);
     selected = plan!.options.isEmpty ? null : 0;
+    selectionByUser = false;
     notifyListeners();
   }
 
   void select(int index) {
     selected = index;
+    selectionByUser = true;
     notifyListeners();
   }
 }
@@ -169,12 +180,12 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
                     ),
                   ),
                 ),
-                IconButton(
-                  key: const ValueKey('planner-close'),
-                  tooltip: l10n.plannerClose,
-                  onPressed: _c.close,
-                  icon: const Icon(Icons.close_rounded),
-                ),
+                if (_c.origin != null || _c.destination != null)
+                  TextButton(
+                    key: const ValueKey('planner-clear'),
+                    onPressed: _c.clear,
+                    child: Text(l10n.plannerClear),
+                  ),
               ],
             ),
             FootNote(child: Text(l10n.plannerIntro)),
@@ -634,22 +645,4 @@ class _OptionCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Atalho da aba Pontos para abrir o planejador.
-class PlanTripButton extends StatelessWidget {
-  const PlanTripButton({required this.onPressed, super.key});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: OutlinedButton.icon(
-      key: const ValueKey('planner-open'),
-      onPressed: onPressed,
-      icon: const Icon(Icons.alt_route_rounded, size: 18),
-      label: Text(l10n.plannerOpen),
-    ),
-  );
 }

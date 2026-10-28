@@ -1449,7 +1449,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get plannerNoRoute =>
-      'No hay viaje con evidencia suficiente y hasta dos transbordos. No significa que no haya ómnibus, solo que los datos actuales no lo confirman.';
+      'No hay viaje con evidencia suficiente y hasta dos transbordos. No significa que no haya autobús, solo que los datos actuales no lo confirman.';
 
   @override
   String get plannerTruncated =>
@@ -1478,9 +1478,9 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count ómnibus',
-      one: '1 ómnibus',
-      zero: 'Ningún ómnibus',
+      other: '$count autobuses',
+      one: '1 autobús',
+      zero: 'Ningún autobús',
     );
     return '$_temp0';
   }
@@ -1539,7 +1539,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get plannerCautionRepeated =>
-      'El ómnibus pasa más de una vez por una de las paradas.';
+      'El autobús pasa más de una vez por una de las paradas.';
 
   @override
   String get plannerCautionWalk =>
@@ -1567,4 +1567,62 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get catalogTerminalTag => 'terminal (inferido)';
+
+  @override
+  String get dockPlan => 'Planear';
+
+  @override
+  String get dockSaved => 'Guardados';
+
+  @override
+  String trackingBarSemantics(String bus, String heading) {
+    return 'Siguiendo el autobús $bus, $heading. Toque para abrir.';
+  }
+
+  @override
+  String get trackingBarOpen => 'Abrir seguimiento';
+
+  @override
+  String get trackingBarStale => 'Posición antigua o sin señal';
+
+  @override
+  String get sheetShowMap => 'Ver mapa';
+
+  @override
+  String get sheetShowPanel => 'Mostrar panel';
+
+  @override
+  String get sheetHandleHint => 'Toque para expandir o recoger';
+
+  @override
+  String get plannerClear => 'Limpiar';
+
+  @override
+  String get plannerHeaderSubtitle =>
+      'De parada a parada · funciona sin internet';
+
+  @override
+  String get sheetSummaryStops => 'Paradas y llegadas';
+
+  @override
+  String sheetSummaryStop(String code, String lines) {
+    return 'Parada $code · $lines';
+  }
+
+  @override
+  String get sheetSummaryPlan => 'Origen y destino';
+
+  @override
+  String get sheetSummaryLines => 'Catálogo de líneas';
+
+  @override
+  String sheetSummaryLine(String line) {
+    return 'Línea $line';
+  }
+
+  @override
+  String get sheetSummarySaved => 'Favoritos y recientes';
+
+  @override
+  String get sheetSummaryTracking => 'Seguimiento del autobús';
 }

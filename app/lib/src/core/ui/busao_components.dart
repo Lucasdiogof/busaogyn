@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import '../l10n/l10n.dart';
 import '../theme/busao_tokens.dart';
 
+/// Duração de uma animação de interface respeitando "reduzir movimento" do
+/// sistema: com a preferência ligada, a troca é imediata.
+Duration motion(BuildContext context, Duration duration) =>
+    MediaQuery.maybeDisableAnimationsOf(context) ?? false
+    ? Duration.zero
+    : duration;
+
 /// Superfície que flutua sobre o mapa: quase opaca, borda fina e sombra.
 ///
 /// Sem `BackdropFilter`: o mapa é uma platform view (Android/iOS) ou um
@@ -45,10 +52,11 @@ class GlassSurface extends StatelessWidget {
             : Border.all(color: borderColor!, width: 1.5),
         boxShadow: elevated
             ? [
+                // Uma sombra só, curta: separa do mapa sem "brilho".
                 BoxShadow(
-                  color: tokens.shadow,
-                  blurRadius: 28,
-                  offset: const Offset(0, 8),
+                  color: tokens.shadow.withValues(alpha: tokens.shadow.a * 0.8),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,
@@ -483,7 +491,21 @@ class _SkeletonBlockState extends State<SkeletonBlock>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+    value: 1,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Movimento reduzido: bloco estático, sem pulsar.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse
+        ..stop()
+        ..value = 1;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {
@@ -604,4 +626,99 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
       oldDelegate.color != color;
+}
+
+/// Carregamento da marca: três arcos do anel da logo BusãoGyn (com o pino no
+/// topo) acendendo em sequência na cor de destaque. Funcional, não
+/// decorativo: só existe enquanto algo carrega. Com "reduzir movimento",
+/// fica parado com um arco aceso.
+class BusaoLoader extends StatefulWidget {
+  const BusaoLoader({this.size = 18, this.color, super.key});
+
+  final double size;
+
+  /// Cor dos arcos acesos; padrão é o âmbar legível do tema.
+  final Color? color;
+
+  @override
+  State<BusaoLoader> createState() => _BusaoLoaderState();
+}
+
+class _BusaoLoaderState extends State<BusaoLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _cycle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 960),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _cycle
+        ..stop()
+        ..value = 0.2;
+    } else if (!_cycle.isAnimating) {
+      _cycle.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color ?? context.tokens.accentText;
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: widget.size,
+        child: CustomPaint(painter: _RingPainter(_cycle, color)),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.cycle, this.color) : super(repaint: cycle);
+
+  final Animation<double> cycle;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = size.shortestSide * 0.14;
+    final rect = (Offset.zero & size).deflate(stroke / 2 + 0.5);
+    const segments = 3;
+    const gap = 0.55; // rad entre os arcos (o vão do pino fica no topo)
+    const sweep = (2 * 3.141592653589793 - gap * segments) / segments;
+    // Arco mais aceso anda em sequência; os outros ficam esmaecidos.
+    final head = (cycle.value * segments).floor() % segments;
+    for (var i = 0; i < segments; i++) {
+      final start = -3.141592653589793 / 2 + gap / 2 + i * (sweep + gap);
+      final lit = i == head;
+      canvas.drawArc(
+        rect,
+        start,
+        sweep,
+        false,
+        Paint()
+          ..color = color.withValues(alpha: lit ? 1 : 0.28)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+    // Pino da logo no topo.
+    canvas.drawCircle(
+      Offset(size.width / 2, stroke / 2 + 0.5),
+      stroke * 0.55,
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.color != color;
 }

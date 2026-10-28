@@ -131,3 +131,6 @@ worker/.wrangler/
 *.mobileprovision
 *.provisionprofile
 **/android/key.properties
+
+# Capturas locais (podem conter dados CMTC com licença pendente). Nunca versionar.
+/artifacts/

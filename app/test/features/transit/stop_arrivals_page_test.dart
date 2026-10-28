@@ -1,4 +1,5 @@
 import 'package:busaogyn/src/app.dart';
+import 'package:busaogyn/src/core/theme/busao_tokens.dart';
 import 'package:busaogyn/src/core/config/map_config.dart';
 import 'package:busaogyn/src/core/network/api_exception.dart';
 import 'package:busaogyn/src/core/settings/theme_mode_cubit.dart';
@@ -184,11 +185,11 @@ void main() {
     expect(find.byType(SearchHeader), findsOneWidget);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
     expect(find.text('Ao vivo'), findsNothing);
-    // Dock com os quatro destinos e Ajustes na TopBar.
+    // Dock (sem catálogo: Pontos, Linhas, Salvos) e Ajustes na TopBar.
     expect(find.text('Linhas'), findsOneWidget);
     expect(find.text('Pontos'), findsOneWidget);
-    expect(find.text('Favoritos'), findsOneWidget);
-    expect(find.text('Meu ônibus'), findsOneWidget);
+    expect(find.text('Salvos'), findsOneWidget);
+    expect(find.text('Meu ônibus'), findsNothing);
     expect(find.byTooltip('Ajustes'), findsOneWidget);
     expect(find.text('Ponto'), findsNothing);
     expect(find.text('Acompanhando'), findsNothing);
@@ -309,6 +310,10 @@ void main() {
     // Toque direto no mapa (área livre entre o cabeçalho e o painel).
     await tester.tapAt(const Offset(120, 220));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Centralizar'),
+    );
+    await tester.pumpAndSettle();
     expect(
       find.bySemanticsLabel('Centralizar ônibus. Seguimento pausado'),
       findsOneWidget,
@@ -331,7 +336,7 @@ void main() {
     await _search(tester, '30402');
     await _track(tester, '20529');
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(BusaoLoader), findsNothing);
     expect(find.text('Posição temporariamente indisponível'), findsOneWidget);
     expect(find.text('Localizando'), findsOneWidget);
     expect(find.text('Ao vivo'), findsNothing);
@@ -343,23 +348,14 @@ void main() {
     expect(center.onPressed, isNull);
   });
 
-  testWidgets('Meu ônibus sem tracking mostra estado vazio', (tester) async {
+  testWidgets('sem acompanhamento não há barra nem destino Meu ônibus', (
+    tester,
+  ) async {
     await _pumpApp(tester, _FakeTransitRepository());
-    await tester.tap(find.text('Meu ônibus'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
-    expect(find.text('Acompanhe um veículo em tempo real'), findsOneWidget);
-    expect(
-      find.text('Escolha um ônibus em tempo real nas chegadas de um ponto.'),
-      findsOneWidget,
-    );
-    expect(find.text('Ver chegadas'), findsNothing);
+    await _search(tester, '30402');
+    expect(find.byKey(const ValueKey('tracking-bar')), findsNothing);
+    expect(find.text('Meu ônibus'), findsNothing);
     expect(find.byTooltip('Centralizar ônibus'), findsNothing);
-
-    await tester.tap(find.text('Buscar um ponto'));
-    await tester.pumpAndSettle();
-    expect(find.byType(SearchHeader), findsOneWidget);
   });
 
   testWidgets('buscar outro ponto encerra o acompanhamento anterior', (
@@ -511,7 +507,7 @@ void main() {
     await tester.pump(const Duration(seconds: 30));
     expect(repository.requestedStops, hasLength(2));
 
-    for (final tab in ['Meu ônibus', 'Ajustes']) {
+    for (final tab in ['Salvos', 'Ajustes']) {
       await tester.tap(tab == 'Ajustes' ? find.byTooltip(tab) : find.text(tab));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 90));
@@ -538,7 +534,9 @@ void main() {
     expect(sheetTop.dy, greaterThan(headerBottom + 32));
   });
 
-  testWidgets('em tela larga a coluna é central e sem sheet', (tester) async {
+  testWidgets('em tela larga: painel lateral à esquerda e mapa livre', (
+    tester,
+  ) async {
     await _pumpApp(
       tester,
       _FakeTransitRepository(),
@@ -549,8 +547,10 @@ void main() {
     expect(_map(tester).attributionBottom, 0);
     expect(find.byType(DraggableScrollableSheet), findsNothing);
     final search = tester.getRect(find.byType(SearchHeader));
-    expect(search.left, closeTo(1366 - search.right, 1));
-    expect(search.width, lessThanOrEqualTo(460));
+    expect(search.left, Chrome.gutter);
+    expect(search.width, lessThanOrEqualTo(Chrome.sidePanelMax));
+    // A câmera enquadra só a área à direita do painel.
+    expect(_map(tester).cameraPadding.left, greaterThan(search.right));
   });
 
   group('erro de busca de ponto', () {
@@ -1105,20 +1105,6 @@ void main() {
         expect(number.size.height, lessThan(14 * 2 * 1.5));
       });
     }
-  });
-
-  testWidgets('Meu ônibus vazio com ponto carregado leva às chegadas', (
-    tester,
-  ) async {
-    await _pumpApp(tester, _FakeTransitRepository());
-    await _search(tester, '30402');
-    await tester.tap(find.text('Meu ônibus'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Buscar um ponto'), findsNothing);
-    await tester.tap(find.text('Ver chegadas'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
   });
 
   testWidgets('banner de Chegadas leva ao Meu ônibus', (tester) async {

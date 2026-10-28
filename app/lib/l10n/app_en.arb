@@ -396,5 +396,22 @@
   "sequenceOrderedNote": "Incomplete list: the order was cross-checked (official streets or corridor stations), but some stops were left out.",
   "catalogTerminalNote": "Terminal identified from official line names and the ends of official routes (inferred). It has no code for arrival lookups.",
   "catalogStationNote": "Corridor station (official KMZ folder). Lines stopping here are inferred from the corridor; see \"On the route\".",
-  "catalogTerminalTag": "terminal (inferred)"
+  "catalogTerminalTag": "terminal (inferred)",
+  "dockPlan": "Plan",
+  "dockSaved": "Saved",
+  "trackingBarSemantics": "Tracking bus {bus}, {heading}. Tap to open.",
+  "trackingBarOpen": "Open tracking",
+  "trackingBarStale": "Old position or no signal",
+  "sheetShowMap": "Show map",
+  "sheetShowPanel": "Show panel",
+  "sheetHandleHint": "Tap to expand or collapse",
+  "plannerClear": "Clear",
+  "plannerHeaderSubtitle": "Stop to stop · works offline",
+  "sheetSummaryStops": "Stops and arrivals",
+  "sheetSummaryStop": "Stop {code} · {lines}",
+  "sheetSummaryPlan": "Origin and destination",
+  "sheetSummaryLines": "Line catalog",
+  "sheetSummaryLine": "Line {line}",
+  "sheetSummarySaved": "Favorites and recent",
+  "sheetSummaryTracking": "Bus tracking"
 }

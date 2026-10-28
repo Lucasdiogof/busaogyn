@@ -242,7 +242,7 @@ void main() {
       expect(find.byIcon(Icons.star_rounded), findsOneWidget);
       expect(codes(store.data.favorites), ['30402']);
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(_favTile('30402'), findsOneWidget);
       expect(find.text('1 ponto salvo'), findsOneWidget);
 
@@ -252,7 +252,7 @@ void main() {
       expect(_favStar('30402'), findsOneWidget);
       expect(store.data.favorites, isEmpty);
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(
         find.text('Seus pontos favoritos aparecerão aqui.'),
         findsOneWidget,
@@ -285,9 +285,8 @@ void main() {
 
     testWidgets('lista vazia mantém a ação Buscar um ponto', (tester) async {
       await _pump(tester);
-      await _openTab(tester, 'Favoritos');
-      await tester.tap(find.text('Buscar um ponto'));
-      await tester.pumpAndSettle();
+      await _openTab(tester, 'Salvos');
+      await _tap(tester, find.text('Buscar um ponto'));
       expect(find.byType(SearchHeader), findsOneWidget);
     });
 
@@ -304,7 +303,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       await _pump(tester, store: store);
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
 
       expect(_favTile('30402'), findsOneWidget);
       expect(find.text('1 ponto salvo'), findsOneWidget);
@@ -313,7 +312,7 @@ void main() {
     testWidgets('remove um favorito pela lista', (tester) async {
       final store = FakeStore(initial: _data(favorites: ['30402', '30100']));
       await _pump(tester, store: store);
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
 
       await tester.tap(_unfavStar('30402'));
       await tester.pumpAndSettle();
@@ -331,7 +330,7 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402', '30100'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       repository.requested.clear(); // consulta do resumo dos favoritos
       await _tap(tester, _favTile('30100'));
 
@@ -351,7 +350,7 @@ void main() {
         ),
       );
       await _pump(tester, store: store);
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(find.text('Praça Cívica'), findsOneWidget);
       expect(_favTile('30402'), findsOneWidget); // o código continua à vista
       expect(_favTile('30100'), findsOneWidget);
@@ -388,7 +387,7 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
 
       expect(repository.requested, ['30402']);
       expect(find.textContaining('020', findRichText: true), findsWidgets);
@@ -402,7 +401,7 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
 
       expect(find.textContaining('Sem conexão'), findsWidgets);
       expect(find.textContaining('Consulta das'), findsNothing);
@@ -418,7 +417,7 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(repository.requested, ['30402']);
 
       await tester.tap(find.text('Atualizar chegadas'));
@@ -435,9 +434,9 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       await _openTab(tester, 'Linhas');
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(repository.requested, ['30402']);
     });
 
@@ -458,7 +457,7 @@ void main() {
           ),
         ),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
 
       // A fonte não traz a linha 999 neste ponto: nada de chegada inventada.
       expect(
@@ -519,7 +518,7 @@ void main() {
       // Favoritar a linha não favorita o ponto.
       expect(store.data.favorites, isEmpty);
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(find.text('LINHAS FAVORITAS'), findsOneWidget);
       expect(
         find.byTooltip('Remover a linha 020 do ponto 30402 dos favoritos'),
@@ -553,7 +552,7 @@ void main() {
         ),
       );
       await _pump(tester, repository: repository, store: store);
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       repository.requested.clear(); // consulta do resumo dos favoritos
 
       await tester.tap(
@@ -780,7 +779,7 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTabNow(tester, 'Favoritos');
+      await _openTabNow(tester, 'Salvos');
       repository.requested.clear(); // consulta do resumo dos favoritos
       await tester.tap(_favTile('30402'));
       await tester.pump();
@@ -789,7 +788,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(NavDock),
-          matching: find.text('Favoritos'),
+          matching: find.text('Salvos'),
         ),
       );
       await tester.pump(const Duration(milliseconds: 400));
@@ -811,7 +810,7 @@ void main() {
       final gateB = repository.gates['30402'] = Completer<void>();
       final store = FakeStore(initial: _data(favorites: ['30100', '30402']));
       await _pump(tester, repository: repository, store: store);
-      await _openTabNow(tester, 'Favoritos');
+      await _openTabNow(tester, 'Salvos');
       repository.requested.clear(); // consulta do resumo dos favoritos
 
       await tester.tap(_favTile('30100'));
@@ -819,7 +818,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(NavDock),
-          matching: find.text('Favoritos'),
+          matching: find.text('Salvos'),
         ),
       );
       await tester.pump(const Duration(milliseconds: 400));
@@ -849,7 +848,7 @@ void main() {
       await _pump(tester, repository: repository, store: store);
 
       // Tenta consultar um favorito offline: estado do PR #33, sem borda.
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       await _tap(tester, _favTile('30402'));
       expect(find.text('Chegadas precisam de internet'), findsOneWidget);
       expect(find.text('Tentar de novo'), findsOneWidget);
@@ -860,7 +859,7 @@ void main() {
       expect(find.textContaining('min'), findsNothing);
 
       // Favoritos seguem abertos e avisam que previsão precisa de conexão.
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(_favTile('30402'), findsOneWidget);
       expect(
         find.textContaining('Sem conexão. Você pode abrir'),
@@ -894,9 +893,9 @@ void main() {
         repository: repository,
         store: FakeStore(initial: _data(favorites: ['30402'])),
       );
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       await _tap(tester, _favTile('30402'));
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(
         find.textContaining('A última consulta não foi concluída'),
         findsOneWidget,
@@ -916,7 +915,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(NavDock),
-          matching: find.text('Favoritos'),
+          matching: find.text('Salvos'),
         ),
       );
       await tester.pump(const Duration(milliseconds: 400));
@@ -938,7 +937,7 @@ void main() {
       await tester.tap(_favStar('30402'));
       await tester.pumpAndSettle();
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(_favTile('30402'), findsOneWidget);
       expect(
         find.textContaining('Não foi possível salvar agora'),
@@ -950,7 +949,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, store: FakeStore(unreadable: true));
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(
         find.textContaining('Não foi possível ler os pontos salvos'),
         findsOneWidget,
@@ -965,7 +964,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, store: FakeStore(isPersistent: false));
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(
         find.textContaining('Este aparelho não guardou os pontos'),
         findsOneWidget,
@@ -997,7 +996,7 @@ void main() {
       );
       expectTarget(find.widgetWithText(TextButton, 'Limpar'), 'Limpar');
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expectTarget(
         find.byTooltip('Remover o ponto 30402 dos favoritos'),
         'remover favorito',
@@ -1036,7 +1035,7 @@ void main() {
             );
             expect(tester.takeException(), isNull);
 
-            await _openTab(tester, 'Favoritos');
+            await _openTab(tester, 'Salvos');
             expect(tester.takeException(), isNull);
             await _openTab(tester, 'Pontos');
             await _search(tester, '30402');
@@ -1088,7 +1087,7 @@ void main() {
               ),
             );
             expect(tester.takeException(), isNull);
-            await _openTab(tester, 'Favoritos');
+            await _openTab(tester, 'Salvos');
             expect(tester.takeException(), isNull);
             expect(_favTile('30402'), findsOneWidget);
             await _openTab(tester, 'Pontos');
@@ -1122,13 +1121,13 @@ void main() {
       expect(map().vehicleNumber, '20529');
 
       // Favoritos e recentes não encerram o acompanhamento.
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(map().vehicleNumber, '20529');
       await _openTab(tester, 'Pontos');
       await tester.tap(_favStar('30402'));
       await tester.pumpAndSettle();
       expect(map().vehicleNumber, '20529');
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       // Reconsultar o mesmo ponto é uma atualização: o tracking continua.
       await _tap(tester, _favTile('30402'));
       expect(find.text('Ponto 30402'), findsOneWidget);
@@ -1138,7 +1137,7 @@ void main() {
       await _tap(tester, find.widgetWithText(TextButton, 'Limpar'));
       await tester.tap(find.widgetWithText(FilledButton, 'Limpar'));
       await tester.pumpAndSettle();
-      await _openTab(tester, 'Meu ônibus');
+      await _tap(tester, find.byKey(const ValueKey('tracking-bar-open')));
       expect(find.text('ACOMPANHANDO'), findsOneWidget);
 
       expect(_CountingMap.created, 1);

@@ -190,7 +190,7 @@ void main() {
         }
 
         // Alvo de toque mínimo de 48 px em cada aba.
-        for (final tab in ['Linhas', 'Pontos', 'Favoritos']) {
+        for (final tab in ['Linhas', 'Pontos', 'Salvos']) {
           final item = find.ancestor(
             of: find.descendant(of: dock, matching: find.text(tab)),
             matching: find.byType(InkWell),

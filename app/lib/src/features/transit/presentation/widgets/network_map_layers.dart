@@ -17,6 +17,7 @@ const netPlanSourceId = 'busao-net-plan';
 const netRouteFadedLayerId = 'busao-net-route-faded';
 const netRouteOutboundLayerId = 'busao-net-route-ida';
 const netRouteInboundLayerId = 'busao-net-route-volta';
+const netRouteArrowsLayerId = 'busao-net-route-arrows';
 const netTrackOfficialLayerId = 'busao-net-track-official';
 const netTrackFutureLayerId = 'busao-net-track-future';
 const netRouteStopsLayerId = 'busao-net-route-stops-layer';
@@ -45,6 +46,7 @@ const netLayerIds = {
   netRouteFadedLayerId,
   netRouteOutboundLayerId,
   netRouteInboundLayerId,
+  netRouteArrowsLayerId,
   netTrackOfficialLayerId,
   netTrackFutureLayerId,
   netRouteStopsLayerId,
@@ -174,6 +176,27 @@ Future<bool> addNetworkLayers({
           'v',
         ],
       ],
+      enableInteraction: false,
+    ),
+
+    // Setas no sentido do percurso, como na viagem planejada: o sentido
+    // não depende de saber qual cor é ida e qual é volta.
+    () => controller.addSymbolLayer(
+      netRouteSourceId,
+      netRouteArrowsLayerId,
+      SymbolLayerProperties(
+        symbolPlacement: 'line',
+        symbolSpacing: 110,
+        textField: '›',
+        textFont: const ['Noto Sans Bold'],
+        textSize: 16,
+        textColor: dark ? onAccent : panel,
+        textHaloColor: strong,
+        textHaloWidth: 1.2,
+        textKeepUpright: false,
+        textAllowOverlap: true,
+      ),
+      filter: isActive,
       enableInteraction: false,
     ),
 
@@ -380,9 +403,10 @@ Future<bool> addNetworkLayers({
         textField: '›',
         textFont: const ['Noto Sans Bold'],
         textSize: 18,
-        textColor: panel,
-        // Halo escuro: a seta aparece no âmbar e no traço escuro/claro.
-        textHaloColor: dark ? onAccent : strong,
+        // Seta e halo em contraste entre si (clara/halo escuro no tema
+        // claro, escura/halo claro no escuro): legível no âmbar e no traço.
+        textColor: dark ? onAccent : panel,
+        textHaloColor: strong,
         textHaloWidth: 1.2,
         textKeepUpright: false,
         textAllowOverlap: true,

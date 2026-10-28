@@ -1565,4 +1565,62 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get catalogTerminalTag => 'terminal (inferido)';
+
+  @override
+  String get dockPlan => 'Planejar';
+
+  @override
+  String get dockSaved => 'Salvos';
+
+  @override
+  String trackingBarSemantics(String bus, String heading) {
+    return 'Acompanhando o ônibus $bus, $heading. Toque para abrir.';
+  }
+
+  @override
+  String get trackingBarOpen => 'Abrir acompanhamento';
+
+  @override
+  String get trackingBarStale => 'Posição antiga ou sem sinal';
+
+  @override
+  String get sheetShowMap => 'Ver mapa';
+
+  @override
+  String get sheetShowPanel => 'Mostrar painel';
+
+  @override
+  String get sheetHandleHint => 'Toque para expandir ou recolher';
+
+  @override
+  String get plannerClear => 'Limpar';
+
+  @override
+  String get plannerHeaderSubtitle =>
+      'De ponto a ponto · funciona sem internet';
+
+  @override
+  String get sheetSummaryStops => 'Pontos e chegadas';
+
+  @override
+  String sheetSummaryStop(String code, String lines) {
+    return 'Ponto $code · $lines';
+  }
+
+  @override
+  String get sheetSummaryPlan => 'Origem e destino';
+
+  @override
+  String get sheetSummaryLines => 'Catálogo de linhas';
+
+  @override
+  String sheetSummaryLine(String line) {
+    return 'Linha $line';
+  }
+
+  @override
+  String get sheetSummarySaved => 'Favoritos e recentes';
+
+  @override
+  String get sheetSummaryTracking => 'Acompanhamento do ônibus';
 }

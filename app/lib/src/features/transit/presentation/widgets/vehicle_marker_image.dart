@@ -22,8 +22,12 @@ class BusMarkerStyle {
     required this.detail,
     required this.outline,
     required this.shadow,
+    this.led,
     this.dashedOutline = false,
   });
+
+  /// Letreiro de LED na frente (cor da marca); `null` = apagado.
+  final Color? led;
 
   final Color body;
   final Color glass;
@@ -49,9 +53,11 @@ BusMarkerStyle busMarkerStyle(
       return BusMarkerStyle(
         body: tokens.accent,
         glass: const Color(0xFF14110A),
-        detail: Color.lerp(tokens.accent, Colors.black, 0.2)!,
+        detail: Color.lerp(tokens.accent, Colors.black, 0.18)!,
         outline: dark ? const Color(0xFFFFF4D6) : const Color(0xFF1A1300),
         shadow: shadow,
+        // Acompanhado: letreiro aceso (âmbar claro sobre o vidro escuro).
+        led: const Color(0xFFFFE08A),
       );
     case MarkerVariant.secondary:
       return BusMarkerStyle(
@@ -73,14 +79,15 @@ BusMarkerStyle busMarkerStyle(
   }
 }
 
-/// Ônibus visto de cima, com a frente para o topo da imagem: corpo
-/// retangular de cantos arredondados, para-brisa, painéis do teto, vidro
-/// traseiro e retrovisores. Frente para cima = 0° (norte): o acompanhado
-/// gira pela direção observada; secundários ficam assim (a fonte não informa
-/// direção).
+/// Ônibus visto de cima, com a frente para o topo da imagem. Linguagem da
+/// marca BusãoGyn (não de operadora): corpo bem arredondado, letreiro de LED
+/// na frente (o "BUSÃO GYN" da logo), para-brisa, um único bagageiro de teto
+/// e vidro traseiro. Poucas formas grandes: continua legível com ~36 px.
+/// Frente para cima = 0° (norte): o acompanhado gira pela direção observada;
+/// secundários ficam assim (a fonte não informa direção).
 ///
-/// Com [headingArrow], uma seta à frente do para-brisa marca a direção
-/// observada pelo deslocamento recente. Não indica rota nem destino.
+/// Com [headingArrow], uma seta à frente marca a direção observada pelo
+/// deslocamento recente. Não indica rota nem destino.
 Future<Uint8List> renderBusMarker(
   BusMarkerStyle style, {
   bool headingArrow = false,
@@ -89,11 +96,14 @@ Future<Uint8List> renderBusMarker(
   final canvas = Canvas(recorder);
   final pad = headingArrow ? _arrowPad : 0.0;
   if (headingArrow) {
+    // Chevron arredondado (mesma linguagem das setas de trajeto do mapa).
     final arrow = Path()
-      ..moveTo(60, 4)
-      ..lineTo(88, 38)
-      ..lineTo(60, 28)
-      ..lineTo(32, 38)
+      ..moveTo(60, 6)
+      ..lineTo(86, 36)
+      ..quadraticBezierTo(88, 40, 83, 39)
+      ..lineTo(60, 30)
+      ..lineTo(37, 39)
+      ..quadraticBezierTo(32, 40, 34, 36)
       ..close();
     canvas.drawPath(
       arrow,
@@ -110,8 +120,8 @@ Future<Uint8List> renderBusMarker(
   RRect rrect(double l, double t, double r, double b, double radius) =>
       RRect.fromLTRBR(l, t, r, b, Radius.circular(radius));
 
-  final outer = rrect(18, 6, 102, 170, 24);
-  final body = rrect(23, 11, 97, 165, 19);
+  final outer = rrect(16, 6, 104, 170, 30);
+  final body = rrect(22, 12, 98, 164, 25);
 
   canvas.drawRRect(
     outer.shift(const Offset(0, 4)),
@@ -122,8 +132,8 @@ Future<Uint8List> renderBusMarker(
 
   // Retrovisores.
   final mirrorPaint = Paint()..color = style.outline;
-  canvas.drawRRect(rrect(11, 30, 19, 44, 4), mirrorPaint);
-  canvas.drawRRect(rrect(101, 30, 109, 44, 4), mirrorPaint);
+  canvas.drawRRect(rrect(8, 34, 18, 48, 5), mirrorPaint);
+  canvas.drawRRect(rrect(102, 34, 112, 48, 5), mirrorPaint);
 
   if (style.dashedOutline) {
     _strokeDashed(canvas, outer, Paint()..color = style.outline, 5);
@@ -132,20 +142,25 @@ Future<Uint8List> renderBusMarker(
   }
   canvas.drawRRect(body, Paint()..color = style.body);
 
+  // Letreiro: faixa escura na frente; aceso só no ônibus acompanhado.
+  canvas.drawRRect(rrect(32, 18, 88, 34, 6), Paint()..color = style.glass);
+  final led = style.led;
+  if (led != null) {
+    canvas.drawRRect(rrect(38, 23, 82, 29, 3), Paint()..color = led);
+  }
+
   // Para-brisa com um reflexo.
-  canvas.drawRRect(rrect(31, 19, 89, 53, 10), Paint()..color = style.glass);
+  canvas.drawRRect(rrect(30, 38, 90, 66, 10), Paint()..color = style.glass);
   canvas.drawRRect(
-    rrect(37, 24, 83, 29, 2.5),
+    rrect(37, 43, 70, 47, 2),
     Paint()..color = Colors.white.withValues(alpha: 0.22),
   );
 
-  // Painéis do teto (ar-condicionado e escotilhas).
-  final roof = Paint()..color = style.detail;
-  canvas.drawRRect(rrect(34, 66, 86, 94, 7), roof);
-  canvas.drawRRect(rrect(34, 102, 86, 130, 7), roof);
+  // Bagageiro de teto (uma forma só).
+  canvas.drawRRect(rrect(38, 80, 82, 140, 10), Paint()..color = style.detail);
 
   // Vidro traseiro.
-  canvas.drawRRect(rrect(37, 142, 83, 155, 6), Paint()..color = style.glass);
+  canvas.drawRRect(rrect(36, 148, 84, 158, 5), Paint()..color = style.glass);
 
   final image = await recorder.endRecording().toImage(
     _busWidth.toInt(),

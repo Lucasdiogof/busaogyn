@@ -582,8 +582,16 @@ class RecentStopsSection extends StatelessWidget {
     this.excludeCode,
     this.showEmpty = false,
     this.connectionNotice,
+    this.showHint = true,
+    this.hideFavorites = false,
     super.key,
   });
+
+  /// Nota sobre consulta e internet; em Salvos ela já vem dos favoritos.
+  final bool showHint;
+
+  /// Em Salvos, um favorito já aparece na lista de cima: não repete.
+  final bool hideFavorites;
 
   /// Consulta o ponto de novo.
   final ValueChanged<String> onOpen;
@@ -623,7 +631,10 @@ class RecentStopsSection extends StatelessWidget {
       builder: (context, state) {
         final recents = [
           for (final stop in state.recents)
-            if (stop.code != excludeCode) stop,
+            if (stop.code != excludeCode &&
+                !(hideFavorites &&
+                    state.favorites.any((f) => f.code == stop.code)))
+              stop,
         ];
         if (!state.loading && recents.isEmpty && !showEmpty) {
           return const SizedBox.shrink();
@@ -676,7 +687,7 @@ class RecentStopsSection extends StatelessWidget {
                 ),
                 const SizedBox(height: Space.xs),
               ],
-              FootNote(child: Text(l10n.offlineHint)),
+              if (showHint) FootNote(child: Text(l10n.offlineHint)),
             ],
           ],
         );
@@ -911,10 +922,7 @@ class FavoriteArrivalsRefresh extends StatelessWidget {
                     force: true,
                   ),
             icon: state.refreshing
-                ? const SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const BusaoLoader(size: 16)
                 : const Icon(Icons.refresh_rounded, size: 20),
             label: Text(l10n.refreshArrivals),
           ),

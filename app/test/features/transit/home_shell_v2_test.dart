@@ -167,6 +167,12 @@ bool _isSelected(WidgetTester tester, String label) =>
         .isSelected ==
     Tristate.isTrue;
 
+/// Destino do dock selecionado, sem precisar ligar a árvore de semântica.
+bool _isSelectedText(WidgetTester tester, String label) {
+  final text = tester.widget<Text>(_dock(label));
+  return text.style?.fontWeight == FontWeight.w700;
+}
+
 const _offline = ApiException(
   code: 'NETWORK_ERROR',
   message: 'sem rede',
@@ -180,19 +186,25 @@ void main() {
   });
 
   group('inicialização', () {
-    testWidgets('abre em Pontos, com quatro destinos', (tester) async {
+    testWidgets('abre em Pontos; sem catálogo são três destinos', (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       await _pump(tester, _Repository());
 
       expect(find.byType(NavDock), findsOneWidget);
-      // Ordem: Linhas, Pontos, Favoritos, Meu ônibus.
-      final labels = ['Linhas', 'Pontos', 'Favoritos', 'Meu ônibus'];
+      // Ordem: Pontos, Linhas, Salvos. Planejar só existe com o catálogo e
+      // Meu ônibus é contextual (barra durante o acompanhamento).
+      final labels = ['Pontos', 'Linhas', 'Salvos'];
       final xs = [for (final l in labels) tester.getCenter(_dock(l)).dx];
       expect(xs, orderedEquals([...xs]..sort()));
+      expect(_dock('Planejar'), findsNothing);
+      expect(_dock('Meu ônibus'), findsNothing);
+      expect(find.byKey(const ValueKey('tracking-bar')), findsNothing);
       // Pontos é o destino inicial: busca por código e nada de Ajustes no dock.
       expect(_isSelected(tester, 'Pontos'), isTrue);
       expect(_isSelected(tester, 'Linhas'), isFalse);
-      expect(_isSelected(tester, 'Favoritos'), isFalse);
+      expect(_isSelected(tester, 'Salvos'), isFalse);
       expect(find.text('Digite o código do ponto'), findsOneWidget);
       expect(find.byType(SearchHeader), findsOneWidget);
       expect(_dock('Ajustes'), findsNothing);
@@ -200,10 +212,8 @@ void main() {
     });
   });
 
-  group('navegação entre os quatro destinos', () {
-    testWidgets('alterna Linhas, Favoritos, Meu ônibus e volta a Pontos', (
-      tester,
-    ) async {
+  group('navegação entre os destinos', () {
+    testWidgets('alterna Linhas, Salvos e volta a Pontos', (tester) async {
       await _pump(tester, _Repository());
 
       await _openTab(tester, 'Linhas');
@@ -213,7 +223,7 @@ void main() {
       );
       expect(find.byType(SearchHeader), findsNothing);
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       expect(
         find.text('Seus pontos favoritos aparecerão aqui.'),
         findsOneWidget,
@@ -222,9 +232,6 @@ void main() {
         find.text('As linhas estarão disponíveis em breve.'),
         findsNothing,
       );
-
-      await _openTab(tester, 'Meu ônibus');
-      expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
 
       await _openTab(tester, 'Pontos');
       expect(find.text('Digite o código do ponto'), findsOneWidget);
@@ -245,7 +252,7 @@ void main() {
 
       await _search(tester, '30402');
       expect(find.text('Ponto 30402'), findsOneWidget);
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       await _openTab(tester, 'Pontos');
       expect(find.text('Ponto 30402'), findsOneWidget);
       expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
@@ -276,7 +283,7 @@ void main() {
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
 
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
       await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
       expect(find.text('Tema'), findsOneWidget);
@@ -349,7 +356,7 @@ void main() {
       expect(_CountingMap.created, 1);
 
       await _search(tester, '30402');
-      for (final label in ['Linhas', 'Favoritos', 'Meu ônibus', 'Pontos']) {
+      for (final label in ['Linhas', 'Salvos', 'Pontos']) {
         await _openTab(tester, label);
       }
       await tester.tap(find.byTooltip('Ajustes'));
@@ -411,9 +418,15 @@ void main() {
       expect(find.text('ACOMPANHANDO'), findsOneWidget);
       expect(_map(tester).vehicleNumber, '20529');
 
-      for (final label in ['Linhas', 'Favoritos', 'Pontos']) {
+      for (final label in ['Linhas', 'Salvos', 'Pontos']) {
         await _openTab(tester, label);
         expect(_map(tester).vehicleNumber, '20529', reason: 'em $label');
+        // Meu ônibus contextual: a barra acompanha em qualquer área.
+        expect(
+          find.byKey(const ValueKey('tracking-bar')),
+          findsOneWidget,
+          reason: 'barra em $label',
+        );
       }
       // Ajustes pela TopBar também não encerra.
       await tester.tap(find.byTooltip('Ajustes'));
@@ -422,7 +435,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(_map(tester).vehicleNumber, '20529');
 
-      await _openTab(tester, 'Meu ônibus');
+      await tester.tap(find.byKey(const ValueKey('tracking-bar-open')));
+      await tester.pumpAndSettle();
+      // Com o acompanhamento aberto, a barra sai (não duplica a ficha).
+      expect(find.byKey(const ValueKey('tracking-bar')), findsNothing);
       expect(find.text('ACOMPANHANDO'), findsOneWidget);
       expect(find.text('Ônibus 20529'), findsOneWidget);
       // O cartão diz o que o rastro mostra e que não há trajeto à frente.
@@ -447,11 +463,73 @@ void main() {
     });
   });
 
+  group('painel flexível (celular)', () {
+    double summaryTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const ValueKey('sheet-summary'))).dy;
+
+    testWidgets('Ver mapa recolhe; Mostrar painel e a alça trazem de volta', (
+      tester,
+    ) async {
+      await _pump(tester, _Repository());
+      await _search(tester, '30402');
+      final mid = summaryTop(tester);
+      expect(find.text('Ponto 30402 · 1 linha'), findsOneWidget);
+
+      await tester.tap(find.text('Ver mapa'));
+      await tester.pumpAndSettle();
+      final collapsed = summaryTop(tester);
+      expect(collapsed, greaterThan(mid + 150));
+      // Recolhido continua dizendo o que contém e como voltar.
+      expect(find.text('Ponto 30402 · 1 linha'), findsOneWidget);
+      expect(find.text('Mostrar painel'), findsOneWidget);
+
+      await tester.tap(find.text('Mostrar painel'));
+      await tester.pumpAndSettle();
+      expect(summaryTop(tester), closeTo(mid, 2));
+
+      // Alça: intermediário -> expandido -> intermediário.
+      await tester.tap(find.byKey(const ValueKey('sheet-handle')));
+      await tester.pumpAndSettle();
+      expect(summaryTop(tester), lessThan(mid - 100));
+      await tester.tap(find.byKey(const ValueKey('sheet-handle')));
+      await tester.pumpAndSettle();
+      expect(summaryTop(tester), closeTo(mid, 2));
+      // Nada se perde: o ponto continua carregado.
+      expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
+    });
+
+    testWidgets('com movimento reduzido o painel muda sem animar', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await _pump(tester, _Repository());
+      final mid = summaryTop(tester);
+      await tester.tap(find.text('Ver mapa'));
+      await tester.pump();
+      await tester.pump();
+      expect(summaryTop(tester), greaterThan(mid + 150));
+    });
+
+    testWidgets('voltar desfaz o contexto antes de sair', (tester) async {
+      await _pump(tester, _Repository());
+      await _openTab(tester, 'Salvos');
+      // Gesto/botão voltar do sistema: de Salvos volta a Pontos.
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(handled, isTrue);
+      expect(_isSelectedText(tester, 'Pontos'), isTrue);
+    });
+  });
+
   group('estados vazios e ações', () {
-    testWidgets('Linhas e Favoritos levam à busca de pontos', (tester) async {
+    testWidgets('Linhas e Salvos levam à busca de pontos', (tester) async {
       await _pump(tester, _Repository());
 
-      for (final tab in ['Linhas', 'Favoritos']) {
+      for (final tab in ['Linhas', 'Salvos']) {
         await _openTab(tester, tab);
         // Nenhum botão sem comportamento.
         for (final button in tester.widgetList<FilledButton>(
@@ -459,6 +537,8 @@ void main() {
         )) {
           expect(button.onPressed, isNotNull);
         }
+        await tester.ensureVisible(find.text('Buscar um ponto'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Buscar um ponto'));
         await tester.pumpAndSettle();
         expect(find.byType(SearchHeader), findsOneWidget, reason: tab);
@@ -473,22 +553,32 @@ void main() {
     ) async {
       await _pump(tester, _Repository());
       await _search(tester, '30402');
-      await _openTab(tester, 'Favoritos');
+      await _openTab(tester, 'Salvos');
+      await tester.ensureVisible(find.text('Buscar um ponto'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Buscar um ponto'));
       await tester.pumpAndSettle();
       expect(find.text('Ponto 30402'), findsOneWidget);
       expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
     });
 
-    testWidgets('Meu ônibus sem tracking tem estado vazio com ação', (
+    testWidgets('barra de acompanhamento: abre, encerra e some', (
       tester,
     ) async {
       await _pump(tester, _Repository());
-      await _openTab(tester, 'Meu ônibus');
-      expect(find.text('Nenhum ônibus acompanhado'), findsOneWidget);
-      await tester.tap(find.text('Buscar um ponto'));
+      await _search(tester, '30402');
+      await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
-      expect(find.byType(SearchHeader), findsOneWidget);
+      await _openTab(tester, 'Linhas');
+      expect(find.byKey(const ValueKey('tracking-bar')), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('Acompanhando o ônibus 20529')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('tracking-bar-stop')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('tracking-bar')), findsNothing);
+      expect(_map(tester).vehicleNumber, isNull);
     });
   });
 
@@ -506,12 +596,7 @@ void main() {
             await _pump(tester, _Repository(), size: size);
             expect(tester.takeException(), isNull);
 
-            for (final label in [
-              'Linhas',
-              'Pontos',
-              'Favoritos',
-              'Meu ônibus',
-            ]) {
+            for (final label in ['Pontos', 'Linhas', 'Salvos']) {
               // Uma palavra por linha quando necessário: procura cada palavra.
               for (final word in label.split(' ')) {
                 expect(
@@ -528,7 +613,7 @@ void main() {
               of: find.byType(NavDock),
               matching: find.byType(InkWell),
             );
-            expect(items, findsNWidgets(4));
+            expect(items, findsNWidgets(3));
             for (final item in items.evaluate()) {
               final box = item.renderObject! as RenderBox;
               expect(box.size.height, greaterThanOrEqualTo(48));
@@ -542,7 +627,7 @@ void main() {
             final expected = Chrome.dockLayout(
               width,
               media.textScaler,
-              items: 4,
+              items: 3,
             ).height;
             expect(tester.getSize(find.byType(NavDock)).height, expected);
             expect(
@@ -551,11 +636,11 @@ void main() {
             );
 
             // Percorre tudo sem overflow.
-            for (final tab in ['Linhas', 'Favoritos', 'Meu ônibus', 'Pontos']) {
+            for (final tab in ['Linhas', 'Salvos', 'Pontos']) {
               await tester.tap(
                 find.descendant(
                   of: find.byType(NavDock),
-                  matching: find.text(tab.split(' ').first),
+                  matching: find.text(tab),
                 ),
               );
               await tester.pumpAndSettle();
@@ -590,23 +675,25 @@ void main() {
             await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
-            for (final tab in ['Linhas', 'Favoritos', 'Meu ônibus', 'Pontos']) {
-              await _openTab(
-                tester,
-                tab.split(' ').first == 'Meu' ? 'Meu ônibus' : tab,
-              );
+            for (final tab in ['Linhas', 'Salvos', 'Pontos']) {
+              await _openTab(tester, tab);
               expect(tester.takeException(), isNull, reason: tab);
             }
+            await tester.tap(find.byKey(const ValueKey('tracking-bar-open')));
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull, reason: 'Meu ônibus');
             await tester.tap(find.byTooltip('Ajustes'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
             expect(find.byKey(const Key('fake-map')), findsOneWidget);
             if (size.width >= Breakpoints.panel) {
-              // Tela larga: dock dentro da coluna central.
+              // Tela larga: dock na coluna lateral, à esquerda, e o mapa
+              // livre à direita.
               expect(
                 tester.getSize(find.byType(NavDock)).width,
-                lessThanOrEqualTo(Chrome.column),
+                lessThanOrEqualTo(Chrome.sidePanelMax),
               );
+              expect(tester.getTopLeft(find.byType(NavDock)).dx, Chrome.gutter);
             }
           },
         );
