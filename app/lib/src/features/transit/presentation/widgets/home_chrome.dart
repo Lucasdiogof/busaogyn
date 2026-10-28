@@ -319,42 +319,69 @@ class LiveStatusPill extends StatelessWidget {
       LiveTone.aging => tokens.mutedText,
       LiveTone.stale => tokens.unconfirmed,
     };
+    const labelStyle = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600);
     return Semantics(
       label: status.semantics,
       liveRegion: true,
       excludeSemantics: true,
-      child: GlassSurface(
-        radius: Radii.pill,
-        padding: const EdgeInsets.fromLTRB(10, 0, 14, 0),
-        child: SizedBox(
-          height: Chrome.pill,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (status.tone == LiveTone.stale)
-                Icon(Icons.warning_amber_rounded, size: 16, color: color)
-              else
-                StatusDot(
-                  color: color,
-                  pulsing: status.tone == LiveTone.live,
-                  pulseKey: status.receivedAt,
-                ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  status.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: tokens.strongText,
-                  ),
-                ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // O rótulo ("Desatualizado") é o que importa: quando rótulo e idade
+          // não cabem juntos, a idade sai (continua no rótulo de semântica).
+          final label = TextPainter(
+            text: TextSpan(text: status.label, style: labelStyle),
+            textDirection: TextDirection.ltr,
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: 1,
+          )..layout();
+          // Padding (24) + ícone (16) + espaço (6) + idade mínima legível.
+          final showDetail = constraints.maxWidth - 46 - label.width >= 56;
+          label.dispose();
+          return _pill(context, color, labelStyle, showDetail: showDetail);
+        },
+      ),
+    );
+  }
+
+  Widget _pill(
+    BuildContext context,
+    Color color,
+    TextStyle labelStyle, {
+    required bool showDetail,
+  }) {
+    final tokens = context.tokens;
+    return GlassSurface(
+      radius: Radii.pill,
+      padding: const EdgeInsets.fromLTRB(10, 0, 14, 0),
+      child: SizedBox(
+        height: Chrome.pill,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (status.tone == LiveTone.stale)
+              Icon(Icons.warning_amber_rounded, size: 16, color: color)
+            else
+              StatusDot(
+                color: color,
+                pulsing: status.tone == LiveTone.live,
+                pulseKey: status.receivedAt,
               ),
-              const SizedBox(width: 6),
-              // Textos mais longos (es: "hace 13 s") encolhem em vez de
-              // serem cortados com reticências.
+            const SizedBox(width: 6),
+            // Com a idade à vista o rótulo já cabe inteiro (medido acima);
+            // sem ela, só encolhe em telas estreitas demais.
+            Flexible(
+              flex: showDetail ? 0 : 1,
+              child: Text(
+                status.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle.copyWith(color: tokens.strongText),
+              ),
+            ),
+            // Textos mais longos (es: "hace 13 s") encolhem em vez de
+            // serem cortados com reticências.
+            if (showDetail) const SizedBox(width: 6),
+            if (showDetail)
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -368,8 +395,7 @@ class LiveStatusPill extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

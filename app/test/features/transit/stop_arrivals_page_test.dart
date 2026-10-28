@@ -275,8 +275,10 @@ void main() {
     expect(find.text('Ao vivo · há 0 s'), findsOneWidget);
     // No painel e no status do topo.
     expect(find.text('posição há 0 s'), findsOneWidget);
-    expect(find.text('há 0 s'), findsOneWidget);
     expect(find.text('Ao vivo'), findsOneWidget);
+    // A idade no status do topo some quando não cabe ao lado do rótulo (a
+    // fonte de teste é larga); para o leitor de tela ela está sempre lá.
+    expect(find.bySemanticsLabel('Ao vivo, há 0 s'), findsOneWidget);
     // Coordenadas cruas não aparecem como informação de produto.
     expect(find.textContaining('-16.7'), findsNothing);
     expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);

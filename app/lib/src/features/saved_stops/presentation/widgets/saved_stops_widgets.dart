@@ -996,8 +996,8 @@ class SeenLinesPanel extends StatelessWidget {
             if (seen.isEmpty) {
               return MessageView(
                 icon: Icons.format_list_bulleted_rounded,
-                title: l10n.linesSoonTitle,
-                body: l10n.linesSoonBody,
+                title: l10n.seenLinesEmptyTitle,
+                body: l10n.seenLinesEmptyBody,
                 action: FilledButton.icon(
                   onPressed: onSearchStop,
                   icon: const Icon(Icons.location_on_outlined, size: 20),

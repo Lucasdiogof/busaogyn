@@ -8,7 +8,6 @@
   "settings": "Settings",
   "settingsSubtitle": "Appearance and about",
   "settingsClose": "Close settings",
-  "comingSoon": "Coming soon",
   "loading": "Loading…",
   "refresh": "Refresh",
   "refreshing": "refreshing…",
@@ -223,8 +222,6 @@
   "queriedNow": "Checked just now",
   "queriedAtHour": "Checked at {hour}",
   "lineSemantics": "Line {route}, {minutes}, {quality}",
-  "linesSoonTitle": "Lines will be available soon.",
-  "linesSoonBody": "For now, check arrivals by the stop code.",
   "seenLinesSection": "Lines seen",
   "seenLinesNote": "Lines seen in your checks this session and in your favorites. The full list of lines depends on authorization from RMTC.",
   "seenAtStop": "at stop {stop}",
@@ -524,5 +521,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "seenLinesHeader": "Lines at the stops you checked",
+  "seenLinesEmptyTitle": "No lines here yet.",
+  "seenLinesEmptyBody": "Check a stop: the lines that serve it show up here, with the next arrivals."
 }

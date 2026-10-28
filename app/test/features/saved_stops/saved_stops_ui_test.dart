@@ -471,10 +471,7 @@ void main() {
     testWidgets('sem consulta nenhuma explica e leva à busca', (tester) async {
       await _pump(tester);
       await _openTab(tester, 'Linhas');
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsOneWidget,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsOneWidget);
       expect(find.text('Buscar um ponto'), findsOneWidget);
     });
 

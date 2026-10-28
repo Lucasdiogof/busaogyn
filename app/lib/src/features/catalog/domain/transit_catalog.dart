@@ -504,12 +504,16 @@ class _StopEntry {
         }
       }
       if (best == 0) {
+        // "Jardim", "setor"… às vezes não estão no cadastro ("AMÉRICA" em
+        // vez de "Jardim América"): ignoradas se não casarem, desde que
+        // outra palavra case.
+        if (_placeTypes.contains(token)) continue;
         matchedAll = false;
         break;
       }
       text += best;
     }
-    return matchedAll ? total + text : total;
+    return matchedAll && text > 0 ? total + text : total;
   }
 }
 
@@ -558,6 +562,17 @@ class _LineEntry {
     return total;
   }
 }
+
+/// Tipos de bairro que o cadastro às vezes omite no nome (já normalizados).
+const _placeTypes = {
+  'setor',
+  'jardim',
+  'vila',
+  'parque',
+  'residencial',
+  'bairro',
+  'conjunto',
+};
 
 /// Distância de edição (inserção, remoção ou troca) no máximo 1.
 bool _withinOneEdit(String a, String b) {

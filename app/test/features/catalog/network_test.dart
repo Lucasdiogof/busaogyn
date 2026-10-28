@@ -112,6 +112,16 @@ void main() {
         '40999',
       ]);
       expect(stops.first['geometry']['coordinates'], [-49.26, -16.68]);
+      // Android/iOS devolvem o id da feição (não a propriedade): sem ele, o
+      // toque abria "Ponto null".
+      for (final f in stops) {
+        expect(f['id'], f['properties']['id']);
+      }
+      final route = _features(lineStopsCollection(catalog, '001'));
+      expect(route, isNotEmpty);
+      for (final f in route) {
+        expect(f['id'], isA<String>());
+      }
     });
 
     test('trajeto: ativo, sentido e demais esmaecidos', () {

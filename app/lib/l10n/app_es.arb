@@ -8,7 +8,6 @@
   "settings": "Ajustes",
   "settingsSubtitle": "Apariencia y acerca de",
   "settingsClose": "Cerrar ajustes",
-  "comingSoon": "Próximamente",
   "loading": "Cargando…",
   "refresh": "Actualizar",
   "refreshing": "actualizando…",
@@ -223,8 +222,6 @@
   "queriedNow": "Consulta hecha ahora",
   "queriedAtHour": "Consulta de las {hour}",
   "lineSemantics": "Línea {route}, {minutes}, {quality}",
-  "linesSoonTitle": "Las líneas estarán disponibles pronto.",
-  "linesSoonBody": "Por ahora, consulta las llegadas con el código de la parada.",
   "seenLinesSection": "Líneas vistas",
   "seenLinesNote": "Líneas vistas en tus consultas de esta sesión y en tus favoritos. La lista completa de líneas depende de la autorización de la RMTC.",
   "seenAtStop": "en la parada {stop}",
@@ -524,5 +521,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "seenLinesHeader": "Líneas de las paradas que consultaste",
+  "seenLinesEmptyTitle": "Todavía no hay líneas aquí.",
+  "seenLinesEmptyBody": "Consulta una parada: las líneas que pasan por ella aparecen aquí, con las próximas llegadas."
 }

@@ -148,12 +148,6 @@ abstract class AppLocalizations {
   /// **'Fechar ajustes'**
   String get settingsClose;
 
-  /// No description provided for @comingSoon.
-  ///
-  /// In pt, this message translates to:
-  /// **'Em breve'**
-  String get comingSoon;
-
   /// No description provided for @loading.
   ///
   /// In pt, this message translates to:
@@ -1441,18 +1435,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Linha {route}, {minutes}, {quality}'**
   String lineSemantics(String route, String minutes, String quality);
-
-  /// No description provided for @linesSoonTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'As linhas estarão disponíveis em breve.'**
-  String get linesSoonTitle;
-
-  /// No description provided for @linesSoonBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'Por enquanto, consulte as chegadas pelo código do ponto.'**
-  String get linesSoonBody;
 
   /// No description provided for @seenLinesSection.
   ///
@@ -2832,6 +2814,24 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Perto de você · {count, plural, =0{nenhum ponto} =1{1 ponto} other{{count} pontos}}'**
   String nearbySummary(int count);
+
+  /// No description provided for @seenLinesHeader.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linhas dos pontos que você consultou'**
+  String get seenLinesHeader;
+
+  /// No description provided for @seenLinesEmptyTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma linha por aqui ainda.'**
+  String get seenLinesEmptyTitle;
+
+  /// No description provided for @seenLinesEmptyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Consulte um ponto: as linhas que passam por ele aparecem aqui, com as próximas chegadas.'**
+  String get seenLinesEmptyBody;
 }
 
 class _AppLocalizationsDelegate

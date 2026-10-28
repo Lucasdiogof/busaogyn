@@ -35,9 +35,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsClose => 'Fechar ajustes';
 
   @override
-  String get comingSoon => 'Em breve';
-
-  @override
   String get loading => 'Carregando…';
 
   @override
@@ -857,13 +854,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String lineSemantics(String route, String minutes, String quality) {
     return 'Linha $route, $minutes, $quality';
   }
-
-  @override
-  String get linesSoonTitle => 'As linhas estarão disponíveis em breve.';
-
-  @override
-  String get linesSoonBody =>
-      'Por enquanto, consulte as chegadas pelo código do ponto.';
 
   @override
   String get seenLinesSection => 'Linhas vistas';
@@ -1778,4 +1768,14 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return 'Perto de você · $_temp0';
   }
+
+  @override
+  String get seenLinesHeader => 'Linhas dos pontos que você consultou';
+
+  @override
+  String get seenLinesEmptyTitle => 'Nenhuma linha por aqui ainda.';
+
+  @override
+  String get seenLinesEmptyBody =>
+      'Consulte um ponto: as linhas que passam por ele aparecem aqui, com as próximas chegadas.';
 }

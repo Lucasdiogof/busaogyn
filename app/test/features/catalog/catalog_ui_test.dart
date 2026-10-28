@@ -143,10 +143,10 @@ void main() {
       expect(find.text('Digite o código do ponto'), findsOneWidget);
       await tester.tap(_dock('Linhas'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsOneWidget,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsOneWidget);
+      // Aba de produção funciona (linhas vistas): nada de "Em breve".
+      expect(find.text('Linhas dos pontos que você consultou'), findsOneWidget);
+      expect(find.textContaining('breve'), findsNothing);
       expect(find.byKey(const ValueKey('catalog-lines-search')), findsNothing);
       expect(find.textContaining('cadastro oficial'), findsNothing);
       // Planejador (dados CMTC) não existe em produção.

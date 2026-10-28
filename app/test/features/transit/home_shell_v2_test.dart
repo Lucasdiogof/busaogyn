@@ -217,10 +217,7 @@ void main() {
       await _pump(tester, _Repository());
 
       await _openTab(tester, 'Linhas');
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsOneWidget,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsOneWidget);
       expect(find.byType(SearchHeader), findsNothing);
 
       await _openTab(tester, 'Salvos');
@@ -228,10 +225,7 @@ void main() {
         find.text('Seus pontos favoritos aparecerão aqui.'),
         findsOneWidget,
       );
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsNothing,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsNothing);
 
       await _openTab(tester, 'Pontos');
       expect(find.text('Digite o código do ponto'), findsOneWidget);
@@ -308,10 +302,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Ajustes'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsOneWidget,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsOneWidget);
     });
 
     testWidgets('sair de Ajustes por outro destino do dock', (tester) async {
@@ -323,10 +314,7 @@ void main() {
       expect(_isSelected(tester, 'Pontos'), isFalse);
 
       await _openTab(tester, 'Linhas');
-      expect(
-        find.text('As linhas estarão disponíveis em breve.'),
-        findsOneWidget,
-      );
+      expect(find.text('Nenhuma linha por aqui ainda.'), findsOneWidget);
       expect(_isSelected(tester, 'Linhas'), isTrue);
       semantics.dispose();
     });
@@ -461,6 +449,22 @@ void main() {
       expect(find.text('Ponto 30402'), findsOneWidget);
       expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
     });
+  });
+
+  testWidgets('paisagem: painel e dock respeitam o recorte da câmera', (
+    tester,
+  ) async {
+    // iPhone deitado: a ilha/notch fica de um lado (área segura de 59 pt).
+    tester.view.padding = const FakeViewPadding(left: 59, right: 59);
+    addTearDown(tester.view.resetPadding);
+    await _pump(tester, _Repository(), size: const Size(874, 402));
+    for (final finder in [find.byType(NavDock), find.byType(SearchHeader)]) {
+      expect(tester.getTopLeft(finder).dx, greaterThanOrEqualTo(59));
+    }
+    expect(
+      tester.getTopRight(find.byType(NavDock)).dx,
+      lessThanOrEqualTo(874 - 59),
+    );
   });
 
   group('painel flexível (celular)', () {
@@ -712,6 +716,8 @@ void main() {
       expect(find.textContaining('Sem conexão'), findsWidgets);
       expect(_fieldBorder(tester), isNull);
       expect(find.text('Chegadas precisam de internet'), findsOneWidget);
+      // O resumo do painel acompanha a falha: nada de "consultando".
+      expect(find.textContaining('consultando'), findsNothing);
       expect(find.text('Digite o código do ponto'), findsNothing);
       expect(find.widgetWithText(TextField, '30402'), findsOneWidget);
       expect(repository.requestedStops, ['30402']);

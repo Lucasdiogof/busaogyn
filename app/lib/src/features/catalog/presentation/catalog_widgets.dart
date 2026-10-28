@@ -911,11 +911,14 @@ class _LineDetail extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton(
-              key: const ValueKey('catalog-line-share'),
-              tooltip: l10n.shareLineAction,
-              onPressed: () => shareText(context, lineShareText(catalog, line)),
-              icon: const Icon(Icons.ios_share_rounded),
+            Builder(
+              builder: (button) => IconButton(
+                key: const ValueKey('catalog-line-share'),
+                tooltip: l10n.shareLineAction,
+                onPressed: () =>
+                    shareText(button, lineShareText(catalog, line)),
+                icon: const Icon(Icons.ios_share_rounded),
+              ),
             ),
           ],
         ),

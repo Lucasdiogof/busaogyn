@@ -22,8 +22,6 @@
   "@settingsSubtitle": {},
   "settingsClose": "Fechar ajustes",
   "@settingsClose": {},
-  "comingSoon": "Em breve",
-  "@comingSoon": {},
   "loading": "Carregando…",
   "@loading": {},
   "refresh": "Atualizar",
@@ -833,10 +831,6 @@
       }
     }
   },
-  "linesSoonTitle": "As linhas estarão disponíveis em breve.",
-  "@linesSoonTitle": {},
-  "linesSoonBody": "Por enquanto, consulte as chegadas pelo código do ponto.",
-  "@linesSoonBody": {},
   "seenLinesSection": "Linhas vistas",
   "@seenLinesSection": {},
   "seenLinesNote": "Linhas vistas nas suas consultas desta sessão e nos seus favoritos. A lista completa de linhas depende de autorização da RMTC.",
@@ -1505,5 +1499,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "seenLinesHeader": "Linhas dos pontos que você consultou",
+  "seenLinesEmptyTitle": "Nenhuma linha por aqui ainda.",
+  "seenLinesEmptyBody": "Consulte um ponto: as linhas que passam por ele aparecem aqui, com as próximas chegadas."
 }
