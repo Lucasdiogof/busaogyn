@@ -60,6 +60,14 @@ def direction_by_destination(destination: str | None, variant_name: str | None) 
     return 'i' if last else 'v'
 
 
+def destination_on_itinerary(destination: str | None, variant_name: str | None) -> bool:
+    """O destino casa com algum trecho da denominação, inclusive um do meio."""
+    if not destination or not variant_name:
+        return False
+    dest = _words(destination)
+    return any(_words(p) & dest for p in variant_name.split('/'))
+
+
 @dataclass
 class Shape:
     id: str
@@ -93,19 +101,40 @@ def match_tracked_route(*, variants: dict[str, str], shapes: list[Shape], route_
     if len(found) > 1:
         return RouteMatch('ambiguous', 'routeNameSeveral')
     vk = found[0]
+    points = list(trail)
+    if not points or points[-1] != position:
+        points.append(position)
     direction = direction_by_destination(destination, variants[vk])
     if direction is None:
-        return RouteMatch('ambiguous', 'directionUnknown')
+        if not destination_on_itinerary(destination, variants[vk]):
+            return RouteMatch('ambiguous', 'directionUnknown')
+        return _by_movement([s for s in shapes if s.variant == vk], points)
     cands = [s for s in shapes if s.variant == vk and s.direction == direction]
     if len(cands) != 1:
         return RouteMatch('ambiguous', 'shapeMissing')
     shape = cands[0]
-    points = list(trail)
-    if not points or points[-1] != position:
-        points.append(position)
     along, reason = _chain(shape.line, points)
     if along is None:
         return RouteMatch('ambiguous', reason, shape)
+    if along[-1] - along[0] < MIN_PROGRESS_M:
+        return RouteMatch('pending', 'waitingMovement', shape, along[-1])
+    return RouteMatch('confirmed', 'confirmed', shape, along[-1])
+
+
+def _by_movement(shapes: list[Shape], points) -> RouteMatch:
+    """Destino num trecho do meio (ou nos dois extremos): confirma o sentido
+    só se, entre ida e volta, exatamente um é coerente com o deslocamento."""
+    ida = [s for s in shapes if s.direction == 'i']
+    volta = [s for s in shapes if s.direction == 'v']
+    if len(ida) != 1 or len(volta) != 1:
+        return RouteMatch('ambiguous', 'directionUnknown')
+    coherent = [(s, a) for s in (ida[0], volta[0]) for a in [_chain(s.line, points)[0]] if a is not None]
+    if len(coherent) != 1:
+        moved = any(a[-1] - a[0] >= MIN_PROGRESS_M for _, a in coherent)
+        if not coherent or moved:
+            return RouteMatch('ambiguous', 'directionUnknown')
+        return RouteMatch('pending', 'waitingMovement', ida[0])
+    shape, along = coherent[0]
     if along[-1] - along[0] < MIN_PROGRESS_M:
         return RouteMatch('pending', 'waitingMovement', shape, along[-1])
     return RouteMatch('confirmed', 'confirmed', shape, along[-1])

@@ -33,6 +33,7 @@ RMTC / RedeMob -> adapters Worker -> domínio BusãoGyn -> /v1 -> Flutter
 - `GET /v1/routes/:routeId/vehicles` — experimental pela mesma razão
 - `GET /v1/stops/:stopId/arrivals`
 - `GET /v1/vehicles/:vehicleId/position?stopId=:stopId` — caminho validado via SiMRmtc
+- `GET /v1/stops/:stopId/vehicle-positions?vehicles=a,b,c` — até 8 ônibus num pedido, mesmo serviço e cache (ADR‑0006; ainda não publicado)
 
 A rede estática e occupancy entram como módulos opcionais quando as respostas oficiais chegarem.
 

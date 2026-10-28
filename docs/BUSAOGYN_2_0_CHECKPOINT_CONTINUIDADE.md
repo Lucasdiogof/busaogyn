@@ -62,9 +62,17 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   - 2.0 completo: bloqueado pela licença CMTC
     (`docs/CMTC_2026_PEDIDO_AUTORIZACAO.md`, não enviado).
 
+- Complemento da Etapa E (seção 16 do documento da etapa):
+  - **Percurso futuro da linha 016**: quando o destino da RMTC é um trecho do
+    meio da denominação, o deslocamento decide o sentido (Dart e Python
+    iguais). Confirmado com um ônibus real.
+  - **Posições em lote** (ADR-0006): de 15 para 4,5 requisições por minuto
+    parado num ponto, com o app voltando à consulta por ônibus enquanto o
+    Worker publicado não tiver o lote. **Worker não publicado.**
+
 ## Testes e builds (último ciclo, Etapa E)
 
-- 625 testes Flutter (inclui diretrizes de acessibilidade), 51 Python, 26 do
+- 631 testes Flutter (inclui diretrizes de acessibilidade), 52 Python, 30 do
   Worker, `flutter analyze` limpo, formatação ok.
 - Builds de produção (Web, APK, AAB, iOS release) sem dados da CMTC
   (`app/scripts/check-no-official-catalog.sh <artefatos>`); Web e APK de
@@ -75,7 +83,7 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
 
 1. Decisões do usuário:
    - merge na `main` e deploy do Web;
-   - mitigação da capacidade da API (E-8);
+   - deploy do Worker com o lote (ADR-0006), que reduz a carga em 70%;
    - envio do pedido à CMTC;
    - alertas com app aberto e canal "Reportar problema".
 2. Teste em aparelho físico Android e iPhone, com TalkBack/VoiceOver por uma
@@ -95,8 +103,9 @@ saem só de build iOS.
   apresentar como oficiais/atuais.
 - Validação real da Fase 6 com 8 ônibus: insuficiente para afirmar precisão.
 - Sem varreduras extensas da API RMTC.
-- Capacidade: cerca de 16 req/min por pessoa parada num ponto, contra 100 mil
-  req/dia do Workers gratuito (E-8).
+- Capacidade: cerca de 15 req/min por pessoa parada num ponto (4,5 com o lote
+  do ADR-0006, depois do deploy do Worker), contra 100 mil req/dia do Workers
+  gratuito (E-8).
 
 ## Ambiente local (dicas)
 

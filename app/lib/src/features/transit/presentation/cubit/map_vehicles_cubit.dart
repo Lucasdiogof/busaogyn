@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
+import '../../domain/models/transit_snapshot.dart';
 import '../../domain/repositories/transit_repository.dart';
 import '../map_vehicles/secondary_vehicle_selector.dart';
 
@@ -56,7 +57,9 @@ class _Entry {
 ///   armado para o próximo prazo entre os secundários, remove quem passou do
 ///   limite e se rearma para o seguinte (ver [_scheduleExpiry]). Ele só relê
 ///   o estado local: nunca faz requisição, e o polling segue como estava.
-/// - Usa só o endpoint de posição existente da API BusãoGyn.
+/// - Com [BatchVehiclePositions], cada rodada é um só pedido para todos os
+///   ônibus (mesmo cache e intervalo no Worker); se a API ainda não tiver o
+///   lote, volta de vez à consulta por ônibus.
 ///
 /// Fronteira do limite: a idade total é `ageAtReceipt` (segundos do Worker)
 /// mais os **segundos inteiros** locais desde a chegada, como sempre foi
@@ -105,6 +108,9 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
 
   /// Invalida respostas de um ponto anterior.
   int _generation = 0;
+
+  /// A API publicada não tem o lote: segue por ônibus até fechar.
+  bool _batchUnsupported = false;
 
   /// Último ônibus acompanhado e sua posição: ao trocar de acompanhado, o
   /// anterior vira secundário já com a posição que tinha.
@@ -259,6 +265,10 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
   Future<void> _fetch(List<SecondaryCandidate> targets) {
     final stopId = _stopId;
     if (stopId == null || isClosed) return Future.value();
+    if (_repository case final BatchVehiclePositions batch
+        when !_batchUnsupported) {
+      return _fetchBatch(batch, stopId, targets);
+    }
     final queued = {for (final candidate in _queue) candidate.vehicleNumber};
     for (final candidate in targets) {
       final number = candidate.vehicleNumber;
@@ -289,17 +299,7 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
             stopId: stopId,
           );
           if (generation != _generation) return;
-          final position = snapshot.data?.position;
-          if (position == null) {
-            _markFailing(number);
-          } else {
-            _entries[number]
-              ?..position = position
-              ..receivedAt = _clock()
-              ..ageAtReceipt = snapshot.ageSeconds
-              ..snapshotStale = snapshot.stale
-              ..failing = false;
-          }
+          _apply(number, snapshot);
         } catch (_) {
           if (generation != _generation) return;
           _markFailing(number);
@@ -313,6 +313,64 @@ class MapVehiclesCubit extends Cubit<MapVehiclesState> {
         _completeDrained();
       }
     }
+  }
+
+  /// Uma rodada em um só pedido. Quem já está em voo fica de fora; quem não
+  /// voltou na resposta conta como falha (como na consulta por ônibus).
+  Future<void> _fetchBatch(
+    BatchVehiclePositions batch,
+    String stopId,
+    List<SecondaryCandidate> targets,
+  ) async {
+    final generation = _generation;
+    final now = _clock();
+    final numbers = <String>[
+      for (final candidate in targets)
+        if (_entries[candidate.vehicleNumber] case final entry?
+            when _inFlight.add(candidate.vehicleNumber))
+          (entry..lastAttemptAt = now).candidate.vehicleNumber,
+    ];
+    if (numbers.isEmpty) return;
+    var unsupported = false;
+    try {
+      final results = await batch.getVehiclePositions(
+        stopId: stopId,
+        vehicleNumbers: numbers,
+      );
+      if (generation != _generation) return;
+      for (final number in numbers) {
+        final snapshot = results[number];
+        snapshot == null ? _markFailing(number) : _apply(number, snapshot);
+      }
+    } on BatchUnsupported {
+      unsupported = true;
+    } catch (_) {
+      if (generation != _generation) return;
+      numbers.forEach(_markFailing);
+    } finally {
+      if (generation == _generation) {
+        _inFlight.removeAll(numbers);
+        if (!unsupported) _emitState();
+      }
+    }
+    if (unsupported && generation == _generation) {
+      _batchUnsupported = true;
+      await _fetch(targets);
+    }
+  }
+
+  void _apply(String number, TransitSnapshot<TrackedVehicle?> snapshot) {
+    final position = snapshot.data?.position;
+    if (position == null) {
+      _markFailing(number);
+      return;
+    }
+    _entries[number]
+      ?..position = position
+      ..receivedAt = _clock()
+      ..ageAtReceipt = snapshot.ageSeconds
+      ..snapshotStale = snapshot.stale
+      ..failing = false;
   }
 
   void _completeDrained() {

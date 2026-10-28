@@ -108,6 +108,16 @@ String? directionByDestination(String? destination, String? variantName) {
   return last ? 'i' : 'v';
 }
 
+/// O destino casa com algum trecho da denominação (inclusive um do meio,
+/// como "ST AEROPORTO" em "T. Cruzeiro / St. Aeroporto / Eixo T-8").
+bool destinationOnItinerary(String? destination, String? variantName) {
+  if (destination == null || variantName == null) return false;
+  final dest = _words(destination);
+  return variantName
+      .split('/')
+      .any((p) => _words(p).intersection(dest).isNotEmpty);
+}
+
 /// Associa o ônibus acompanhado a um trajeto oficial do catálogo.
 ///
 /// Regras, em ordem (qualquer falha encerra sem desenhar nada):
@@ -116,7 +126,9 @@ String? directionByDestination(String? destination, String? variantName) {
 ///    uma variante do cadastro;
 /// 3. o destino da RMTC precisa apontar um sentido (extremo final = ida,
 ///    inicial = volta) e existir exatamente um trajeto dessa variante nesse
-///    sentido;
+///    sentido; se o destino casa com um trecho do meio (ou com os dois
+///    extremos), decide o deslocamento: vale o sentido em que, de ida e volta,
+///    só um é coerente com as posições observadas;
 /// 4. a posição atual (não expirada) e as posições observadas precisam estar
 ///    a até [routeMatchMaxDistanceM] do trajeto;
 /// 5. as posições observadas precisam avançar pelo menos
@@ -178,12 +190,20 @@ RouteMatch matchTrackedRoute({
     );
   }
   final variant = variants.single;
+  final points = [...trail];
+  if (points.isEmpty || points.last != position) points.add(position);
   final direction = directionByDestination(destination, variant.name);
   if (direction == null) {
-    return const RouteMatch(
-      RouteMatchLevel.ambiguous,
-      RouteMatchReason.directionUnknown,
-    );
+    if (!destinationOnItinerary(destination, variant.name)) {
+      return const RouteMatch(
+        RouteMatchLevel.ambiguous,
+        RouteMatchReason.directionUnknown,
+      );
+    }
+    return _byMovement([
+      for (final s in shapes)
+        if (s.variantId == variant.id) s,
+    ], points);
   }
   final candidates = [
     for (final s in shapes)
@@ -196,12 +216,69 @@ RouteMatch matchTrackedRoute({
     );
   }
   final shape = candidates.single;
-  final points = [...trail];
-  if (points.isEmpty || points.last != position) points.add(position);
   final (along, failure) = _chain(shape.line, points);
   if (along == null) {
     return RouteMatch(RouteMatchLevel.ambiguous, failure!, shape: shape);
   }
+  final current = along.last;
+  if (along.last - along.first < routeMatchMinProgressM) {
+    return RouteMatch(
+      RouteMatchLevel.pending,
+      RouteMatchReason.waitingMovement,
+      shape: shape,
+      alongM: current,
+    );
+  }
+  return RouteMatch(
+    RouteMatchLevel.confirmed,
+    RouteMatchReason.confirmed,
+    shape: shape,
+    alongM: current,
+    future: shape.line.sliceFrom(current),
+  );
+}
+
+/// Sentido decidido pelo deslocamento: confirma só se, entre ida e volta,
+/// exatamente um sentido é coerente com as posições e já avançou
+/// [routeMatchMinProgressM]; o outro precisa ser incoerente (contrário, fora
+/// do trajeto ou com salto).
+RouteMatch _byMovement(List<CatalogShape> shapes, List<GeoPosition> points) {
+  final ida = [
+    for (final s in shapes)
+      if (s.direction == 'i') s,
+  ];
+  final volta = [
+    for (final s in shapes)
+      if (s.direction == 'v') s,
+  ];
+  if (ida.length != 1 || volta.length != 1) {
+    return const RouteMatch(
+      RouteMatchLevel.ambiguous,
+      RouteMatchReason.directionUnknown,
+    );
+  }
+  final coherent = [
+    for (final s in [ida.single, volta.single])
+      if (_chain(s.line, points).$1 case final along?) (s, along),
+  ];
+  // Os dois coerentes: parado ainda (aguarda) ou, já andando, indecidível.
+  final undecided =
+      coherent.isEmpty ||
+      coherent.any((c) => c.$2.last - c.$2.first >= routeMatchMinProgressM);
+  if (coherent.length != 1) {
+    return undecided
+        ? const RouteMatch(
+            RouteMatchLevel.ambiguous,
+            RouteMatchReason.directionUnknown,
+          )
+        : RouteMatch(
+            RouteMatchLevel.pending,
+            RouteMatchReason.waitingMovement,
+            // Só para nomear a variante no aviso; pendente não desenha nada.
+            shape: ida.single,
+          );
+  }
+  final (shape, along) = coherent.single;
   final current = along.last;
   if (along.last - along.first < routeMatchMinProgressM) {
     return RouteMatch(

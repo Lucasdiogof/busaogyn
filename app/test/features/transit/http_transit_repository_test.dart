@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:busaogyn/src/core/network/api_client.dart';
 import 'package:busaogyn/src/features/transit/data/repositories/http_transit_repository.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
+import 'package:busaogyn/src/features/transit/domain/repositories/transit_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -44,6 +45,70 @@ void main() {
     'quality': quality,
     'sourceQuality': 'x',
   };
+
+  group('posições em lote', () {
+    test(
+      'um pedido; cada ônibus com a própria idade; falha fica de fora',
+      () async {
+        final repository = repositoryReturning({
+          'data': [
+            {
+              'vehicleNumber': '1',
+              'data': {
+                'id': 'rmtc:1',
+                'vehicleNumber': '1',
+                'position': {'latitude': -16.7, 'longitude': -49.26},
+              },
+              'meta': {'ageSeconds': 12, 'stale': true},
+            },
+            {
+              'vehicleNumber': '2',
+              'data': null,
+              'error': {'code': 'SOURCE_TIMEOUT', 'retryable': true},
+            },
+            {'vehicleNumber': '3', 'data': null, 'meta': <String, Object?>{}},
+          ],
+          'meta': {'stopId': '30402', 'count': 3},
+        });
+        final result = await repository.getVehiclePositions(
+          stopId: '30402',
+          vehicleNumbers: ['1', '2', '3'],
+        );
+        expect(requests.single.path, '/v1/stops/30402/vehicle-positions');
+        expect(requests.single.queryParameters['vehicles'], '1,2,3');
+        expect(result.keys, ['1', '3']);
+        expect(result['1']!.ageSeconds, 12);
+        expect(result['1']!.stale, isTrue);
+        expect(result['1']!.data!.position!.latitude, -16.7);
+        expect(result['3']!.data, isNull);
+      },
+    );
+
+    test('Worker sem o endpoint (404 NOT_FOUND) vira BatchUnsupported', () {
+      final repository = HttpTransitRepository(
+        ApiClient(
+          baseUrl: 'https://api.example.test',
+          client: MockClient(
+            (_) async => http.Response(
+              jsonEncode({
+                'error': {
+                  'code': 'NOT_FOUND',
+                  'message': 'Endpoint not found.',
+                  'retryable': false,
+                },
+              }),
+              404,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            ),
+          ),
+        ),
+      );
+      expect(
+        repository.getVehiclePositions(stopId: '1', vehicleNumbers: ['2']),
+        throwsA(isA<BatchUnsupported>()),
+      );
+    });
+  });
 
   group('chegadas', () {
     test('código com zeros à esquerda vai igual para a API', () async {

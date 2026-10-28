@@ -8,6 +8,11 @@ import { VehiclePositionService } from './services/vehicle-position.service';
 import type { Env } from './types/env';
 import { normalizeStopId } from './utils/normalize';
 
+/** Até 8 ônibus por pedido (o app mostra no máximo 6 secundários). */
+const MAX_BATCH_VEHICLES = 8;
+/** Consultas simultâneas à RMTC num pedido em lote (igual ao app). */
+const BATCH_CONCURRENCY = 3;
+
 function withCommonHeaders(response: Response, requestId: string, cors: Record<string, string>): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Request-ID', requestId);
@@ -78,6 +83,58 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       200,
       serviceHeaders(result),
     );
+  }
+
+  // Posições de vários ônibus de um ponto num só pedido: mesmo serviço e
+  // mesmo cache por ônibus da rota individual; só economiza requisições.
+  const batchMatch = path.match(/^\/v1\/stops\/([^/]+)\/vehicle-positions$/);
+  if (batchMatch !== null) {
+    const stopId = normalizeStopId(batchMatch[1] ?? '');
+    if (stopId === null) throw new AppError('INVALID_STOP', 'Stop id must contain only digits.', 400, false);
+    const numbers = [
+      ...new Set(
+        (url.searchParams.get('vehicles') ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (numbers.length === 0 || numbers.length > MAX_BATCH_VEHICLES || numbers.some((n) => !/^\d+$/.test(n))) {
+      throw new AppError(
+        'INVALID_VEHICLE',
+        `vehicles must list 1 to ${MAX_BATCH_VEHICLES} numeric RMTC vehicle numbers.`,
+        400,
+        false,
+      );
+    }
+    const service = new VehiclePositionService(env);
+    const results: unknown[] = [];
+    for (let i = 0; i < numbers.length; i += BATCH_CONCURRENCY) {
+      const chunk = numbers.slice(i, i + BATCH_CONCURRENCY);
+      results.push(
+        ...(await Promise.all(
+          chunk.map(async (vehicleNumber) => {
+            try {
+              const result = await service.getVehiclePosition(vehicleNumber, stopId);
+              return {
+                vehicleNumber,
+                data: result.data,
+                meta: { fetchedAt: result.fetchedAt, stale: result.stale, ageSeconds: result.ageSeconds },
+              };
+            } catch (error) {
+              // Um ônibus que falha não derruba os outros; sem detalhe interno.
+              const appError = error instanceof AppError ? error : null;
+              return {
+                vehicleNumber,
+                data: null,
+                error: { code: appError?.code ?? 'INTERNAL_ERROR', retryable: appError?.retryable ?? false },
+              };
+            }
+          }),
+        )),
+      );
+    }
+    return json({ data: results, meta: { stopId, count: results.length } });
   }
 
   const arrivalMatch = path.match(/^\/v1\/stops\/([^/]+)\/arrivals$/);

@@ -74,6 +74,27 @@ class _FakeRepository implements TransitRepository {
   }
 }
 
+/// API com o lote: registra cada pedido; [unsupported] simula o Worker antigo.
+class _BatchRepository extends _FakeRepository
+    implements BatchVehiclePositions {
+  final batches = <List<String>>[];
+  var unsupported = false;
+
+  @override
+  Future<Map<String, TransitSnapshot<TrackedVehicle?>>> getVehiclePositions({
+    required String stopId,
+    required List<String> vehicleNumbers,
+  }) async {
+    await Future<void>.delayed(Duration.zero);
+    if (unsupported) throw const BatchUnsupported();
+    batches.add(vehicleNumbers);
+    return {
+      for (final number in vehicleNumbers)
+        if (!failing.contains(number)) number: _snapshot(number),
+    };
+  }
+}
+
 Arrival _arrival(
   String? number, {
   int minutes = 5,
@@ -147,6 +168,92 @@ void main() {
     expect(repository.calls, hasLength(4), reason: 'pausado não consulta');
     unawaited(cubit.close());
     await tester.pump();
+  });
+
+  group('lote (um pedido por rodada)', () {
+    final groups = [
+      _group('003', _arrival('20051'), _arrival('20064')),
+      _group('020', _arrival('50462')),
+    ];
+
+    testWidgets('cada rodada é um só pedido com todos os ônibus', (
+      tester,
+    ) async {
+      final batch = _BatchRepository();
+      var now = DateTime(2026, 10, 7, 12);
+      final cubit = MapVehiclesCubit(
+        batch,
+        refreshInterval: const Duration(seconds: 30),
+        clock: () => now,
+      );
+      cubit.sync(stopId: '30402', groups: groups);
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(batch.batches, hasLength(1));
+      expect(batch.batches.single.toSet(), {'20051', '20064', '50462'});
+      expect(batch.calls, isEmpty, reason: 'nenhuma consulta por ônibus');
+      expect(_numbers(cubit), ['20051', '20064', '50462']);
+
+      now = now.add(const Duration(seconds: 30));
+      await tester.pump(const Duration(seconds: 30));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(batch.batches, hasLength(2), reason: '3 ônibus, 1 pedido');
+      unawaited(cubit.close());
+      await tester.pump();
+    });
+
+    test(
+      'ônibus que falha no lote mantém a última posição, como antigo',
+      () async {
+        final batch = _BatchRepository();
+        var now = DateTime(2026, 10, 7, 12);
+        final cubit = MapVehiclesCubit(
+          batch,
+          refreshInterval: null,
+          clock: () => now,
+        );
+        addTearDown(cubit.close);
+        cubit.sync(stopId: '30402', groups: groups);
+        await _settle();
+        batch.failing.add('20064');
+        now = now.add(const Duration(seconds: 30));
+        await cubit.refreshNow();
+        expect(cubit.state.byNumber('20064')!.stale, isTrue);
+        expect(cubit.state.byNumber('20051')!.stale, isFalse);
+      },
+    );
+
+    test(
+      'Worker sem o lote: volta a consultar por ônibus e não insiste',
+      () async {
+        final batch = _BatchRepository()..unsupported = true;
+        for (final number in ['20051', '20064', '50462']) {
+          batch.instant[number] = _snapshot(number);
+        }
+        var now = DateTime(2026, 10, 7, 12);
+        final cubit = MapVehiclesCubit(
+          batch,
+          refreshInterval: null,
+          clock: () => now,
+        );
+        addTearDown(cubit.close);
+        cubit.sync(stopId: '30402', groups: groups);
+        await _settle();
+        await _settle();
+        expect(batch.calls.toSet(), {'20051', '20064', '50462'});
+        expect(_numbers(cubit), ['20051', '20064', '50462']);
+
+        batch.unsupported = false;
+        now = now.add(const Duration(seconds: 30));
+        await cubit.refreshNow();
+        expect(batch.batches, isEmpty, reason: 'decidido uma vez por sessão');
+        expect(batch.calls, hasLength(6));
+      },
+    );
   });
 
   late _FakeRepository repository;

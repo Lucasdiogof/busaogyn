@@ -1,13 +1,15 @@
 import 'dart:math' as math;
 
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/arrival.dart';
 import '../../domain/entities/json_fields.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import '../../domain/models/transit_snapshot.dart';
 import '../../domain/repositories/transit_repository.dart';
 
-class HttpTransitRepository implements TransitRepository {
+class HttpTransitRepository
+    implements TransitRepository, BatchVehiclePositions {
   const HttpTransitRepository(this._apiClient);
 
   final ApiClient _apiClient;
@@ -68,5 +70,42 @@ class HttpTransitRepository implements TransitRepository {
       throw const FormatException('Expected tracked vehicle object.');
     }
     return _snapshot<TrackedVehicle?>(response, TrackedVehicle.fromJson(data));
+  }
+
+  @override
+  Future<Map<String, TransitSnapshot<TrackedVehicle?>>> getVehiclePositions({
+    required String stopId,
+    required List<String> vehicleNumbers,
+  }) async {
+    final Map<String, dynamic> response;
+    try {
+      response = await _apiClient.getJson(
+        '/v1/stops/$stopId/vehicle-positions',
+        queryParameters: {'vehicles': vehicleNumbers.join(',')},
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 404 && error.code == 'NOT_FOUND') {
+        throw const BatchUnsupported();
+      }
+      rethrow;
+    }
+    final data = response['data'];
+    if (data is! List) {
+      throw const FormatException('Expected vehicle position list.');
+    }
+    final results = <String, TransitSnapshot<TrackedVehicle?>>{};
+    for (final item in data.whereType<Map<String, dynamic>>()) {
+      final number = jsonString(item['vehicleNumber']);
+      // Ônibus que falhou na fonte: fica de fora (o cubit marca a falha).
+      if (number == null || item['error'] != null) continue;
+      final vehicle = item['data'];
+      results[number] = _snapshot<TrackedVehicle?>(
+        item,
+        vehicle is Map<String, dynamic>
+            ? TrackedVehicle.fromJson(vehicle)
+            : null,
+      );
+    }
+    return results;
   }
 }

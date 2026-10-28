@@ -150,6 +150,7 @@ GET /v1/health
 GET /v1/version
 GET /v1/stops/{stopId}/arrivals
 GET /v1/vehicles/{vehicleNumber}/position?stopId={stopId}
+GET /v1/stops/{stopId}/vehicle-positions?vehicles={a,b,c}   up to 8 buses in one request (ADR-0006; not deployed yet)
 GET /v1/vehicles                  experimental (RMTC fleet restricted to server-to-server)
 GET /v1/routes/{routeId}/vehicles experimental (same restriction)
 ```

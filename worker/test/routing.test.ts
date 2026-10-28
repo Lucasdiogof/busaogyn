@@ -120,6 +120,58 @@ describe('vehicle position route', () => {
   });
 });
 
+describe('batch vehicle positions route', () => {
+  it('returns each vehicle with its own meta, in request order, deduplicated', async () => {
+    position.mockImplementation(async (n: string) => ({ ...result({ vehicleNumber: n }), ageSeconds: n === '2' ? 7 : 0 }));
+    const response = await call('/v1/stops/30402/vehicle-positions?vehicles=1,2,1,3');
+    expect(response.status).toBe(200);
+    expect(position.mock.calls).toEqual([['1', '30402'], ['2', '30402'], ['3', '30402']]);
+    const body = (await response.json()) as { data: { vehicleNumber: string; meta: { ageSeconds: number } }[]; meta: unknown };
+    expect(body.data.map((d) => d.vehicleNumber)).toEqual(['1', '2', '3']);
+    expect(body.data[1]?.meta.ageSeconds).toBe(7);
+    expect(body.meta).toEqual({ stopId: '30402', count: 3 });
+  });
+
+  it('isolates a failing vehicle without leaking details', async () => {
+    position.mockImplementation(async (n: string) => {
+      if (n === '2') throw new Error('secret upstream detail');
+      return result({ vehicleNumber: n });
+    });
+    const response = await call('/v1/stops/30402/vehicle-positions?vehicles=1,2');
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(text).not.toContain('secret');
+    const body = JSON.parse(text) as { data: { vehicleNumber: string; data: unknown; error?: { code: string } }[] };
+    expect(body.data[0]?.data).toEqual({ vehicleNumber: '1' });
+    expect(body.data[1]).toMatchObject({ vehicleNumber: '2', data: null, error: { code: 'INTERNAL_ERROR' } });
+  });
+
+  it('validates the stop and the vehicle list before calling the service', async () => {
+    for (const query of ['', 'vehicles=', 'vehicles=1,abc', `vehicles=${Array.from({ length: 9 }, (_, i) => i + 1).join(',')}`]) {
+      const response = await call(`/v1/stops/30402/vehicle-positions?${query}`);
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { error: { code: string } }).error.code).toBe('INVALID_VEHICLE');
+    }
+    expect((await call('/v1/stops/abc/vehicle-positions?vehicles=1')).status).toBe(400);
+    expect(position).not.toHaveBeenCalled();
+  });
+
+  it('never queries more than three vehicles at once', async () => {
+    let running = 0;
+    let peak = 0;
+    position.mockImplementation(async (n: string) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running--;
+      return result({ vehicleNumber: n });
+    });
+    await call('/v1/stops/30402/vehicle-positions?vehicles=1,2,3,4,5,6,7');
+    expect(position).toHaveBeenCalledTimes(7);
+    expect(peak).toBe(3);
+  });
+});
+
 describe('experimental fleet routes', () => {
   it('lists all vehicles and by route', async () => {
     all.mockResolvedValue(result([{ id: 1 }, { id: 2 }]));
