@@ -142,14 +142,10 @@ void main() {
         find.descendant(of: find.byType(NavDock), matching: find.text(label));
 
     for (final (locale, labels, intro) in [
-      (
-        const Locale('en'),
-        ['Lines', 'Stops', 'Favorites', 'My bus'],
-        'Enter the stop code',
-      ),
+      (const Locale('en'), ['Stops', 'Lines', 'Saved'], 'Enter the stop code'),
       (
         const Locale('es'),
-        ['Líneas', 'Paradas', 'Favoritos', 'Mi autobús'],
+        ['Paradas', 'Líneas', 'Guardados'],
         'Escribe el código de la parada',
       ),
     ]) {

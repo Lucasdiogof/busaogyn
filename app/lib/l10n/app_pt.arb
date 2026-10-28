@@ -1350,5 +1350,49 @@
   "sequenceOrderedNote": "Lista incompleta: a ordem foi conferida (logradouros oficiais ou estações do corredor), mas alguns pontos ficaram de fora.",
   "catalogTerminalNote": "Terminal identificado pelos nomes oficiais das linhas e pelo fim dos trajetos oficiais (inferido). Não tem código para consulta de chegadas.",
   "catalogStationNote": "Estação de corredor (pasta oficial do KMZ). As linhas que param aqui são inferidas pelo corredor; veja \"No itinerário\".",
-  "catalogTerminalTag": "terminal (inferido)"
+  "catalogTerminalTag": "terminal (inferido)",
+  "dockPlan": "Planejar",
+  "dockSaved": "Salvos",
+  "trackingBarSemantics": "Acompanhando o ônibus {bus}, {heading}. Toque para abrir.",
+  "@trackingBarSemantics": {
+    "placeholders": {
+      "bus": {
+        "type": "String"
+      },
+      "heading": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingBarOpen": "Abrir acompanhamento",
+  "trackingBarStale": "Posição antiga ou sem sinal",
+  "sheetShowMap": "Ver mapa",
+  "sheetShowPanel": "Mostrar painel",
+  "sheetHandleHint": "Toque para expandir ou recolher",
+  "plannerClear": "Limpar",
+  "plannerHeaderSubtitle": "De ponto a ponto · funciona sem internet",
+  "sheetSummaryStops": "Pontos e chegadas",
+  "sheetSummaryStop": "Ponto {code} · {lines}",
+  "@sheetSummaryStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "lines": {
+        "type": "String"
+      }
+    }
+  },
+  "sheetSummaryPlan": "Origem e destino",
+  "sheetSummaryLines": "Catálogo de linhas",
+  "sheetSummaryLine": "Linha {line}",
+  "@sheetSummaryLine": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "sheetSummarySaved": "Favoritos e recentes",
+  "sheetSummaryTracking": "Acompanhamento do ônibus"
 }

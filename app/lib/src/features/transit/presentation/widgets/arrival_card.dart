@@ -375,12 +375,9 @@ class VehicleTrackBox extends StatelessWidget {
         size: 16,
         color: tokens.accentText,
       ),
-      TrackingPhase.searching => SizedBox.square(
-        dimension: 14,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: tokens.accentText,
-        ),
+      TrackingPhase.searching => BusaoLoader(
+        size: 14,
+        color: tokens.accentText,
       ),
       TrackingPhase.active => Icon(
         Icons.directions_bus_rounded,

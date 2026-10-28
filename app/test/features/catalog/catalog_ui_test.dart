@@ -152,7 +152,7 @@ void main() {
       // Planejador (dados CMTC) não existe em produção.
       await tester.tap(_dock('Pontos'));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('planner-open')), findsNothing);
+      expect(find.byKey(const ValueKey('dock-plan')), findsNothing);
       expect(find.text('Planejar viagem'), findsNothing);
     });
   });
@@ -301,13 +301,12 @@ void main() {
         // Código fora do catálogo continua só com o código.
         expect(find.text('77777'), findsNothing);
         expect(find.textContaining('77777'), findsOneWidget);
-        await tester.tap(_dock('Favoritos'));
+        await tester.tap(_dock('Salvos'));
         await tester.pumpAndSettle();
         expect(find.textContaining('Rua Fictícia'), findsOneWidget);
-        expect(
-          find.textContaining('Avenida Exemplo'),
-          findsOneWidget,
-        ); // linha favorita no ponto 1201
+        // Salvos reúne favoritos e recentes: a linha favorita no ponto 1201
+        // e o recente 1202 (mesma avenida).
+        expect(find.textContaining('Avenida Exemplo'), findsNWidgets(2));
         expect(store.saves, isEmpty);
       },
     );

@@ -5,10 +5,11 @@ import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../formatters/transit_labels.dart';
 
-/// Destinos da home: Linhas ([lines]), Pontos ([stop]), Favoritos
-/// ([favorites]) e Meu ônibus ([tracking]); Ajustes ([settings]) abre pela
-/// TopBar.
-enum HomeTab { lines, stop, favorites, tracking, settings }
+/// Destinos da home. No dock: Pontos ([stop]), Planejar ([plan], só com o
+/// catálogo), Linhas ([lines]) e Salvos ([saved]). Meu ônibus ([tracking]) é
+/// contextual: abre pela barra de acompanhamento. Ajustes ([settings]) abre
+/// pela TopBar.
+enum HomeTab { stop, plan, lines, saved, tracking, settings }
 
 class _DockItem extends StatelessWidget {
   const _DockItem({
@@ -17,8 +18,8 @@ class _DockItem extends StatelessWidget {
     required this.labelLines,
     required this.selected,
     required this.onTap,
-    this.badge = false,
     this.fitContent = false,
+    super.key,
   });
 
   final IconData icon;
@@ -26,7 +27,6 @@ class _DockItem extends StatelessWidget {
   final int labelLines;
   final bool selected;
   final VoidCallback onTap;
-  final bool badge;
 
   /// Encolhe o conteúdo (só se não couber) em vez de estourar a altura ou a
   /// largura do item. Usado pelo dock de quatro destinos, onde cada aba é
@@ -39,7 +39,7 @@ class _DockItem extends StatelessWidget {
     final radius = BorderRadius.circular(Radii.dock - 6);
     final labelStyle = TextStyle(
       fontSize: 11,
-      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
       color: selected ? tokens.strongText : tokens.mutedText,
     );
     // Cada palavra numa linha própria quando o rótulo não cabe em uma; o
@@ -50,29 +50,10 @@ class _DockItem extends StatelessWidget {
       mainAxisSize: fitContent ? MainAxisSize.min : MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(
-              icon,
-              size: 22,
-              color: selected ? tokens.accentText : tokens.mutedText,
-            ),
-            if (badge)
-              Positioned(
-                right: -3,
-                top: -2,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: tokens.accent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: tokens.background, width: 1.5),
-                  ),
-                ),
-              ),
-          ],
+        Icon(
+          icon,
+          size: 22,
+          color: selected ? tokens.accentText : tokens.mutedText,
         ),
         const SizedBox(height: 3),
         for (final word in words)
@@ -87,17 +68,16 @@ class _DockItem extends StatelessWidget {
         container: true,
         selected: selected,
         button: true,
-        label: badge ? l10n.dockTrackedBadge(label) : label,
+        label: label,
         excludeSemantics: true,
+        // Seleção sem depender só de cor: ícone preenchido, rótulo em negrito
+        // e fundo suave (sem borda extra).
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
+          duration: motion(context, const Duration(milliseconds: 200)),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: selected ? tokens.accentSoft : Colors.transparent,
             borderRadius: radius,
-            border: Border.all(
-              color: selected ? tokens.accent : Colors.transparent,
-            ),
           ),
           child: Material(
             type: MaterialType.transparency,
@@ -119,23 +99,24 @@ class _DockItem extends StatelessWidget {
   }
 }
 
-/// Dock inferior flutuante: Linhas, Pontos, Favoritos e Meu ônibus. Ajustes não
-/// fica aqui, abre pela [TopBar].
+/// Navegação principal: Pontos, Planejar (com catálogo), Linhas e Salvos.
+/// Meu ônibus fica na barra contextual ([TrackingBar]); Ajustes, na [TopBar].
 class NavDock extends StatelessWidget {
   const NavDock({
     required this.selected,
     required this.onSelected,
-    required this.trackingActive,
     required this.layout,
+    this.showPlan = false,
     super.key,
   });
 
-  /// Destino atual; com Ajustes aberto nenhum item aparece selecionado.
+  /// Destino atual; com Ajustes ou Meu ônibus aberto nenhum item aparece
+  /// selecionado.
   final HomeTab selected;
   final ValueChanged<HomeTab> onSelected;
 
-  /// Marca Meu ônibus quando há um ônibus acompanhado.
-  final bool trackingActive;
+  /// Planejar só existe com o catálogo (desenvolvimento).
+  final bool showPlan;
 
   final ({int labelLines, double height}) layout;
 
@@ -144,17 +125,44 @@ class NavDock extends StatelessWidget {
     Widget item(
       HomeTab tab,
       IconData icon,
-      String label, {
-      bool badge = false,
-    }) => _DockItem(
-      icon: icon,
+      IconData selectedIcon,
+      String label,
+    ) => _DockItem(
+      key: ValueKey('dock-${tab.name}'),
+      icon: selected == tab ? selectedIcon : icon,
       label: label,
       labelLines: layout.labelLines,
       selected: selected == tab,
-      badge: badge,
       fitContent: true,
       onTap: () => onSelected(tab),
     );
+    final items = [
+      item(
+        HomeTab.stop,
+        Icons.location_on_outlined,
+        Icons.location_on_rounded,
+        l10n.dockStops,
+      ),
+      if (showPlan)
+        item(
+          HomeTab.plan,
+          Icons.alt_route_outlined,
+          Icons.alt_route_rounded,
+          l10n.dockPlan,
+        ),
+      item(
+        HomeTab.lines,
+        Icons.format_list_bulleted_rounded,
+        Icons.view_list_rounded,
+        l10n.dockLines,
+      ),
+      item(
+        HomeTab.saved,
+        Icons.bookmark_border_rounded,
+        Icons.bookmark_rounded,
+        l10n.dockSaved,
+      ),
+    ];
     return GlassSurface(
       radius: Radii.dock,
       padding: const EdgeInsets.all(6),
@@ -162,26 +170,10 @@ class NavDock extends StatelessWidget {
         height: layout.height - 12,
         child: Row(
           children: [
-            item(
-              HomeTab.lines,
-              Icons.format_list_bulleted_rounded,
-              l10n.dockLines,
-            ),
-            const SizedBox(width: 4),
-            item(HomeTab.stop, Icons.location_on_outlined, l10n.dockStops),
-            const SizedBox(width: 4),
-            item(
-              HomeTab.favorites,
-              Icons.star_outline_rounded,
-              l10n.dockFavorites,
-            ),
-            const SizedBox(width: 4),
-            item(
-              HomeTab.tracking,
-              Icons.directions_bus_outlined,
-              l10n.dockTracking,
-              badge: trackingActive,
-            ),
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              items[i],
+            ],
           ],
         ),
       ),

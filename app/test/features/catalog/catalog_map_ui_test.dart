@@ -293,7 +293,7 @@ void main() {
       _Repository(routeName: 'T. Fictício Norte / Centro Imaginário'),
     );
     await _startTracking(tester);
-    await tester.tap(_dock('Meu ônibus'));
+    await tester.tap(find.byKey(const ValueKey('tracking-bar-open')));
     await _settle(tester);
 
     // Uma amostra só: variante achada, sentido ainda não confirmado.
@@ -342,7 +342,7 @@ void main() {
   ) async {
     await _pump(tester, _Repository(routeName: 'Itinerário que não existe'));
     await _startTracking(tester);
-    await tester.tap(_dock('Meu ônibus'));
+    await tester.tap(find.byKey(const ValueKey('tracking-bar-open')));
     await _settle(tester);
     await tester.pump(const Duration(seconds: 15));
     await _settle(tester);
@@ -373,7 +373,7 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('Noturno'));
     await _settle(tester);
-    await tester.tap(_dock('Favoritos'));
+    await tester.tap(_dock('Salvos'));
     await _settle(tester);
     expect(_CountingMap.created, 1);
     expect(_features(_map(tester).network!.route), hasLength(3));
@@ -554,7 +554,7 @@ void main() {
     tester,
   ) async {
     await _pump(tester, _Repository(routeName: null));
-    await _tapKey(tester, 'planner-open');
+    await _tapKey(tester, 'dock-plan');
     expect(find.byKey(const ValueKey('trip-planner')), findsOneWidget);
     expect(find.textContaining('Funciona sem internet'), findsOneWidget);
 
@@ -624,8 +624,9 @@ void main() {
       findsOneWidget,
     );
 
-    // Fechar volta ao mapa normal sem recriar o mapa.
-    await _tapKey(tester, 'planner-close');
+    // Sair de Planejar volta ao mapa normal sem recriar o mapa; a viagem
+    // fica guardada para quando voltar.
+    await _tapKey(tester, 'dock-stop');
     expect(find.byKey(const ValueKey('trip-planner')), findsNothing);
     expect(_features(_map(tester).network!.plan), isEmpty);
     expect(_features(_map(tester).network!.stops), hasLength(4));
@@ -636,7 +637,7 @@ void main() {
     tester,
   ) async {
     await _pump(tester, _OfflineRepository());
-    await _tapKey(tester, 'planner-open');
+    await _tapKey(tester, 'dock-plan');
     await _tapKey(tester, 'planner-pick-origin');
     _map(tester).onStopTap!('1202');
     await tester.pumpAndSettle();
@@ -718,7 +719,7 @@ void main() {
         // Planejador com resultado.
         await tester.tap(_dock('Pontos'));
         await _settle(tester);
-        await _tapKey(tester, 'planner-open');
+        await _tapKey(tester, 'dock-plan');
         await _tapKey(tester, 'planner-pick-origin');
         _map(tester).onStopTap!('1202');
         await _settle(tester);
@@ -731,9 +732,9 @@ void main() {
         );
         await _settle(tester);
         expect(tester.takeException(), isNull);
-        await _tapKey(tester, 'planner-close');
+        await _tapKey(tester, 'dock-stop');
         await _startTracking(tester);
-        await tester.tap(_dock('Meu ônibus'));
+        await tester.tap(find.byKey(const ValueKey('tracking-bar-open')));
         await _settle(tester);
         expect(tester.takeException(), isNull);
         context(tester).read<StopArrivalsCubit>().stopTracking();

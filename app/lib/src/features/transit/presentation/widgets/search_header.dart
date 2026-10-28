@@ -171,13 +171,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                       ),
                     ),
                     child: widget.loading
-                        ? SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: tokens.onAccent,
-                            ),
-                          )
+                        ? BusaoLoader(size: 18, color: tokens.onAccent)
                         : Icon(
                             Icons.arrow_forward_rounded,
                             size: 20,

@@ -2490,6 +2490,108 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'terminal (inferido)'**
   String get catalogTerminalTag;
+
+  /// No description provided for @dockPlan.
+  ///
+  /// In pt, this message translates to:
+  /// **'Planejar'**
+  String get dockPlan;
+
+  /// No description provided for @dockSaved.
+  ///
+  /// In pt, this message translates to:
+  /// **'Salvos'**
+  String get dockSaved;
+
+  /// No description provided for @trackingBarSemantics.
+  ///
+  /// In pt, this message translates to:
+  /// **'Acompanhando o ônibus {bus}, {heading}. Toque para abrir.'**
+  String trackingBarSemantics(String bus, String heading);
+
+  /// No description provided for @trackingBarOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Abrir acompanhamento'**
+  String get trackingBarOpen;
+
+  /// No description provided for @trackingBarStale.
+  ///
+  /// In pt, this message translates to:
+  /// **'Posição antiga ou sem sinal'**
+  String get trackingBarStale;
+
+  /// No description provided for @sheetShowMap.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver mapa'**
+  String get sheetShowMap;
+
+  /// No description provided for @sheetShowPanel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mostrar painel'**
+  String get sheetShowPanel;
+
+  /// No description provided for @sheetHandleHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque para expandir ou recolher'**
+  String get sheetHandleHint;
+
+  /// No description provided for @plannerClear.
+  ///
+  /// In pt, this message translates to:
+  /// **'Limpar'**
+  String get plannerClear;
+
+  /// No description provided for @plannerHeaderSubtitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'De ponto a ponto · funciona sem internet'**
+  String get plannerHeaderSubtitle;
+
+  /// No description provided for @sheetSummaryStops.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pontos e chegadas'**
+  String get sheetSummaryStops;
+
+  /// No description provided for @sheetSummaryStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ponto {code} · {lines}'**
+  String sheetSummaryStop(String code, String lines);
+
+  /// No description provided for @sheetSummaryPlan.
+  ///
+  /// In pt, this message translates to:
+  /// **'Origem e destino'**
+  String get sheetSummaryPlan;
+
+  /// No description provided for @sheetSummaryLines.
+  ///
+  /// In pt, this message translates to:
+  /// **'Catálogo de linhas'**
+  String get sheetSummaryLines;
+
+  /// No description provided for @sheetSummaryLine.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linha {line}'**
+  String sheetSummaryLine(String line);
+
+  /// No description provided for @sheetSummarySaved.
+  ///
+  /// In pt, this message translates to:
+  /// **'Favoritos e recentes'**
+  String get sheetSummarySaved;
+
+  /// No description provided for @sheetSummaryTracking.
+  ///
+  /// In pt, this message translates to:
+  /// **'Acompanhamento do ônibus'**
+  String get sheetSummaryTracking;
 }
 
 class _AppLocalizationsDelegate

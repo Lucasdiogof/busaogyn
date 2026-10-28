@@ -34,6 +34,13 @@ abstract final class Chrome {
   static const header = 64.0;
   static const dock = 70.0;
 
+  /// Barra de acompanhamento (Meu ônibus contextual) acima do dock.
+  static const trackingBar = 60.0;
+
+  /// Painel lateral em tablet e desktop: largura entre estes limites.
+  static const sidePanelMin = 360.0;
+  static const sidePanelMax = 440.0;
+
   /// Fator de escala de texto efetivo (1.0 = 100%).
   static double textScale(TextScaler scaler) => scaler.scale(16) / 16;
 

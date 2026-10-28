@@ -1561,4 +1561,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogTerminalTag => 'terminal (inferred)';
+
+  @override
+  String get dockPlan => 'Plan';
+
+  @override
+  String get dockSaved => 'Saved';
+
+  @override
+  String trackingBarSemantics(String bus, String heading) {
+    return 'Tracking bus $bus, $heading. Tap to open.';
+  }
+
+  @override
+  String get trackingBarOpen => 'Open tracking';
+
+  @override
+  String get trackingBarStale => 'Old position or no signal';
+
+  @override
+  String get sheetShowMap => 'Show map';
+
+  @override
+  String get sheetShowPanel => 'Show panel';
+
+  @override
+  String get sheetHandleHint => 'Tap to expand or collapse';
+
+  @override
+  String get plannerClear => 'Clear';
+
+  @override
+  String get plannerHeaderSubtitle => 'Stop to stop · works offline';
+
+  @override
+  String get sheetSummaryStops => 'Stops and arrivals';
+
+  @override
+  String sheetSummaryStop(String code, String lines) {
+    return 'Stop $code · $lines';
+  }
+
+  @override
+  String get sheetSummaryPlan => 'Origin and destination';
+
+  @override
+  String get sheetSummaryLines => 'Line catalog';
+
+  @override
+  String sheetSummaryLine(String line) {
+    return 'Line $line';
+  }
+
+  @override
+  String get sheetSummarySaved => 'Favorites and recent';
+
+  @override
+  String get sheetSummaryTracking => 'Bus tracking';
 }

@@ -93,10 +93,7 @@ class ArrivalsPanel extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 iconSize: 20,
                 icon: state.refreshing
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const BusaoLoader(size: 16)
                     : const Icon(Icons.refresh_rounded),
               ),
             ),

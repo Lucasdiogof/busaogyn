@@ -85,6 +85,24 @@ abstract final class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(color: tokens.hairline, space: 1),
+      // Chips (dias, sentidos, filtros): um estilo só em todo o app;
+      // selecionado = fundo âmbar suave + ícone de confirmação.
+      chipTheme: ChipThemeData(
+        backgroundColor: tokens.card,
+        selectedColor: tokens.accentSoft,
+        side: BorderSide(color: tokens.hairline),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.chip + 2),
+        ),
+        labelStyle: TextStyle(
+          fontFamily: BusaoFonts.sans,
+          fontWeight: FontWeight.w600,
+          fontSize: 13.5,
+          color: tokens.strongText,
+        ),
+        checkmarkColor: tokens.accentText,
+        showCheckmark: true,
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: tokens.accent,
