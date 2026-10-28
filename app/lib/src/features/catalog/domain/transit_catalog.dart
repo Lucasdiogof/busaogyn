@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../transit/domain/entities/tracked_vehicle.dart';
 import 'route_geometry.dart';
+import 'stop_sequence.dart';
 import 'text_search.dart';
+import 'timetable.dart';
 
 /// Versão e proveniência do catálogo estático.
 @immutable
@@ -16,10 +18,14 @@ class CatalogVersion {
     this.linesReference,
     this.stopsReference,
     this.shapeToleranceM,
+    this.timetablesDelivered,
   });
 
   /// Tolerância (m) da simplificação dos trajetos distribuídos.
   final double? shapeToleranceM;
+
+  /// Data em que a CMTC entregou as planilhas horárias ('2026-10-28').
+  final String? timetablesDelivered;
 
   final String id;
   final String source;
@@ -213,12 +219,27 @@ class TransitCatalog {
     required List<CatalogVariant> variants,
     required List<CatalogStop> stops,
     List<CatalogShape> shapes = const [],
+    List<CatalogTimetable> timetables = const [],
+    List<CatalogTrips> trips = const [],
+    List<StopSequence> sequences = const [],
   }) : lines = List.unmodifiable(lines),
        variants = List.unmodifiable(variants),
        stops = List.unmodifiable(stops),
-       shapes = List.unmodifiable(shapes) {
+       shapes = List.unmodifiable(shapes),
+       timetables = List.unmodifiable(timetables),
+       sequences = List.unmodifiable(sequences) {
     for (final shape in this.shapes) {
       _shapesByLine.putIfAbsent(shape.lineId, () => []).add(shape);
+      _shapeById[shape.id] = shape;
+    }
+    for (final t in this.timetables) {
+      _timetablesByLine.putIfAbsent(t.lineId, () => []).add(t);
+    }
+    for (final t in trips) {
+      _tripsByTimetable.putIfAbsent(t.timetableId, () => []).add(t);
+    }
+    for (final s in this.sequences) {
+      _sequenceByShape[s.shapeId] = s;
     }
     for (final line in this.lines) {
       _lineById[line.id] = line;
@@ -243,7 +264,45 @@ class TransitCatalog {
   final List<CatalogVariant> variants;
   final List<CatalogStop> stops;
   final List<CatalogShape> shapes;
+  final List<CatalogTimetable> timetables;
+  final List<StopSequence> sequences;
   final _shapesByLine = <String, List<CatalogShape>>{};
+  final _shapeById = <String, CatalogShape>{};
+  final _timetablesByLine = <String, List<CatalogTimetable>>{};
+  final _tripsByTimetable = <String, List<CatalogTrips>>{};
+  final _sequenceByShape = <String, StopSequence>{};
+
+  CatalogShape? shape(String? id) => id == null ? null : _shapeById[id];
+
+  /// Quadros de horário da linha (abas OSO), de qualquer validade.
+  List<CatalogTimetable> timetablesOf(String lineId) =>
+      List.unmodifiable(_timetablesByLine[normalizeLineId(lineId)] ?? const []);
+
+  List<CatalogTrips> tripsOf(String timetableId) =>
+      List.unmodifiable(_tripsByTimetable[timetableId] ?? const []);
+
+  /// Sequência ESTIMADA de paradas do trajeto, se calculada.
+  StopSequence? sequenceOf(String? shapeId) =>
+      shapeId == null ? null : _sequenceByShape[shapeId];
+
+  /// Onde o ponto aparece nas sequências estimadas confiáveis: (trajeto,
+  /// posição 1-based na sequência). Índice montado no primeiro uso.
+  List<(CatalogShape, int)> itineraryOf(String stopId) {
+    final index = _itinerary ??= () {
+      final out = <String, List<(CatalogShape, int)>>{};
+      for (final seq in sequences) {
+        final shape = _shapeById[seq.shapeId];
+        if (shape == null || seq.status != SequenceStatus.estimated) continue;
+        for (var i = 0; i < seq.entries.length; i++) {
+          out.putIfAbsent(seq.entries[i].stopId, () => []).add((shape, i + 1));
+        }
+      }
+      return out;
+    }();
+    return List.unmodifiable(index[stopId.trim()] ?? const []);
+  }
+
+  Map<String, List<(CatalogShape, int)>>? _itinerary;
 
   /// Trajetos oficiais da linha (todas as variantes e sentidos).
   List<CatalogShape> shapesOf(String lineId) =>

@@ -11,6 +11,7 @@ import '../domain/route_match.dart';
 import '../domain/text_search.dart';
 import '../domain/transit_catalog.dart';
 import 'catalog_access.dart';
+import 'catalog_schedule_widgets.dart';
 
 /// Quantos resultados de ponto aparecem de uma vez.
 const catalogStopResultsLimit = 40;
@@ -398,12 +399,17 @@ class StopPreview extends StatelessWidget {
     required this.catalog,
     required this.stopId,
     required this.onSeeArrivals,
+    this.onOpenRoute,
     super.key,
   });
 
   final TransitCatalog catalog;
   final String stopId;
   final VoidCallback onSeeArrivals;
+
+  /// Abre um trajeto (linha + sentido) em que o ponto aparece na sequência
+  /// estimada.
+  final ValueChanged<String>? onOpenRoute;
 
   Future<void> _toggleFavorite(BuildContext context) async {
     final result = await context.read<SavedStopsCubit>().toggleFavorite(stopId);
@@ -442,6 +448,10 @@ class StopPreview extends StatelessWidget {
             ),
           ],
         ),
+        if (onOpenRoute case final open?) ...[
+          const SizedBox(height: Space.sm),
+          StopItinerary(catalog: catalog, stopId: stopId, onOpenRoute: open),
+        ],
         const SizedBox(height: Space.sm),
         CatalogSourceNote(catalog: catalog),
       ],
@@ -461,10 +471,14 @@ class CatalogLinesPanel extends StatefulWidget {
     this.activeShapeId,
     this.onShowRoute,
     this.onClearRoute,
+    this.now,
     super.key,
   });
 
   final TransitCatalog catalog;
+
+  /// Relógio (testes): tipo de dia inicial dos horários.
+  final DateTime Function()? now;
 
   /// Trajeto oficial mostrado no mapa (nome do Placemark), ou `null`.
   final String? activeShapeId;
@@ -504,6 +518,7 @@ class _CatalogLinesPanelState extends State<CatalogLinesPanel> {
         activeShapeId: widget.activeShapeId,
         onShowRoute: widget.onShowRoute,
         onClearRoute: widget.onClearRoute,
+        now: widget.now,
       );
     }
     final tokens = context.tokens;
@@ -710,8 +725,10 @@ class _LineDetail extends StatelessWidget {
     this.activeShapeId,
     this.onShowRoute,
     this.onClearRoute,
+    this.now,
   });
 
+  final DateTime Function()? now;
   final TransitCatalog catalog;
   final String lineId;
   final VoidCallback onBack;
@@ -903,7 +920,16 @@ class _LineDetail extends StatelessWidget {
         if (active != null) ...[
           const SizedBox(height: Space.xs),
           FootNote(child: Text(l10n.catalogRouteLegend)),
+          const SizedBox(height: Space.sm),
+          ShapeStopsSection(
+            key: ValueKey('shape-stops-${active.id}'),
+            catalog: catalog,
+            shape: active,
+            onOpenStop: onOpenStop,
+          ),
         ],
+        const SizedBox(height: Space.sm),
+        LineTimetableSection(catalog: catalog, lineId: line.id, now: now),
         const SizedBox(height: Space.sm),
         SectionLabel(
           icon: Icons.call_split_rounded,
@@ -1044,7 +1070,7 @@ String directionLabel(String? direction) => switch (direction) {
 };
 
 /// Estado da associação do ônibus acompanhado a um trajeto oficial. Nunca
-/// sugere horário nem próximo ponto.
+/// sugere horário; próximos pontos ficam em `NextStopsCard`.
 class RouteMatchNote extends StatelessWidget {
   const RouteMatchNote({required this.match, super.key});
 
@@ -1058,6 +1084,8 @@ class RouteMatchNote extends StatelessWidget {
     RouteMatchReason.shapeMissing => l10n.trackReasonShapeMissing,
     RouteMatchReason.offRoute => l10n.trackReasonOffRoute,
     RouteMatchReason.movingBackwards => l10n.trackReasonMovingBackwards,
+    RouteMatchReason.gpsJump => l10n.trackReasonGpsJump,
+    RouteMatchReason.repeatedSection => l10n.trackReasonRepeatedSection,
     _ => l10n.trackReasonShapeMissing,
   };
 

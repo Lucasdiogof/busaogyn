@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../domain/stop_sequence.dart';
+import '../domain/timetable.dart';
 import '../domain/transit_catalog.dart';
 
 /// Formato `busaogyn.catalog` v1, gerado por
@@ -51,7 +53,75 @@ TransitCatalog decodeCatalog(String json) {
           ? (version['shapeToleranceM'] as num).toDouble()
           : null,
       stopsReference: refs is Map ? _str(refs['stops']) : null,
+      timetablesDelivered: _str(version['timetablesDelivered']),
     ),
+    // Validade desconhecida vira `insufficient` (não exibida): nunca o
+    // contrário.
+    timetables: _table(root['timetables'], (r) {
+      final id = _str(r('id'));
+      final line = _code(r('line'));
+      if (id == null || line == null) return null;
+      return CatalogTimetable(
+        id: id,
+        lineId: normalizeLineId(line),
+        source: _str(r('source')),
+        lineName: _str(r('lineName')),
+        sheetDate: _str(r('sheetDate')),
+        oso: _str(r('oso')),
+        validity: switch (r('validity')) {
+          'confirmed' => TimetableValidity.confirmed,
+          'recent' => TimetableValidity.recent,
+          'old' => TimetableValidity.old,
+          _ => TimetableValidity.insufficient,
+        },
+        issues: r('issues') is int ? r('issues')! as int : 0,
+      );
+    }),
+    trips: _table(root['trips'], (r) {
+      final timetable = _str(r('timetable'));
+      final day = switch (r('day')) {
+        'weekday' => ServiceDay.weekday,
+        'saturday' => ServiceDay.saturday,
+        'sunday_holiday' => ServiceDay.sundayHoliday,
+        _ => null,
+      };
+      if (timetable == null || day == null) return null;
+      final minutes = [
+        for (final m in _list(r('minutes')))
+          if (m is int && m >= 0 && m < 48 * 60) m,
+      ];
+      if (minutes.isEmpty) return null;
+      return CatalogTrips(
+        timetableId: timetable,
+        day: day,
+        code: _code(r('code')),
+        variantId: _code(r('variant')),
+        kind: switch (r('kind')) {
+          'VG' => TripKind.full,
+          'MVGI' => TripKind.halfStartsAtTurn,
+          'MVGV' => TripKind.halfEndsAtTurn,
+          _ => null,
+        },
+        minutes: List.unmodifiable(minutes),
+      );
+    }),
+    sequences: _table(root['sequences'], (r) {
+      final shape = _str(r('shape'));
+      final status = switch (r('status')) {
+        'estimated' => SequenceStatus.estimated,
+        'partial' => SequenceStatus.partial,
+        'none' => SequenceStatus.none,
+        _ => null,
+      };
+      if (shape == null || status == null) return null;
+      return StopSequence(
+        shapeId: shape,
+        status: status,
+        circular: r('circular') == true,
+        encoded: r('entries') is String ? r('entries')! as String : '',
+        ambiguous: [for (final v in _list(r('ambiguous'))) ?_code(v)],
+      );
+    }),
     lines: _table(root['lines'], (r) {
       final id = _code(r('id'));
       if (id == null) return null;

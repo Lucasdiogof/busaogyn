@@ -79,8 +79,11 @@ Future<bool> addNetworkLayers({
   final calls = <Future<void> Function()>[
     () => controller.addGeoJsonSource(netRouteSourceId, overlay.route),
     () => controller.addGeoJsonSource(netTrackSourceId, overlay.trackRoute),
-    () =>
-        controller.addGeoJsonSource(netRouteStopsSourceId, overlay.routeStops),
+    () => controller.addGeoJsonSource(
+      netRouteStopsSourceId,
+      overlay.routeStops,
+      promoteId: 'id',
+    ),
     () => controller.addSource(
       netStopsSourceId,
       GeojsonSourceProperties(
@@ -194,7 +197,8 @@ Future<bool> addNetworkLayers({
       enableInteraction: false,
     ),
 
-    // Pontos da linha (cadastro, sem ordem): anel âmbar.
+    // Pontos da linha (cadastro, sem ordem): anel âmbar. Tocáveis: com o
+    // trajeto aberto, os pontos gerais saem do mapa.
     () => controller.addCircleLayer(
       netRouteStopsSourceId,
       netRouteStopsLayerId,
@@ -221,7 +225,6 @@ Future<bool> addNetworkLayers({
           2.5,
         ],
       ),
-      enableInteraction: false,
     ),
 
     // Todos os pontos: agrupados em zoom baixo, um a um em zoom alto.

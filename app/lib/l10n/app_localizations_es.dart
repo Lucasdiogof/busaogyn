@@ -1163,7 +1163,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String trackMatchConfirmed(String direction, String variant) {
-    return 'Asociado a $variant · $direction. En el mapa, el recorrido oficial aparece en gris y el tramo por delante, estimado, en ámbar discontinuo. No hay previsión de horario ni de próxima parada.';
+    return 'Asociado a $variant · $direction. En el mapa, el recorrido oficial aparece en gris y el tramo por delante, estimado, en ámbar discontinuo. Sin previsión de horario.';
   }
 
   @override
@@ -1209,4 +1209,185 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get trackReasonMovingBackwards =>
       'el desplazamiento observado contradice el trayecto';
+
+  @override
+  String get scheduleTitle => 'Horarios programados';
+
+  @override
+  String get scheduleDayWeekday => 'Días hábiles';
+
+  @override
+  String get scheduleDaySaturday => 'Sábado';
+
+  @override
+  String get scheduleDaySunday => 'Domingo y feriado';
+
+  @override
+  String get scheduleAllCodes => 'Todas';
+
+  @override
+  String get scheduleNone => 'Sin cuadro de horarios para esta línea.';
+
+  @override
+  String get scheduleInsufficient =>
+      'Cuadro no disponible: datos inconsistentes o insuficientes en la planilla.';
+
+  @override
+  String scheduleRecent(String date) {
+    return 'Referencia del $date · vigencia no confirmada por la CMTC. Verifique antes de salir.';
+  }
+
+  @override
+  String scheduleConfirmed(String date) {
+    return 'Vigencia confirmada · referencia del $date.';
+  }
+
+  @override
+  String scheduleOld(String date) {
+    return 'Cuadro de referencia antigua ($date). Puede que ya no esté vigente.';
+  }
+
+  @override
+  String get scheduleShowOld => 'Ver de todos modos';
+
+  @override
+  String scheduleSource(String oso, String source) {
+    return 'Planilla: $source · OSO $oso';
+  }
+
+  @override
+  String get scheduleDepartureNote =>
+      'Horarios de salida, no de paso por las paradas. La planilla no indica sentido ni lugar de salida. No son previsiones en tiempo real.';
+
+  @override
+  String get scheduleEmptyDay => 'Sin salidas programadas este día.';
+
+  @override
+  String scheduleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count salidas',
+      one: '1 salida',
+      zero: 'Ninguna salida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scheduleLegendNextDay => '+1: después de medianoche';
+
+  @override
+  String get scheduleLegendHalf =>
+      'MI: media vuelta, inicio en el retorno · MF: media vuelta, fin en el retorno';
+
+  @override
+  String get scheduleLegendRepeated => '×2: repetido en la planilla';
+
+  @override
+  String scheduleCodeUnregistered(String code) {
+    return '$code (sin registro)';
+  }
+
+  @override
+  String sequenceTitle(int count, String direction) {
+    return 'Paradas estimadas · $direction ($count)';
+  }
+
+  @override
+  String get sequenceEstimatedNote =>
+      'Orden estimado por el trayecto oficial. No es la secuencia oficial de la CMTC.';
+
+  @override
+  String get sequenceUncertain => 'posición incierta';
+
+  @override
+  String get sequenceRepeated => 'pasa de nuevo';
+
+  @override
+  String sequencePartialTitle(int count) {
+    return 'Paradas cerca de este trayecto ($count)';
+  }
+
+  @override
+  String get sequencePartialNote =>
+      'Sin confianza suficiente para ordenar las paradas: lista sin orden de recorrido.';
+
+  @override
+  String get sequenceNone =>
+      'Ninguna parada del registro asociada a este trayecto.';
+
+  @override
+  String sequenceAmbiguous(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas quedaron fuera por ambigüedad.',
+      one: '1 parada quedó fuera por ambigüedad.',
+      zero: 'Ninguna parada quedó fuera por ambigüedad.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sequenceShowAll(int count) {
+    return 'Mostrar todas ($count)';
+  }
+
+  @override
+  String get itineraryTitle => 'En el itinerario (estimado)';
+
+  @override
+  String itineraryRow(
+    String direction,
+    int position,
+    int total,
+    String variant,
+  ) {
+    return '$variant · $direction — parada $position de $total';
+  }
+
+  @override
+  String get itineraryNote =>
+      'Posición estimada por el trayecto oficial; sin horario de paso.';
+
+  @override
+  String get nextStopsTitle => 'Próximas paradas (estimado)';
+
+  @override
+  String get nextStopLabel => 'Próxima';
+
+  @override
+  String get nextStopsUncertain =>
+      'Próxima parada incierta: lista en orden estimado.';
+
+  @override
+  String nextStopsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas hasta el final',
+      one: '1 parada hasta el final',
+      zero: 'Ninguna parada hasta el final',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nextStopsNote =>
+      'Por el trayecto oficial y la posición real. Sin previsión de llegada por parada.';
+
+  @override
+  String get nextStopsUnreliable =>
+      'Sin secuencia confiable de paradas para este trayecto: solo el seguimiento en el mapa.';
+
+  @override
+  String get nextStopsEnd => 'Ómnibus al final del trayecto.';
+
+  @override
+  String get trackReasonGpsJump => 'la posición saltó a lo largo del trayecto';
+
+  @override
+  String get trackReasonRepeatedSection =>
+      'el trayecto pasa dos veces por este tramo';
 }

@@ -78,6 +78,47 @@ class RouteLine {
 
   double get lengthM => _cum.last;
 
+  /// Todas as passagens do trajeto a até [maxDistanceM] do ponto (um trajeto
+  /// pode passar duas vezes pelo mesmo lugar: retorno, laço). Mesma regra do
+  /// pipeline (`Polyline.project_all`): segmentos seguidos dentro da
+  /// distância formam uma passagem, salvo salto ao longo do trajeto maior que
+  /// 2x a distância (retorno em U).
+  List<LineProjection> projectAll(GeoPosition position, double maxDistanceM) {
+    final p = _xy(position);
+    final passes = <LineProjection>[];
+    LineProjection? current;
+    var lastAlong = 0.0;
+    for (var i = 0; i < _xys.length - 1; i++) {
+      final a = _xys[i];
+      final b = _xys[i + 1];
+      final dx = b.x - a.x;
+      final dy = b.y - a.y;
+      final seg2 = dx * dx + dy * dy;
+      final t = seg2 == 0
+          ? 0.0
+          : (((p.x - a.x) * dx + (p.y - a.y) * dy) / seg2).clamp(0.0, 1.0);
+      final d = math.sqrt(
+        math.pow(p.x - (a.x + t * dx), 2) + math.pow(p.y - (a.y + t * dy), 2),
+      );
+      if (d <= maxDistanceM) {
+        final proj = LineProjection(d, _cum[i] + t * math.sqrt(seg2), i);
+        if (current != null && proj.alongM - lastAlong > 2 * maxDistanceM) {
+          passes.add(current);
+          current = null;
+        }
+        if (current == null || proj.distanceM < current.distanceM) {
+          current = proj;
+        }
+        lastAlong = proj.alongM;
+      } else if (current != null) {
+        passes.add(current);
+        current = null;
+      }
+    }
+    if (current != null) passes.add(current);
+    return passes;
+  }
+
   /// Ponto mais próximo do trajeto.
   LineProjection project(GeoPosition position) {
     final p = _xy(position);

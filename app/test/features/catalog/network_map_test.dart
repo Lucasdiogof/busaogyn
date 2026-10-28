@@ -346,9 +346,17 @@ void main() {
         netClusterLayerId,
         null,
       );
+      // Com trajeto aberto, os anéis dos pontos da linha também abrem o ponto.
+      callback(
+        const Point(1, 1),
+        const LatLng(-16.68, -49.26),
+        '00294',
+        netRouteStopsLayerId,
+        null,
+      );
     }
     await tester.pump();
-    expect(tapped, ['1201']);
+    expect(tapped, ['1201', '00294']);
     expect(controller.cameras, hasLength(1));
   });
 

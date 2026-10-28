@@ -1157,7 +1157,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String trackMatchConfirmed(String direction, String variant) {
-    return 'Matched to $variant · $direction. On the map, the official route is grey and the stretch ahead, estimated, is dashed amber. There is no time or next-stop prediction.';
+    return 'Matched to $variant · $direction. On the map, the official route is grey and the stretch ahead, estimated, is dashed amber. No time prediction.';
   }
 
   @override
@@ -1204,4 +1204,184 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get trackReasonMovingBackwards =>
       'the observed movement contradicts the route';
+
+  @override
+  String get scheduleTitle => 'Scheduled departures';
+
+  @override
+  String get scheduleDayWeekday => 'Weekdays';
+
+  @override
+  String get scheduleDaySaturday => 'Saturday';
+
+  @override
+  String get scheduleDaySunday => 'Sunday & holiday';
+
+  @override
+  String get scheduleAllCodes => 'All';
+
+  @override
+  String get scheduleNone => 'No timetable for this line.';
+
+  @override
+  String get scheduleInsufficient =>
+      'Timetable unavailable: the spreadsheet data is inconsistent or incomplete.';
+
+  @override
+  String scheduleRecent(String date) {
+    return 'Reference date $date · validity not confirmed by CMTC. Double-check before you go.';
+  }
+
+  @override
+  String scheduleConfirmed(String date) {
+    return 'Validity confirmed · reference date $date.';
+  }
+
+  @override
+  String scheduleOld(String date) {
+    return 'Old timetable (reference $date). It may no longer apply.';
+  }
+
+  @override
+  String get scheduleShowOld => 'Show anyway';
+
+  @override
+  String scheduleSource(String oso, String source) {
+    return 'Spreadsheet: $source · OSO $oso';
+  }
+
+  @override
+  String get scheduleDepartureNote =>
+      'Departure times, not times at each stop. The spreadsheet gives neither direction nor departure point. These are not real-time predictions.';
+
+  @override
+  String get scheduleEmptyDay => 'No scheduled departures on this day.';
+
+  @override
+  String scheduleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count departures',
+      one: '1 departure',
+      zero: 'No departures',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scheduleLegendNextDay => '+1: after midnight';
+
+  @override
+  String get scheduleLegendHalf =>
+      'MI: half trip starting at the turnaround · MF: half trip ending at the turnaround';
+
+  @override
+  String get scheduleLegendRepeated => '×2: repeated in the spreadsheet';
+
+  @override
+  String scheduleCodeUnregistered(String code) {
+    return '$code (not registered)';
+  }
+
+  @override
+  String sequenceTitle(int count, String direction) {
+    return 'Estimated stops · $direction ($count)';
+  }
+
+  @override
+  String get sequenceEstimatedNote =>
+      'Order estimated from the official route. Not the official CMTC stop sequence.';
+
+  @override
+  String get sequenceUncertain => 'uncertain position';
+
+  @override
+  String get sequenceRepeated => 'passed again';
+
+  @override
+  String sequencePartialTitle(int count) {
+    return 'Stops near this route ($count)';
+  }
+
+  @override
+  String get sequencePartialNote =>
+      'Not enough confidence to order the stops: listed without route order.';
+
+  @override
+  String get sequenceNone => 'No registered stop matched to this route.';
+
+  @override
+  String sequenceAmbiguous(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops left out as ambiguous.',
+      one: '1 stop left out as ambiguous.',
+      zero: 'No stop left out as ambiguous.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sequenceShowAll(int count) {
+    return 'Show all ($count)';
+  }
+
+  @override
+  String get itineraryTitle => 'On the route (estimated)';
+
+  @override
+  String itineraryRow(
+    String direction,
+    int position,
+    int total,
+    String variant,
+  ) {
+    return '$variant · $direction — stop $position of $total';
+  }
+
+  @override
+  String get itineraryNote =>
+      'Position estimated from the official route; no passing time.';
+
+  @override
+  String get nextStopsTitle => 'Next stops (estimated)';
+
+  @override
+  String get nextStopLabel => 'Next';
+
+  @override
+  String get nextStopsUncertain =>
+      'Next stop uncertain: list in estimated order.';
+
+  @override
+  String nextStopsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops to the end of the route',
+      one: '1 stop to the end of the route',
+      zero: 'No stops to the end of the route',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nextStopsNote =>
+      'From the official route and the real position. No arrival time per stop.';
+
+  @override
+  String get nextStopsUnreliable =>
+      'No reliable stop sequence for this route: map tracking only.';
+
+  @override
+  String get nextStopsEnd => 'Bus at the end of the route.';
+
+  @override
+  String get trackReasonGpsJump => 'the position jumped along the route';
+
+  @override
+  String get trackReasonRepeatedSection =>
+      'the route passes this section twice';
 }
