@@ -160,34 +160,21 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
     return ListenableBuilder(
       listenable: _c,
       builder: (context, _) {
-        final tokens = context.tokens;
         final plan = _c.plan;
         return Column(
           key: const ValueKey('trip-planner'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(Icons.alt_route_rounded, color: tokens.accentText),
-                const SizedBox(width: Space.xs),
-                Expanded(
-                  child: Text(
-                    l10n.plannerTitle,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: tokens.strongText,
-                    ),
-                  ),
+            // O título fica no cabeçalho da tela; aqui só a ação de limpar.
+            if (_c.origin != null || _c.destination != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const ValueKey('planner-clear'),
+                  onPressed: _c.clear,
+                  child: Text(l10n.plannerClear),
                 ),
-                if (_c.origin != null || _c.destination != null)
-                  TextButton(
-                    key: const ValueKey('planner-clear'),
-                    onPressed: _c.clear,
-                    child: Text(l10n.plannerClear),
-                  ),
-              ],
-            ),
+              ),
             FootNote(child: Text(l10n.plannerIntro)),
             const SizedBox(height: Space.sm),
             _field(context, PlannerField.origin),
