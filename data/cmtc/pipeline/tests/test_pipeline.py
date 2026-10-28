@@ -296,3 +296,11 @@ class Matching(unittest.TestCase):
         self.assertEqual(direction_by_destination('T PAULO GARCIA', names['003-1']), 'i')
         self.assertEqual(direction_by_destination('T MARANATA', names['003-1']), 'v')
         self.assertIsNone(direction_by_destination('T BIBLIA', names['003-1']))
+
+
+class PolylineEncoding(unittest.TestCase):
+    def test_google_reference_vector(self):
+        from cmtc.geo import encode_polyline
+        # Exemplo da documentação do algoritmo (lat, lon) -> (lon, lat) aqui.
+        coords = [(-120.2, 38.5), (-120.95, 40.7), (-126.453, 43.252)]
+        self.assertEqual(encode_polyline(coords), '_p~iF~ps|U_ulLnnqC_mqNvxq`@')

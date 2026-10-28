@@ -7,6 +7,7 @@ import '../../../core/ui/busao_components.dart';
 import '../../saved_stops/domain/saved_stop.dart';
 import '../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import '../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
+import '../domain/route_match.dart';
 import '../domain/text_search.dart';
 import '../domain/transit_catalog.dart';
 import 'catalog_access.dart';
@@ -457,10 +458,18 @@ class CatalogLinesPanel extends StatefulWidget {
     required this.openLineId,
     required this.onOpenLine,
     required this.onOpenStop,
+    this.activeShapeId,
+    this.onShowRoute,
+    this.onClearRoute,
     super.key,
   });
 
   final TransitCatalog catalog;
+
+  /// Trajeto oficial mostrado no mapa (nome do Placemark), ou `null`.
+  final String? activeShapeId;
+  final ValueChanged<String>? onShowRoute;
+  final VoidCallback? onClearRoute;
 
   /// Texto da busca; fica com a página para sobreviver à troca de aba.
   final TextEditingController query;
@@ -492,6 +501,9 @@ class _CatalogLinesPanelState extends State<CatalogLinesPanel> {
         lineId: open,
         onBack: () => _openLine(null),
         onOpenStop: widget.onOpenStop,
+        activeShapeId: widget.activeShapeId,
+        onShowRoute: widget.onShowRoute,
+        onClearRoute: widget.onClearRoute,
       );
     }
     final tokens = context.tokens;
@@ -695,12 +707,58 @@ class _LineDetail extends StatelessWidget {
     required this.lineId,
     required this.onBack,
     required this.onOpenStop,
+    this.activeShapeId,
+    this.onShowRoute,
+    this.onClearRoute,
   });
 
   final TransitCatalog catalog;
   final String lineId;
   final VoidCallback onBack;
   final ValueChanged<String> onOpenStop;
+  final String? activeShapeId;
+  final ValueChanged<String>? onShowRoute;
+  final VoidCallback? onClearRoute;
+
+  /// Chips Ida/Volta dos trajetos oficiais de uma variante.
+  Widget _shapeChips(
+    BuildContext context,
+    String variantId,
+    List<CatalogShape> shapes,
+  ) {
+    if (shapes.isEmpty || onShowRoute == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: Wrap(
+        spacing: Space.xs,
+        runSpacing: Space.xs,
+        children: [
+          for (final s in shapes)
+            Semantics(
+              button: true,
+              selected: s.id == activeShapeId,
+              label: l10n.catalogShowRouteSemantics(
+                directionLabel(s.direction),
+                variantId,
+              ),
+              excludeSemantics: true,
+              child: ChoiceChip(
+                key: ValueKey('catalog-shape-${s.id}'),
+                avatar: Icon(
+                  s.direction == 'v'
+                      ? Icons.u_turn_left_rounded
+                      : Icons.route_rounded,
+                  size: 18,
+                ),
+                label: Text(directionLabel(s.direction)),
+                selected: s.id == activeShapeId,
+                onSelected: (_) => onShowRoute!(s.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -723,6 +781,17 @@ class _LineDetail extends StatelessWidget {
     }
     final variants = catalog.variantsOf(line.id);
     final stops = catalog.stopsOf(line.id);
+    final shapes = catalog.shapesOf(line.id);
+    List<CatalogShape> shapesOf(String variantId) => [
+      for (final s in shapes)
+        if (s.variantId == variantId) s,
+    ]..sort((a, b) => (a.direction ?? 'z').compareTo(b.direction ?? 'z'));
+    final variantIds = {for (final v in variants) v.id};
+    final kmzOnly = [
+      for (final s in shapes)
+        if (!variantIds.contains(s.variantId)) s,
+    ];
+    final active = shapes.where((s) => s.id == activeShapeId).firstOrNull;
     final statuses = {
       for (final v in variants)
         if (v.status != null) displayCase(v.status),
@@ -776,6 +845,65 @@ class _LineDetail extends StatelessWidget {
         if (line.type != null || line.form != null)
           fact(l10n.catalogLineType, [?line.type, ?line.form].join(' · ')),
         if (cities.isNotEmpty) fact(l10n.catalogLineCities, cities.join(', ')),
+        const SizedBox(height: Space.sm),
+        if (active != null)
+          Container(
+            key: const ValueKey('catalog-route-banner'),
+            padding: const EdgeInsets.fromLTRB(
+              Space.sm,
+              Space.xs,
+              Space.xxs,
+              Space.xxs,
+            ),
+            decoration: BoxDecoration(
+              color: tokens.accentSoft,
+              borderRadius: BorderRadius.circular(Radii.plate),
+            ),
+            // Texto em cima e ação embaixo: cabe em 320 px com fonte a 200%.
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.map_outlined,
+                      size: 18,
+                      color: tokens.accentText,
+                    ),
+                    const SizedBox(width: Space.xs),
+                    Expanded(
+                      child: Text(
+                        l10n.catalogRouteOnMap(
+                          directionLabel(active.direction),
+                          active.variantId,
+                        ),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: tokens.strongText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    key: const ValueKey('catalog-clear-route'),
+                    onPressed: onClearRoute,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: Text(l10n.catalogClearRoute),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (shapes.isNotEmpty && onShowRoute != null)
+          FootNote(child: Text(l10n.catalogShowRouteHint)),
+        if (active != null) ...[
+          const SizedBox(height: Space.xs),
+          FootNote(child: Text(l10n.catalogRouteLegend)),
+        ],
         const SizedBox(height: Space.sm),
         SectionLabel(
           icon: Icons.call_split_rounded,
@@ -838,10 +966,44 @@ class _LineDetail extends StatelessWidget {
                     '${l10n.catalogLineDestination}: ${v.destination}',
                     style: TextStyle(fontSize: 13, color: tokens.softText),
                   ),
+                _shapeChips(context, v.id, shapesOf(v.id)),
               ],
             ),
           ),
           const SizedBox(height: Space.xs),
+        ],
+        if (kmzOnly.isNotEmpty) ...[
+          SectionLabel(
+            icon: Icons.alt_route_rounded,
+            label: l10n.catalogKmzOnlyShapes,
+          ),
+          for (final variantId in {for (final s in kmzOnly) s.variantId})
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14, right: Space.xs),
+                    child: Text(
+                      variantId,
+                      style: monoStyle(
+                        TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: tokens.accentText,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _shapeChips(context, variantId, [
+                      for (final s in kmzOnly)
+                        if (s.variantId == variantId) s,
+                    ]),
+                  ),
+                ],
+              ),
+            ),
         ],
         const SizedBox(height: Space.xs),
         SectionLabel(
@@ -872,4 +1034,103 @@ class _LineDetail extends StatelessWidget {
 extension CatalogStopLabel on BuildContext {
   /// Endereço do ponto no catálogo (para favoritos e recentes), ou `null`.
   CatalogStop? catalogStop(String code) => catalog?.stop(code);
+}
+
+/// 'Ida' / 'Volta' do nome oficial do trajeto; 'Trajeto' sem sentido.
+String directionLabel(String? direction) => switch (direction) {
+  'i' => l10n.catalogDirectionOutbound,
+  'v' => l10n.catalogDirectionInbound,
+  _ => l10n.catalogDirectionUnknown,
+};
+
+/// Estado da associação do ônibus acompanhado a um trajeto oficial. Nunca
+/// sugere horário nem próximo ponto.
+class RouteMatchNote extends StatelessWidget {
+  const RouteMatchNote({required this.match, super.key});
+
+  final RouteMatch match;
+
+  String _reason() => switch (match.reason) {
+    RouteMatchReason.routeNameMissing => l10n.trackReasonRouteNameMissing,
+    RouteMatchReason.routeNameNoMatch => l10n.trackReasonRouteNameNoMatch,
+    RouteMatchReason.routeNameSeveral => l10n.trackReasonRouteNameSeveral,
+    RouteMatchReason.directionUnknown => l10n.trackReasonDirectionUnknown,
+    RouteMatchReason.shapeMissing => l10n.trackReasonShapeMissing,
+    RouteMatchReason.offRoute => l10n.trackReasonOffRoute,
+    RouteMatchReason.movingBackwards => l10n.trackReasonMovingBackwards,
+    _ => l10n.trackReasonShapeMissing,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final shape = match.shape;
+    final (icon, color, text) = switch (match.level) {
+      RouteMatchLevel.confirmed => (
+        Icons.route_rounded,
+        tokens.accentText,
+        l10n.trackMatchConfirmed(
+          directionLabel(shape?.direction),
+          shape?.variantId ?? '',
+        ),
+      ),
+      RouteMatchLevel.pending => (
+        Icons.hourglass_top_rounded,
+        tokens.scheduled,
+        l10n.trackMatchPending(shape?.variantId ?? ''),
+      ),
+      RouteMatchLevel.ambiguous => (
+        Icons.help_outline_rounded,
+        tokens.unconfirmed,
+        l10n.trackMatchAmbiguous(_reason()),
+      ),
+      RouteMatchLevel.unavailable => (
+        Icons.info_outline_rounded,
+        tokens.mutedText,
+        match.reason == RouteMatchReason.noPosition
+            ? l10n.trackMatchNoPosition
+            : l10n.trackMatchNoShapes,
+      ),
+    };
+    return Container(
+      key: ValueKey('route-match-${match.level.name}'),
+      padding: const EdgeInsets.all(Space.sm),
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(Radii.card),
+        border: Border.all(color: tokens.hairline),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: Space.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.trackMatchTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.strongText,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: tokens.softText,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

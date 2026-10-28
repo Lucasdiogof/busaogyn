@@ -47,6 +47,9 @@ TransitCatalog decodeCatalog(String json) {
       restricted: version['restricted'] != false,
       generatedAt: DateTime.tryParse(_str(version['generatedAt']) ?? ''),
       linesReference: refs is Map ? _str(refs['lines']) : null,
+      shapeToleranceM: version['shapeToleranceM'] is num
+          ? (version['shapeToleranceM'] as num).toDouble()
+          : null,
       stopsReference: refs is Map ? _str(refs['stops']) : null,
     ),
     lines: _table(root['lines'], (r) {
@@ -76,6 +79,28 @@ TransitCatalog decodeCatalog(String json) {
         destination: _str(r('destination')),
         city: _str(r('city')),
         validFrom: _str(r('validFrom')),
+      );
+    }),
+    shapes: _table(root['shapes'], (r) {
+      final id = _str(r('id'));
+      final line = _code(r('line'));
+      final variant = _code(r('variant'));
+      final encoded = r('polyline');
+      if (id == null || line == null || variant == null || encoded is! String) {
+        return null;
+      }
+      final direction = _str(r('direction'));
+      final length = r('lengthM');
+      final vertices = r('sourceVertices');
+      return CatalogShape(
+        id: id,
+        lineId: normalizeLineId(line),
+        variantId: variant,
+        direction: direction == 'i' || direction == 'v' ? direction : null,
+        description: _str(r('description')),
+        encoded: encoded,
+        lengthM: length is int ? length : null,
+        sourceVertices: vertices is int ? vertices : null,
       );
     }),
     stops: _table(root['stops'], (r) {

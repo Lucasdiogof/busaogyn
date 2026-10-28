@@ -5,6 +5,91 @@ import 'package:busaogyn/src/features/catalog/domain/transit_catalog.dart';
 
 /// Catálogo SINTÉTICO (ADR-0002, item 7): nomes e códigos fictícios, no
 /// mesmo formato que `export_catalog.py` gera a partir da base da CMTC.
+/// Polyline do Google (precisão 1e-5) a partir de (lat, lon), para montar
+/// trajetos sintéticos no mesmo formato do exportador.
+String encodePolyline(List<(double, double)> points) {
+  final out = StringBuffer();
+  var pLat = 0;
+  var pLon = 0;
+  void put(int v) {
+    var x = v < 0 ? ~(v << 1) : v << 1;
+    while (x >= 0x20) {
+      out.writeCharCode((0x20 | (x & 0x1f)) + 63);
+      x >>= 5;
+    }
+    out.writeCharCode(x + 63);
+  }
+
+  for (final (lat, lon) in points) {
+    final iLat = (lat * 1e5).round();
+    final iLon = (lon * 1e5).round();
+    put(iLat - pLat);
+    put(iLon - pLon);
+    pLat = iLat;
+    pLon = iLon;
+  }
+  return out.toString();
+}
+
+/// Linha 001: ida para leste ao longo de -16.68 (passa pelo ponto 00294),
+/// volta pelo mesmo corredor em sentido contrário; 001-2 só ida, ao norte.
+List<(double, double)> fixtureOutbound() => [
+  for (var i = 0; i <= 10; i++) (-16.68, -49.30 + i * 0.005),
+];
+
+List<List<Object?>> fixtureShapes() => [
+  [
+    '001-1i - T. FICTICIO NORTE / CENTRO IMAGINARIO - IDA',
+    '001',
+    '001-1',
+    'i',
+    'IDA',
+    encodePolyline(fixtureOutbound()),
+    5330,
+    11,
+  ],
+  [
+    '001-1v - T. FICTICIO NORTE / CENTRO IMAGINARIO - VOLTA',
+    '001',
+    '001-1',
+    'v',
+    'VOLTA',
+    encodePolyline(fixtureOutbound().reversed.toList()),
+    5330,
+    11,
+  ],
+  [
+    '001-2i - T. FICTICIO NORTE / HOSPITAL TESTE - IDA',
+    '001',
+    '001-2',
+    'i',
+    'IDA',
+    encodePolyline([(-16.66, -49.30), (-16.66, -49.26)]),
+    4270,
+    2,
+  ],
+  [
+    '042-1i - BAIRRO EXEMPLO / T. FICTICIO SUL - IDA',
+    '042',
+    '042-1',
+    'i',
+    'IDA',
+    encodePolyline([(-16.68, -49.26), (-16.8, -49.24)]),
+    13500,
+    2,
+  ],
+  [
+    '999-21v - SO NO KMZ - VOLTA',
+    '042',
+    '042-21',
+    'v',
+    'VOLTA',
+    encodePolyline([(-16.7, -49.25), (-16.75, -49.25)]),
+    5500,
+    2,
+  ],
+];
+
 Map<String, Object?> fixtureCatalogMap({List<List<Object?>>? extraStops}) => {
   'format': 'busaogyn.catalog',
   'formatVersion': 1,
@@ -15,6 +100,7 @@ Map<String, Object?> fixtureCatalogMap({List<List<Object?>>? extraStops}) => {
     'referenceDates': {'lines': '2026-09-01', 'stops': '2026-10'},
     'licenseStatus': 'pendente',
     'restricted': true,
+    'shapeToleranceM': 3.0,
   },
   'lines': {
     'fields': ['id', 'name', 'type', 'form', 'areas', 'cities'],
@@ -102,6 +188,19 @@ Map<String, Object?> fixtureCatalogMap({List<List<Object?>>? extraStops}) => {
       ],
       [null, '001', 'x', 'linha malformada'],
     ],
+  },
+  'shapes': {
+    'fields': [
+      'id',
+      'line',
+      'variant',
+      'direction',
+      'description',
+      'polyline',
+      'lengthM',
+      'sourceVertices',
+    ],
+    'rows': fixtureShapes(),
   },
   'stops': {
     'fields': [

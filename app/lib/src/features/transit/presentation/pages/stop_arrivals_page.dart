@@ -9,6 +9,9 @@ import '../../../../core/config/map_config.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../catalog/domain/network_geojson.dart';
+import '../../../catalog/domain/route_geometry.dart';
+import '../../../catalog/domain/route_match.dart';
 import '../../../catalog/domain/transit_catalog.dart';
 import '../../../catalog/presentation/catalog_access.dart';
 import '../../../catalog/presentation/catalog_widgets.dart';
@@ -147,6 +150,119 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   final _linesQuery = TextEditingController();
   String? _openLine;
 
+  /// Rede no mapa (só com catálogo): coleções reaproveitadas entre builds.
+  NetworkOverlayBuilder? _networkBuilder;
+  NetworkOverlayBuilder? get _network {
+    final catalog = _catalog;
+    if (catalog == null) return null;
+    final builder = _networkBuilder;
+    if (builder != null && identical(builder.catalog, catalog)) return builder;
+    return _networkBuilder = NetworkOverlayBuilder(catalog);
+  }
+
+  /// Trajeto oficial mostrado no mapa (linha + Placemark).
+  String? _routeLine;
+  String? _routeShape;
+
+  /// Último pedido de câmera (ponto ou trajeto); o serial distingue pedidos.
+  MapFocus? _focus;
+  int _focusSerial = 0;
+
+  /// Leva o mapa ao ponto do catálogo, se ele tiver coordenada.
+  void _focusOnStop(String code) {
+    final stop = _catalog?.stop(code);
+    final position = stop == null ? null : stopPosition(stop);
+    if (position == null) return;
+    setState(() => _focus = MapFocus.point(++_focusSerial, position));
+  }
+
+  /// Mostra um trajeto oficial no mapa e enquadra a geometria.
+  Future<void> _showRoute(String shapeId) async {
+    final catalog = _catalog;
+    if (catalog == null) return;
+    final shape = catalog.shapes.where((s) => s.id == shapeId).firstOrNull;
+    if (shape == null) return;
+    setState(() {
+      _routeLine = shape.lineId;
+      _routeShape = shape.id;
+    });
+    // Painel aberto por cima do mapa: baixa antes de enquadrar, senão o
+    // trajeto caberia numa faixa mínima.
+    if (_sheetExtent.value > _sheetMid + 0.01 && _sheetController.isAttached) {
+      await _sheetController.animateTo(
+        _sheetMid,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    // O painel muda de altura com o trajeto; enquadra com a margem nova.
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _routeShape != shape.id) return;
+    setState(
+      () =>
+          _focus = MapFocus.bounds(++_focusSerial, GeoBounds.of(shape.points)),
+    );
+  }
+
+  /// Volta ao mapa normal (sem trajeto).
+  void _clearRoute() => setState(() {
+    _routeLine = null;
+    _routeShape = null;
+  });
+
+  /// Abre (ou fecha) o detalhe de uma linha; ao abrir, mostra o trajeto da
+  /// variante principal (ida, se houver).
+  void _openLineDetail(String? lineId) {
+    setState(() => _openLine = lineId);
+    final catalog = _catalog;
+    if (lineId == null || catalog == null) {
+      _clearRoute();
+      return;
+    }
+    final shapes = catalog.shapesOf(lineId);
+    if (shapes.isEmpty) {
+      _clearRoute();
+      return;
+    }
+    final principal = catalog
+        .variantsOf(lineId)
+        .where((v) => v.characteristic == 'Principal')
+        .map((v) => v.id)
+        .toSet();
+    final ordered = [...shapes]
+      ..sort((a, b) {
+        final pa = principal.contains(a.variantId) ? 0 : 1;
+        final pb = principal.contains(b.variantId) ? 0 : 1;
+        if (pa != pb) return pa - pb;
+        final va = a.variantId.compareTo(b.variantId);
+        if (va != 0) return va;
+        return (a.direction ?? 'z').compareTo(b.direction ?? 'z');
+      });
+    unawaited(_showRoute(ordered.first.id));
+  }
+
+  /// Associação experimental do ônibus acompanhado a um trajeto oficial.
+  RouteMatch? _routeMatch(StopArrivalsState state) {
+    final catalog = _catalog;
+    if (catalog == null || state is! StopArrivalsLoaded) return null;
+    final tracking = state.tracking;
+    if (tracking == null) return null;
+    final snapshot = tracking.vehicle;
+    final vehicle = snapshot?.data;
+    // Posição antiga ou com falha não vale como atual: nada é desenhado.
+    final outdated =
+        (snapshot?.stale ?? false) || tracking.phase != TrackingPhase.active;
+    return matchTrackedRoute(
+      catalog: catalog,
+      routeId: vehicle?.routeId,
+      routeName: vehicle?.routeName,
+      destination: vehicle?.destination,
+      position: outdated ? null : vehicle?.position,
+      trail: tracking.movement.observedTrail,
+    );
+  }
+
   DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
   @override
@@ -214,6 +330,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// duplicidade); a geração do cubit descarta respostas de buscas antigas.
   void _openStop(String code) {
     if (_previewStop != null) setState(() => _previewStop = null);
+    _focusOnStop(code);
     final state = context.read<StopArrivalsCubit>().state;
     final inFlight =
         (state is StopArrivalsLoading && state.stopId == code) ||
@@ -279,6 +396,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     FocusScope.of(context).unfocus();
     setState(() => _previewStop = code);
     _select(HomeTab.stop);
+    _focusOnStop(code);
   }
 
   /// Fecha os detalhes e volta à busca, com o texto que estava no campo.
@@ -459,6 +577,12 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                       setState(() => _selectedSecondary = null);
                     }
                   },
+                  network: _network,
+                  previewStopId: _previewStop,
+                  routeLineId: _routeLine,
+                  routeShapeId: _routeShape,
+                  focus: _focus,
+                  onStopTap: _openPreview,
                 ),
               ),
             ),
@@ -468,7 +592,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 left: geometry.left,
                 width: geometry.width,
                 bottom: geometry.panelBottom,
-                top: geometry.panelTop,
+                // Com trajeto no mapa, o painel fica na metade de baixo.
+                top: _routeLine == null
+                    ? geometry.panelTop
+                    : math.max(geometry.panelTop, geometry.size.height * 0.5),
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: _SizeReporter(
@@ -918,15 +1045,24 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             ),
           HomeTab.stop => arrivals,
           HomeTab.tracking => switch (state) {
-            StopArrivalsLoaded(:final tracking?) => TrackingCard(
-              state: state,
-              tracking: tracking,
-              onStop: _stopTracking,
-              clock: _clock,
-              followController: _follow,
-              detailsExpanded: _vehicleDetails,
-              onToggleDetails: () =>
-                  setState(() => _vehicleDetails = !_vehicleDetails),
+            StopArrivalsLoaded(:final tracking?) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TrackingCard(
+                  state: state,
+                  tracking: tracking,
+                  onStop: _stopTracking,
+                  clock: _clock,
+                  followController: _follow,
+                  detailsExpanded: _vehicleDetails,
+                  onToggleDetails: () =>
+                      setState(() => _vehicleDetails = !_vehicleDetails),
+                ),
+                if (_routeMatch(state) case final match?) ...[
+                  const SizedBox(height: Space.sm),
+                  RouteMatchNote(match: match),
+                ],
+              ],
             ),
             _ => _TrackingEmpty(
               hasStop: state is StopArrivalsLoaded,
@@ -937,7 +1073,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             catalog: catalog,
             query: _linesQuery,
             openLineId: _openLine,
-            onOpenLine: (id) => setState(() => _openLine = id),
+            onOpenLine: _openLineDetail,
+            activeShapeId: _routeShape,
+            onShowRoute: _showRoute,
+            onClearRoute: _clearRoute,
             onOpenStop: _openPreview,
           ),
           HomeTab.lines => SeenLinesPanel(
@@ -1030,6 +1169,10 @@ typedef _MapData = ({
   bool stale,
   double? heading,
   List<GeoPosition> trail,
+  String? stopId,
+  String? routeId,
+  String? routeName,
+  String? destination,
 });
 
 /// Liga o mapa ao Cubit expondo só o que o mapa precisa; o resto do estado
@@ -1044,7 +1187,21 @@ class _MapBinding extends StatelessWidget {
     required this.onSecondaryTap,
     required this.onTrackedTap,
     required this.onMapTap,
+    this.network,
+    this.previewStopId,
+    this.routeLineId,
+    this.routeShapeId,
+    this.focus,
+    this.onStopTap,
   });
+
+  /// Rede do catálogo de desenvolvimento; `null` = mapa de sempre.
+  final NetworkOverlayBuilder? network;
+  final String? previewStopId;
+  final String? routeLineId;
+  final String? routeShapeId;
+  final MapFocus? focus;
+  final ValueChanged<String>? onStopTap;
 
   final ValueChanged<String> onSecondaryTap;
   final VoidCallback onTrackedTap;
@@ -1063,6 +1220,10 @@ class _MapBinding extends StatelessWidget {
         stale: false,
         heading: null,
         trail: const <GeoPosition>[],
+        stopId: state is StopArrivalsLoaded ? state.stopId : null,
+        routeId: null,
+        routeName: null,
+        destination: null,
       );
     }
     final tracking = state.tracking!;
@@ -1074,6 +1235,33 @@ class _MapBinding extends StatelessWidget {
           (snapshot?.stale ?? false) || tracking.phase != TrackingPhase.active,
       heading: tracking.movement.observedHeading,
       trail: tracking.movement.observedTrail,
+      stopId: state.stopId,
+      routeId: snapshot?.data?.routeId,
+      routeName: snapshot?.data?.routeName,
+      destination: snapshot?.data?.destination,
+    );
+  }
+
+  NetworkOverlay? _overlay(_MapData data) {
+    final builder = network;
+    if (builder == null) return null;
+    // Trajeto do ônibus só com associação confirmada (ver route_match.dart).
+    final match = data.vehicleNumber == null
+        ? null
+        : matchTrackedRoute(
+            catalog: builder.catalog,
+            routeId: data.routeId,
+            routeName: data.routeName,
+            destination: data.destination,
+            position: data.stale ? null : data.position,
+            trail: data.trail,
+          );
+    return builder.build(
+      selectedStopId: previewStopId ?? data.stopId,
+      routeLineId: routeLineId,
+      routeShapeId: routeShapeId,
+      trackMatch: match,
+      focus: focus,
     );
   }
 
@@ -1085,6 +1273,8 @@ class _MapBinding extends StatelessWidget {
           BlocSelector<MapVehiclesCubit, MapVehiclesState, List<MapVehicle>>(
             selector: (state) => state.secondaries,
             builder: (context, secondaries) => TransitMap(
+              network: _overlay(data),
+              onStopTap: onStopTap,
               secondaryVehicles: secondaries,
               onSecondaryTap: onSecondaryTap,
               onTrackedTap: onTrackedTap,

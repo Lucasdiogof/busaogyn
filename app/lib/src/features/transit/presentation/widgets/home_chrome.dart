@@ -212,7 +212,10 @@ class TopBar extends StatelessWidget {
     // Com fonte muito grande o wordmark (decorativo) sai e fica só o selo,
     // deixando a largura para o status ao vivo, que continua escalando.
     // Com o botão Ajustes ao lado a marca perde o nome um pouco antes.
-    final wordmark = MediaQuery.textScalerOf(context).scale(1) < 1.3;
+    // Em telas de 320 px o status ao vivo também não caberia ao lado do nome.
+    final wordmark =
+        MediaQuery.textScalerOf(context).scale(1) < 1.3 &&
+        MediaQuery.sizeOf(context).width >= 360;
     return Row(
       children: [
         GlassSurface(

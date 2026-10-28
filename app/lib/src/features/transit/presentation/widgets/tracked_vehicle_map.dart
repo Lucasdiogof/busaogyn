@@ -10,10 +10,13 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../../core/platform/map_attribution_offset.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
+import '../../../catalog/domain/network_geojson.dart';
+import '../../../catalog/domain/route_geometry.dart';
 import '../../domain/entities/map_vehicle.dart';
 import '../../domain/entities/tracked_vehicle.dart';
 import 'camera_follow.dart';
 import 'map_follow_controller.dart';
+import 'network_map_layers.dart';
 import '../../domain/models/observed_movement.dart';
 import 'vehicle_map_data.dart';
 import 'vehicle_marker_image.dart';
@@ -61,6 +64,8 @@ class TransitMap extends StatefulWidget {
     this.onSecondaryTap,
     this.onTrackedTap,
     this.onMapTap,
+    this.network,
+    this.onStopTap,
     this.mapBuilder,
     super.key,
   });
@@ -118,6 +123,13 @@ class TransitMap extends StatefulWidget {
 
   /// Toque no mapa fora de qualquer ônibus.
   final VoidCallback? onMapTap;
+
+  /// Pontos e trajetos da rede (catálogo de desenvolvimento). `null` = o
+  /// mapa de sempre, sem nenhuma camada extra.
+  final NetworkOverlay? network;
+
+  /// Toque num ponto da rede (recebe o código do ponto).
+  final ValueChanged<String>? onStopTap;
   final VehicleMapBuilder? mapBuilder;
 
   /// Contexto inicial: centro de Goiânia. Não representa ponto nem ônibus.
@@ -230,6 +242,8 @@ class _TransitMapState extends State<TransitMap>
       unawaited(_syncVehicle(follow: positionChanged && _follow.following));
       _report();
     }
+
+    _syncNetwork(oldWidget.network, widget.network);
 
     if (widget.cameraPadding != oldWidget.cameraPadding ||
         widget.attributionBottom != oldWidget.attributionBottom) {
@@ -376,6 +390,20 @@ class _TransitMapState extends State<TransitMap>
         }
       }
 
+      // Rede (pontos e trajetos) no fundo, só com o catálogo de dev.
+      final network = widget.network;
+      if (network != null &&
+          !await addNetworkLayers(
+            controller: controller,
+            overlay: network,
+            tokens: tokens,
+            brightness: brightness,
+            step: step,
+          )) {
+        return;
+      }
+      _shownNetwork = network;
+
       // Rastro observado no fundo, depois os secundários; o acompanhado
       // (halo + ônibus) sempre por cima.
       if (!await step(
@@ -493,8 +521,86 @@ class _TransitMapState extends State<TransitMap>
     }
     _styleReady = true;
     await _applyInsets();
+    // A rede pode ter mudado enquanto o estilo carregava.
+    _syncNetwork(_shownNetwork, widget.network);
     // As posições podem ter mudado enquanto o estilo carregava.
     await _syncVehicle(follow: _follow.following);
+    _applyPendingFocus();
+  }
+
+  /// Última versão da rede enviada ao estilo atual.
+  NetworkOverlay? _shownNetwork;
+
+  /// Tamanho do mapa no último layout (para enquadrar trajetos).
+  Size _mapSize = Size.zero;
+  int? _appliedFocus;
+  MapFocus? _pendingFocus;
+
+  /// Reenvia ao nativo só as coleções que mudaram (mesma identidade = nada).
+  void _syncNetwork(NetworkOverlay? previous, NetworkOverlay? next) {
+    if (next == null) return;
+    if (_styleReady && _shownNetwork != null) {
+      final shown = _shownNetwork!;
+      void push(String id, Map<String, dynamic> a, Map<String, dynamic> b) {
+        if (!identical(a, b)) unawaited(_setSource(id, b));
+      }
+
+      push(netStopsSourceId, shown.stops, next.stops);
+      push(netRouteSourceId, shown.route, next.route);
+      push(netRouteEndsSourceId, shown.routeEnds, next.routeEnds);
+      push(netRouteStopsSourceId, shown.routeStops, next.routeStops);
+      push(netSelectedSourceId, shown.selectedStop, next.selectedStop);
+      push(netTrackSourceId, shown.trackRoute, next.trackRoute);
+      _shownNetwork = next;
+    }
+    final focus = next.focus;
+    if (focus != null && focus.serial != _appliedFocus) {
+      _pendingFocus = focus;
+      _applyPendingFocus();
+    }
+  }
+
+  /// Leva a câmera ao ponto ou ao trajeto pedido. Com ônibus acompanhado, o
+  /// seguir é pausado (o botão Centralizar volta a ele).
+  void _applyPendingFocus() {
+    final focus = _pendingFocus;
+    final controller = _controller;
+    if (focus == null || controller == null || !_styleReady) return;
+    _pendingFocus = null;
+    _appliedFocus = focus.serial;
+    if (_vehicleCenter != null && _follow.onUserInteraction()) {
+      _setFollowing(false);
+    }
+    final CameraUpdate update;
+    final bounds = focus.bounds;
+    final point = focus.point;
+    if (bounds != null) {
+      // Centro + zoom calculados aqui: o fitBounds do Web, somado aos
+      // insets do painel, deixava a câmera num estado inválido.
+      final size = _mapSize;
+      final padding = widget.cameraPadding;
+      const margin = 48.0;
+      final zoom = fitZoom(
+        bounds,
+        widthPx: size.width - padding.horizontal - margin * 2,
+        heightPx: size.height - padding.vertical - margin * 2,
+      );
+      final center = bounds.center;
+      update = CameraUpdate.newLatLngZoom(
+        LatLng(center.latitude, center.longitude),
+        zoom,
+      );
+    } else if (point != null) {
+      final zoom = controller.cameraPosition?.zoom ?? 0;
+      update = CameraUpdate.newLatLngZoom(
+        LatLng(point.latitude, point.longitude),
+        zoom > focus.zoom ? zoom : focus.zoom,
+      );
+    } else {
+      return;
+    }
+    _follow.beginProgrammaticMove(_cameraDuration);
+    unawaited(controller.animateCamera(update, duration: _cameraDuration));
   }
 
   static final _variantImageExpression = [
@@ -670,6 +776,20 @@ class _TransitMapState extends State<TransitMap>
   ) {
     if (layerId == secondaryLayerId) widget.onSecondaryTap?.call(id);
     if (layerId == vehicleLayerId) widget.onTrackedTap?.call();
+    if (layerId == netStopsLayerId) widget.onStopTap?.call(id);
+    if (layerId == netClusterLayerId) unawaited(_zoomInto(coordinates));
+  }
+
+  /// Toque num grupo de pontos: aproxima ali para abrir o grupo.
+  Future<void> _zoomInto(LatLng target) async {
+    final controller = _controller;
+    if (controller == null) return;
+    final zoom = controller.cameraPosition?.zoom ?? netClusterMaxZoom;
+    _follow.beginProgrammaticMove(_cameraDuration);
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(target, zoom + 2),
+      duration: _cameraDuration,
+    );
   }
 
   Future<void> _centerOnVehicle() async {
@@ -740,6 +860,13 @@ class _TransitMapState extends State<TransitMap>
     final others = widget.secondaryVehicles.length;
     final fullLabel = others == 0 ? label : '$label. ${l10n.mapOthers(others)}';
 
+    // Tamanho lido depois do layout (sem envolver a platform view do mapa,
+    // que no Web deixou de carregar o estilo dentro de um LayoutBuilder).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject();
+      if (box is RenderBox && box.hasSize) _mapSize = box.size;
+    });
     return Stack(
       fit: StackFit.expand,
       children: [
