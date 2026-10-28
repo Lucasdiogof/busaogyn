@@ -178,4 +178,33 @@ void main() {
       });
     }
   });
+
+  // Em pt a regra CLDR põe o 0 na categoria "one": sem `=0`, o gen-l10n
+  // mostrava "1 linha" para zero.
+  test('plurais com zero não viram singular', () {
+    for (final (locale, zero) in [
+      ('pt', '0 linhas'),
+      ('en', '0 lines'),
+      ('es', '0 líneas'),
+    ]) {
+      final t = lookupAppLocalizations(Locale(locale));
+      expect(t.linesCount(0), zero);
+      expect(t.linesCount(1), isNot(zero));
+    }
+    final pt = lookupAppLocalizations(const Locale('pt'));
+    expect(pt.minutesLong(0), '0 minutos');
+    expect(pt.catalogResultsCount(0), 'Nenhum ponto');
+    expect(pt.catalogResultsCount(1), '1 ponto');
+    expect(pt.catalogVariantCount(2), '2 variantes');
+  });
+
+  test('todo plural do modelo tem a forma =0', () {
+    final pt = _arb('pt');
+    for (final entry in pt.entries) {
+      final value = entry.value;
+      if (value is String && value.contains(', plural,')) {
+        expect(value, contains('=0{'), reason: entry.key);
+      }
+    }
+  });
 }

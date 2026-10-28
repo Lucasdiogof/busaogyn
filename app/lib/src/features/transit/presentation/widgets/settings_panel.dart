@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/settings/theme_mode_cubit.dart';
 import '../../../../core/theme/busao_tokens.dart';
+import '../../../catalog/presentation/catalog_access.dart';
 
 /// Aba Ajustes: tema e informações sobre as fontes de dados do app.
 class SettingsPanel extends StatelessWidget {
@@ -47,6 +48,21 @@ class SettingsPanel extends StatelessWidget {
         const SizedBox(height: Space.md),
         _GroupLabel(l10n.settingsAbout),
         _Tile(title: l10n.settingsBusData, body: l10n.settingsBusDataBody),
+        if (context.catalog case final catalog?) ...[
+          const SizedBox(height: Space.xs),
+          _Tile(
+            title: l10n.settingsCatalog,
+            // Parâmetros em ordem alfabética (gen-l10n): license, reference,
+            // version.
+            body: l10n.settingsCatalogBody(
+              catalog.version.licenseStatus,
+              catalog.version.stopsReference ??
+                  catalog.version.linesReference ??
+                  '—',
+              catalog.version.id,
+            ),
+          ),
+        ],
         const SizedBox(height: Space.xs),
         _Tile(title: l10n.settingsMap, body: l10n.settingsMapBody),
         const SizedBox(height: Space.xs),

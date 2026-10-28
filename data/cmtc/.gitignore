@@ -1,0 +1,6 @@
+# Arquivos oficiais da CMTC e tudo o que é derivado deles ficam fora do Git:
+# o repositório é público e a licença de redistribuição está pendente.
+raw/
+processed/
+reports/
+__pycache__/

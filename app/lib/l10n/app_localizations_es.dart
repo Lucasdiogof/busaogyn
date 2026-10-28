@@ -127,6 +127,7 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other: '$count líneas',
       one: '1 línea',
+      zero: '0 líneas',
     );
     return '$_temp0';
   }
@@ -141,6 +142,7 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other: '$count paradas guardadas',
       one: '1 parada guardada',
+      zero: '0 paradas guardadas',
     );
     return '$_temp0';
   }
@@ -189,6 +191,7 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other: '$count minutos',
       one: '1 minuto',
+      zero: '0 minutos',
     );
     return '$_temp0';
   }
@@ -718,6 +721,7 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other: '$count autobuses más en tiempo real de camino a la parada',
       one: '1 autobús más en tiempo real de camino a la parada',
+      zero: '0 autobuses más en tiempo real de camino a la parada',
     );
     return '$_temp0';
   }
@@ -943,4 +947,176 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsLicensesBody => 'Bibliotecas y fuentes usadas por la app.';
+
+  @override
+  String get catalogSearchHint => 'Código, calle, barrio o ciudad';
+
+  @override
+  String get catalogResultsTitle => 'Paradas en el registro';
+
+  @override
+  String catalogResultsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas',
+      one: '1 parada',
+      zero: 'Ninguna parada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogResultsMore(int shown, int total) {
+    return 'Mostrando $shown de $total. Refina la búsqueda para ver otras.';
+  }
+
+  @override
+  String get catalogNoResultsTitle => 'Ninguna parada encontrada';
+
+  @override
+  String get catalogNoResultsBody =>
+      'Revisa la escritura o usa el código impreso en la parada.';
+
+  @override
+  String get catalogSearchCodeHint =>
+      'Toca una parada para ver la dirección y las líneas, o envía el código para consultar las llegadas.';
+
+  @override
+  String catalogOpenStop(String code, String place) {
+    return 'Parada $code, $place. Ver detalles';
+  }
+
+  @override
+  String get catalogStopNotFound =>
+      'Este código no está en el registro oficial. Las llegadas pueden funcionar igualmente.';
+
+  @override
+  String get catalogStopLinesTitle => 'Líneas que atienden esta parada';
+
+  @override
+  String get catalogStopLinesNote =>
+      'Registro oficial: muestra las líneas de la parada, no buses en camino. Las llegadas en tiempo real o programadas aparecen al consultar llegadas.';
+
+  @override
+  String get catalogNoLinesListed =>
+      'Ninguna línea asociada a esta parada en el registro.';
+
+  @override
+  String get catalogSeeArrivals => 'Ver llegadas';
+
+  @override
+  String catalogSourceNote(String reference) {
+    return 'Registro oficial CMTC · referencia $reference · disponible sin conexión';
+  }
+
+  @override
+  String get catalogDevBadge => 'Datos de desarrollo, no publicados';
+
+  @override
+  String get catalogStation => 'Estación sin dirección en el registro';
+
+  @override
+  String catalogStopTitle(String code) {
+    return 'Parada $code';
+  }
+
+  @override
+  String get catalogPreviewClose => 'Volver a la búsqueda';
+
+  @override
+  String get catalogAddress => 'Dirección';
+
+  @override
+  String get catalogDistrict => 'Barrio';
+
+  @override
+  String get catalogCity => 'Municipio';
+
+  @override
+  String catalogLinesHeaderSubtitle(int count) {
+    return '$count líneas en el registro oficial';
+  }
+
+  @override
+  String get catalogLinesSearchHint => 'Número o nombre de la línea';
+
+  @override
+  String get catalogLinesNoResults => 'Ninguna línea encontrada.';
+
+  @override
+  String get catalogLinesAllTitle => 'Líneas';
+
+  @override
+  String get catalogShowMore => 'Mostrar más';
+
+  @override
+  String get catalogLineVariants => 'Variantes';
+
+  @override
+  String catalogLineStops(int count) {
+    return 'Paradas registradas ($count)';
+  }
+
+  @override
+  String get catalogLineStopsNote =>
+      'Paradas asociadas a la línea en el registro, sin orden de recorrido ni sentido.';
+
+  @override
+  String get catalogLineStatus => 'Situación';
+
+  @override
+  String get catalogLineType => 'Tipo';
+
+  @override
+  String get catalogLineCities => 'Municipios';
+
+  @override
+  String get catalogLineOrigin => 'Origen';
+
+  @override
+  String get catalogLineDestination => 'Destino';
+
+  @override
+  String catalogValidFrom(String date) {
+    return 'Vigente desde $date';
+  }
+
+  @override
+  String get catalogBackToLines => 'Volver a las líneas';
+
+  @override
+  String catalogOpenLine(String line, String name) {
+    return 'Línea $line, $name. Ver detalles';
+  }
+
+  @override
+  String get catalogLineNotFound => 'Línea no encontrada en el registro.';
+
+  @override
+  String catalogVariantCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count variantes',
+      one: '1 variante',
+      zero: 'Sin variantes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsCatalog => 'Catálogo oficial (desarrollo)';
+
+  @override
+  String settingsCatalogBody(String license, String reference, String version) {
+    return 'Versión $version · referencia $reference · redistribución: $license. Activado solo en este build de desarrollo.';
+  }
+
+  @override
+  String get catalogIntroTitle => 'Busca una parada';
+
+  @override
+  String get catalogIntroBody =>
+      'Por el código de la placa, la calle, el barrio o la ciudad. Luego mira las próximas llegadas y sigue el bus en el mapa.';
 }

@@ -7,7 +7,8 @@ import '../../../../core/ui/busao_components.dart';
 import '../formatters/search_feedback.dart';
 
 /// Busca por código RMTC. Só aceita dígitos e mantém zeros à esquerda (o
-/// código é tratado como texto).
+/// código é tratado como texto). Com [allowText] (catálogo oficial ligado)
+/// aceita também rua, bairro e cidade, que são buscados localmente.
 class SearchHeader extends StatefulWidget {
   const SearchHeader({
     required this.controller,
@@ -18,8 +19,12 @@ class SearchHeader extends StatefulWidget {
     this.error,
     this.onEdited,
     this.onRetry,
+    this.allowText = false,
     super.key,
   });
+
+  /// Aceita texto livre além do código (busca no catálogo local).
+  final bool allowText;
 
   final TextEditingController controller;
   final FocusNode? focusNode;
@@ -96,25 +101,37 @@ class _SearchHeaderState extends State<SearchHeader> {
               child: TextField(
                 controller: widget.controller,
                 focusNode: widget.focusNode,
-                keyboardType: TextInputType.number,
+                keyboardType: widget.allowText
+                    ? TextInputType.text
+                    : TextInputType.number,
                 textInputAction: TextInputAction.search,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
+                inputFormatters: widget.allowText
+                    ? [LengthLimitingTextInputFormatter(60)]
+                    : [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
                 onSubmitted: (_) => widget.onSearch(),
-                style: monoStyle(
-                  TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: tokens.strongText,
-                  ),
-                ),
+                style: widget.allowText
+                    ? TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.strongText,
+                      )
+                    : monoStyle(
+                        TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: tokens.strongText,
+                        ),
+                      ),
                 decoration: InputDecoration(
                   // Área de toque com a altura da barra, não só a da linha.
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                  hintText: l10n.searchHint,
+                  hintText: widget.allowText
+                      ? l10n.catalogSearchHint
+                      : l10n.searchHint,
                   hintStyle: TextStyle(
                     fontFamily: BusaoFonts.sans,
                     fontSize: 15,
