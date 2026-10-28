@@ -10,7 +10,13 @@ Future<void> Function(String text, Rect? origin) sharePlatform = _platformShare;
 
 Future<void> _platformShare(String text, Rect? origin) async {
   final result = await SharePlus.instance.share(
-    ShareParams(text: text, sharePositionOrigin: origin),
+    // Sem Web Share (navegador de desktop), o plugin abriria um e-mail; o
+    // app prefere copiar o texto (shareText).
+    ShareParams(
+      text: text,
+      sharePositionOrigin: origin,
+      mailToFallbackEnabled: false,
+    ),
   );
   if (result.status == ShareResultStatus.unavailable) {
     throw StateError('compartilhamento indisponível');
@@ -34,9 +40,20 @@ Future<void> shareText(BuildContext context, String text) async {
   } catch (error) {
     // Só o tipo/mensagem do erro, nunca o texto compartilhado.
     debugPrint('Compartilhamento indisponível: $error');
-    await Clipboard.setData(ClipboardData(text: text));
+    var copied = true;
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+    } catch (error) {
+      // O navegador pode recusar a área de transferência.
+      debugPrint('Cópia recusada: $error');
+      copied = false;
+    }
     messenger
       ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.shareCopied)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(copied ? l10n.shareCopied : l10n.shareUnavailable),
+        ),
+      );
   }
 }

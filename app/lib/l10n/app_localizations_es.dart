@@ -916,7 +916,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsBusDataBody =>
-      'RMTC, a través de la API de BusãoGyn. Las posiciones y estimaciones en tiempo real dependen del GPS informado por la fuente.';
+      'App independiente, sin vínculo con la RMTC, la CMTC ni la Alcaldía. Datos de la RMTC a través de la API de BusãoGyn; las posiciones y estimaciones en tiempo real dependen del GPS informado por la fuente.';
 
   @override
   String get settingsMap => 'Mapa';
@@ -937,6 +937,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsLicensesBody => 'Bibliotecas y fuentes usadas por la app.';
+
+  @override
+  String get settingsPrivacy => 'Privacidad';
+
+  @override
+  String get settingsPrivacyBody => 'Qué hace la app con los datos.';
+
+  @override
+  String get privacySummary =>
+      '• Sin cuenta, inicio de sesión ni registro.\n• La app no pide tu ubicación y no accede a contactos, fotos, cámara ni micrófono.\n• Sin publicidad, analítica de uso, informes de fallos ni rastreo.\n• Favoritos, recientes y el tema quedan solo en este dispositivo.\n• Para mostrar llegadas y posiciones, el código de la parada y el número del autobús van a la API de BusãoGyn (Cloudflare), que consulta la RMTC. El mapa viene de OpenFreeMap. Como en cualquier acceso a internet, estos servicios reciben datos técnicos de la conexión, como la IP.\n• Compartir abre la opción del sistema con el texto que ves; nada se envía sin tu acción.';
+
+  @override
+  String get privacyFullPolicy => 'Política completa:';
+
+  @override
+  String get privacyCopyLink => 'Copiar enlace';
+
+  @override
+  String get privacyLinkCopied => 'Enlace copiado.';
+
+  @override
+  String get privacyClose => 'Cerrar';
 
   @override
   String get catalogSearchHint => 'Código, calle, barrio o ciudad';
@@ -1674,6 +1696,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareCopied => 'Texto copiado para compartir.';
+
+  @override
+  String get shareUnavailable =>
+      'No se puede compartir en este dispositivo o navegador.';
 
   @override
   String shareStop(String code) {

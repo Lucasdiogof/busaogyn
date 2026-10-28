@@ -67,16 +67,26 @@ class ArrivalGroup {
     if (routeId == null || routeId.isEmpty || next is! Map<String, dynamic>) {
       throw const FormatException('Arrival group without routeId or next.');
     }
+    final first = Arrival.fromJson(next);
     final following = json['following'];
+    final second = following is Map<String, dynamic>
+        ? Arrival.fromJson(following)
+        : null;
     return ArrivalGroup(
       routeId: routeId,
       destination: jsonString(json['destination']),
-      next: Arrival.fromJson(next),
-      following: following is Map<String, dynamic>
-          ? Arrival.fromJson(following)
-          : null,
+      next: first,
+      // A fonte às vezes repete a mesma chegada como "seguinte"; não é outro
+      // ônibus.
+      following: second != null && _sameArrival(first, second) ? null : second,
     );
   }
+
+  static bool _sameArrival(Arrival a, Arrival b) =>
+      a.predictedArrival != null &&
+      a.vehicleId == b.vehicleId &&
+      a.plannedArrival == b.plannedArrival &&
+      a.predictedArrival == b.predictedArrival;
 
   final String routeId;
   final String? destination;

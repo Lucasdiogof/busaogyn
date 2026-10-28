@@ -8,4 +8,5 @@ ENV_FILE="${1:-env.json}"
 flutter pub get
 flutter build web --release --dart-define-from-file="$ENV_FILE" ${FLUTTER_WEB_FLAGS:-}
 bash "$(dirname "$0")/check-bundle-secrets.sh" build/web
+bash "$(dirname "$0")/check-no-official-catalog.sh" build/web
 echo "OK: build/web ready"

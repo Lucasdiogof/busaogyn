@@ -27,6 +27,38 @@ void main() {
     expect(group.following, isNull);
   });
 
+  test('drops a following arrival that repeats next (same bus and time)', () {
+    Map<String, dynamic> arrival(String vehicle, String predicted) => {
+      'vehicleId': 'rmtc:$vehicle',
+      'vehicleNumber': vehicle,
+      'minutes': 0,
+      'plannedArrival': '2026-10-28T16:42:06-03:00',
+      'predictedArrival': predicted,
+      'realtime': true,
+      'quality': 'realtime',
+    };
+    ArrivalGroup group(Map<String, dynamic> following) =>
+        ArrivalGroup.fromJson({
+          'routeId': '003',
+          'next': arrival('90001', '2026-10-28T16:42:06-03:00'),
+          'following': following,
+        });
+
+    expect(
+      group(arrival('90001', '2026-10-28T16:42:06-03:00')).following,
+      isNull,
+    );
+    // Mesmo ônibus em outro horário (outra volta) e outro ônibus continuam.
+    expect(
+      group(arrival('90001', '2026-10-28T17:30:00-03:00')).following,
+      isNotNull,
+    );
+    expect(
+      group(arrival('90002', '2026-10-28T16:42:06-03:00')).following,
+      isNotNull,
+    );
+  });
+
   test('parses tracked vehicle position and punctuality', () {
     final vehicle = TrackedVehicle.fromJson({
       'id': 'rmtc:50614',

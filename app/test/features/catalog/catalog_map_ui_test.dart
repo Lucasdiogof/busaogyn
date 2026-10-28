@@ -1026,6 +1026,36 @@ void _stageCTests() {
         expect(copied, contains('00294'));
         expect(find.text('Texto copiado para compartilhar.'), findsOneWidget);
       });
+
+      testWidgets('cópia recusada pelo navegador: avisa sem erro', (
+        tester,
+      ) async {
+        sharePlatform = (_, _) async => throw StateError('indisponível');
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async => call.method == 'Clipboard.setData'
+              ? throw PlatformException(code: 'denied')
+              : null,
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await _pump(tester, _Repository(routeName: null));
+        final context = tester.element(find.byType(NavDock));
+        await context.read<StopArrivalsCubit>().load('00294');
+        await _settle(tester);
+        await _tapKey(tester, 'share-stop');
+        expect(tester.takeException(), isNull);
+        expect(
+          find.text(
+            'Não foi possível compartilhar neste aparelho ou navegador.',
+          ),
+          findsOneWidget,
+        );
+      });
     });
 
     testWidgets('busca: sem acento e com um erro de digitação', (tester) async {

@@ -1535,7 +1535,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBusDataBody.
   ///
   /// In pt, this message translates to:
-  /// **'RMTC, via API BusãoGyn. Posições e previsões em tempo real dependem do GPS informado pela fonte.'**
+  /// **'App independente, sem vínculo com a RMTC, a CMTC ou a Prefeitura. Dados da RMTC via API BusãoGyn; posições e previsões em tempo real dependem do GPS informado pela fonte.'**
   String get settingsBusDataBody;
 
   /// No description provided for @settingsMap.
@@ -1573,6 +1573,48 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Bibliotecas e fontes usadas pelo app.'**
   String get settingsLicensesBody;
+
+  /// No description provided for @settingsPrivacy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Privacidade'**
+  String get settingsPrivacy;
+
+  /// No description provided for @settingsPrivacyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'O que o app faz com dados.'**
+  String get settingsPrivacyBody;
+
+  /// No description provided for @privacySummary.
+  ///
+  /// In pt, this message translates to:
+  /// **'• Sem conta, login ou cadastro.\n• O app não pede a sua localização e não acessa contatos, fotos, câmera nem microfone.\n• Sem publicidade, análise de uso, relatório de falhas ou rastreamento.\n• Favoritos, recentes e o tema ficam só neste aparelho.\n• Para mostrar chegadas e posições, o código do ponto e o número do ônibus vão para a API do BusãoGyn (Cloudflare), que consulta a RMTC. O mapa vem do OpenFreeMap. Como em qualquer acesso à internet, esses serviços recebem dados técnicos da conexão, como o IP.\n• Compartilhar abre a opção do sistema com o texto que você vê; nada é enviado sem a sua ação.'**
+  String get privacySummary;
+
+  /// No description provided for @privacyFullPolicy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Política completa:'**
+  String get privacyFullPolicy;
+
+  /// No description provided for @privacyCopyLink.
+  ///
+  /// In pt, this message translates to:
+  /// **'Copiar link'**
+  String get privacyCopyLink;
+
+  /// No description provided for @privacyLinkCopied.
+  ///
+  /// In pt, this message translates to:
+  /// **'Link copiado.'**
+  String get privacyLinkCopied;
+
+  /// No description provided for @privacyClose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fechar'**
+  String get privacyClose;
 
   /// No description provided for @catalogSearchHint.
   ///
@@ -2670,6 +2712,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Texto copiado para compartilhar.'**
   String get shareCopied;
+
+  /// No description provided for @shareUnavailable.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível compartilhar neste aparelho ou navegador.'**
+  String get shareUnavailable;
 
   /// No description provided for @shareStop.
   ///

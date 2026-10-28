@@ -31,7 +31,7 @@
 <body>
 <main>
   <h1>Política de privacidade do BusãoGyn</h1>
-  <p class="muted">Atualizada em 17/10/2026 · versão do app 1.0.0</p>
+  <p class="muted">Atualizada em 28/10/2026 · versão do app 1.0.0</p>
 
   <p>O BusãoGyn mostra, em tempo real, as chegadas de ônibus do transporte coletivo de Goiânia e a posição de um ônibus no mapa. Esta página explica, em linguagem simples, o que o app faz com dados.</p>
 
@@ -64,10 +64,13 @@
     <li><strong>API do BusãoGyn</strong> (hospedada na Cloudflare): recebe o <em>código do ponto</em> que você consulta e o <em>número do ônibus</em> que você acompanha. Ela repassa a consulta às fontes públicas da RMTC e devolve o resultado. O app não fala com a RMTC diretamente.</li>
     <li><strong>OpenFreeMap</strong>: fornece o mapa. Recebe a área e o zoom do mapa que aparece na tela.</li>
     <li>Na versão <strong>web</strong>, também podem ser carregados a biblioteca do mapa (unpkg) e fontes de apoio (Google Fonts).</li>
-    <li>Na versão <strong>web</strong>, os arquivos do app são entregues pela Cloudflare (Workers), que recebe os dados técnicos de rede da visita, como IP, horário e navegador.</li>
+    <li>Na versão <strong>web</strong>, os arquivos do app são entregues pela Cloudflare (Workers), que recebe os dados técnicos de rede da visita, como IP, horário e navegador. A Cloudflare também pode executar no navegador verificações automáticas de segurança contra robôs.</li>
   </ul>
   <p>Como em qualquer acesso à internet, cada serviço recebe o endereço IP, o horário e os dados técnicos padrão da conexão. O app não envia identificador próprio, cookie ou token. A API registra em log apenas o tipo da requisição, o caminho consultado (que inclui o código do ponto ou o número do ônibus), o status e o tempo de resposta. A Cloudflare, como provedora da infraestrutura, pode manter registros técnicos próprios.</p>
   <p>Esses dados não são usados para identificar você, não são vendidos e não são compartilhados para publicidade.</p>
+
+  <h2>Compartilhar</h2>
+  <p>O botão Compartilhar abre a opção de compartilhamento do sistema com um texto que você vê (o código do ponto). O app não envia nada sozinho. Se o aparelho ou o navegador não tiver essa opção, o texto é copiado para você colar onde quiser.</p>
 
   <h2>Localização</h2>
   <p>O app não pede nem usa a localização do aparelho. Os ônibus e pontos que aparecem no mapa vêm da fonte de dados, não de você. Se isso mudar no futuro, a permissão será pedida só no momento do uso e esta página será atualizada antes.</p>

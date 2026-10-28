@@ -1,6 +1,6 @@
 # BusãoGyn 2.0 — Checkpoint de continuidade
 
-Atualizado em 2026-10-28 (Etapa D). Serve para qualquer sessão retomar sem reconstruir o
+Atualizado em 2026-10-28 (Etapa E). Serve para qualquer sessão retomar sem reconstruir o
 histórico. Não contém dados oficiais nem pessoais.
 
 ## Estado do Git
@@ -46,24 +46,46 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   QA-11) e acompanhamento que parava com a janela sem foco (QA-12).
   Nenhum problema aberto da etapa.
 
-## Testes e builds (último ciclo)
+- Etapa E (`docs/BUSAOGYN_2_0_ETAPA_E_PUBLICACAO.md`): auditoria de publicação
+  sem publicar. Corrigidos:
+  - política de privacidade dentro do app (Ajustes → Privacidade; App Store
+    5.1.1(i));
+  - compartilhar no Web de desktop (sem `mailto:`, cópia com tratamento);
+  - declaração "app independente" (Play);
+  - "seguinte" duplicado quando a fonte repete o próximo ônibus;
+  - ícone de compartilhar adaptativo;
+  - CI com verificador de catálogo nos artefatos (com controle positivo) e
+    deploy Web alinhado ao Flutter 3.38.5.
 
-- 622 testes Flutter (inclui diretrizes de acessibilidade), 51 Python,
-  `flutter analyze` limpo, formatação ok.
-- Builds produção web/APK/iOS sem dados CMTC (`app/scripts/check-no-official-catalog.sh <pasta>`);
-  APK dev como controle positivo (verificador falha, como esperado).
+  Matriz de release:
+  - versão pública (Android, iOS, Web): pronta com ressalvas;
+  - 2.0 completo: bloqueado pela licença CMTC
+    (`docs/CMTC_2026_PEDIDO_AUTORIZACAO.md`, não enviado).
 
-## Próxima ação (Etapa E — preparação para publicação)
+## Testes e builds (último ciclo, Etapa E)
 
-1. Testes em aparelhos físicos Android e iPhone (cenários da Etapa D).
-2. VoiceOver e TalkBack em aparelho (Web e testes já cobrem o QA-11).
-3. Decisões do usuário: licença CMTC, alertas com app aberto, canal de
-   "Reportar problema", domínio/deploy para links.
-4. Lojas: privacidade, permissões, textos; capturas só na Etapa F.
+- 625 testes Flutter (inclui diretrizes de acessibilidade), 51 Python, 26 do
+  Worker, `flutter analyze` limpo, formatação ok.
+- Builds de produção (Web, APK, AAB, iOS release) sem dados da CMTC
+  (`app/scripts/check-no-official-catalog.sh <artefatos>`); Web e APK de
+  desenvolvimento como controle positivo (o verificador falha, como esperado).
+- APK release: só permissões de rede; 16 KB ok. Sem aparelho físico.
 
-Depois: F (entrega
-visual completa — 375×812, 390×844, 768×1024, 1024×1366, 1440×900, claro e
-escuro, HTML + ZIP).
+## Próxima ação
+
+1. Decisões do usuário:
+   - merge na `main` e deploy do Web;
+   - mitigação da capacidade da API (E-8);
+   - envio do pedido à CMTC;
+   - alertas com app aberto e canal "Reportar problema".
+2. Teste em aparelho físico Android e iPhone, com TalkBack/VoiceOver por uma
+   pessoa.
+3. Lojas: formulários com as respostas da Etapa E, ficha com a declaração de
+   independência, build numbers acima dos últimos envios.
+
+Depois: F (entrega visual completa — 375×812, 390×844, 768×1024,
+1024×1366, 1440×900, claro e escuro, HTML + ZIP). As capturas de iOS
+saem só de build iOS.
 
 ## Restrições e riscos
 
@@ -73,6 +95,8 @@ escuro, HTML + ZIP).
   apresentar como oficiais/atuais.
 - Validação real da Fase 6 com 8 ônibus: insuficiente para afirmar precisão.
 - Sem varreduras extensas da API RMTC.
+- Capacidade: cerca de 16 req/min por pessoa parada num ponto, contra 100 mil
+  req/dia do Workers gratuito (E-8).
 
 ## Ambiente local (dicas)
 
@@ -94,5 +118,10 @@ escuro, HTML + ZIP).
   ou não focável.
 - Se o web acusar `MissingPluginException`, rode `flutter clean` (registro de
   plugins em cache).
+- Disco interno quase cheio (menos de 3 GB livres): o emulador Android recusa
+  iniciar. Limpe só a pasta temporária da sessão.
+- `flutter build ios` com o 3.38.5 roda `pod install` e altera o
+  `Podfile.lock` e o `project.pbxproj` locais do usuário: restaure os dois
+  depois (guarde cópias antes do build).
 - Catálogo dev: `python3 -I data/cmtc/pipeline/export_catalog.py` →
   `app/dev_catalog/`; web dev: `flutter build web --profile -t dev_catalog/main.dart`.

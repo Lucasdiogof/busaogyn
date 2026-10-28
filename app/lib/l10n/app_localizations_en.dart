@@ -911,7 +911,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBusDataBody =>
-      'RMTC, via the BusãoGyn API. Real-time positions and estimates depend on the GPS reported by the source.';
+      'Independent app, not affiliated with RMTC, CMTC or the city government. RMTC data via the BusãoGyn API; real-time positions and estimates depend on the GPS reported by the source.';
 
   @override
   String get settingsMap => 'Map';
@@ -932,6 +932,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLicensesBody => 'Libraries and fonts used by the app.';
+
+  @override
+  String get settingsPrivacy => 'Privacy';
+
+  @override
+  String get settingsPrivacyBody => 'What the app does with data.';
+
+  @override
+  String get privacySummary =>
+      '• No account, login or sign-up.\n• The app does not ask for your location and does not access contacts, photos, camera or microphone.\n• No ads, usage analytics, crash reporting or tracking.\n• Favorites, recent stops and the theme stay on this device only.\n• To show arrivals and positions, the stop code and the bus number go to the BusãoGyn API (Cloudflare), which queries RMTC. The map comes from OpenFreeMap. As with any internet access, these services receive technical connection data, such as the IP address.\n• Share opens the system option with the text you see; nothing is sent without your action.';
+
+  @override
+  String get privacyFullPolicy => 'Full policy:';
+
+  @override
+  String get privacyCopyLink => 'Copy link';
+
+  @override
+  String get privacyLinkCopied => 'Link copied.';
+
+  @override
+  String get privacyClose => 'Close';
 
   @override
   String get catalogSearchHint => 'Code, street, district or city';
@@ -1667,6 +1689,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareCopied => 'Text copied to share.';
+
+  @override
+  String get shareUnavailable =>
+      'Sharing is not available on this device or browser.';
 
   @override
   String shareStop(String code) {

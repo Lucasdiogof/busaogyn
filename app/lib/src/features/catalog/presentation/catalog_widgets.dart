@@ -948,7 +948,7 @@ class _LineDetail extends StatelessWidget {
                 tooltip: l10n.shareLineAction,
                 onPressed: () =>
                     shareText(button, lineShareText(catalog, line)),
-                icon: const Icon(Icons.ios_share_rounded),
+                icon: Icon(Icons.adaptive.share),
               ),
             ),
           ],

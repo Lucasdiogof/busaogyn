@@ -429,7 +429,7 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
               key: const ValueKey('planner-share'),
               onPressed: () =>
                   shareText(button, tripShareText(_c.catalog, option)),
-              icon: const Icon(Icons.ios_share_rounded),
+              icon: Icon(Icons.adaptive.share),
               label: Text(l10n.shareTripAction),
             ),
           ),

@@ -33,6 +33,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Dados da CMTC fora do Git (licença pendente)
+        run: |
+          tracked="$(git ls-files dev_catalog ../data/cmtc/raw ../data/cmtc/processed ../data/cmtc/reports)"
+          if [ -n "$tracked" ]; then
+            echo "::error::Dados ou catálogo da CMTC versionados:"; echo "$tracked"; exit 1
+          fi
       - run: flutter pub get --enforce-lockfile
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
@@ -91,6 +97,17 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk \
             build/app/outputs/bundle/release/app-release.aab
       - run: flutter build web --release
+      - name: Sem catálogo da CMTC nem segredos nos artefatos públicos
+        run: |
+          # Controle positivo: o verificador precisa acusar uma marca do payload.
+          canary="$RUNNER_TEMP/canary" && mkdir -p "$canary" && printf 'busaogyn-cmtc-payload' > "$canary/x"
+          if bash scripts/check-no-official-catalog.sh "$canary" > /dev/null 2>&1; then
+            echo "::error::O verificador de catálogo não detectou a marca de controle."; exit 1
+          fi
+          bash scripts/check-no-official-catalog.sh build/web \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab
+          bash scripts/check-bundle-secrets.sh build/web
       - name: Tamanhos
         run: |
           ls -l build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab
@@ -116,3 +133,5 @@ jobs:
       # Release para dispositivo sem assinatura: valida build de release,
       # sem certificado nem provisioning profile.
       - run: flutter build ios --release --no-codesign
+      - name: Sem catálogo da CMTC no app iOS
+        run: bash scripts/check-no-official-catalog.sh build/ios/iphoneos/Runner.app
