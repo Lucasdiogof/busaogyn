@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/l10n/l10n.dart';
 import 'core/settings/theme_mode_cubit.dart';
 import 'core/theme/app_theme.dart';
+import 'features/catalog/domain/transit_catalog.dart';
+import 'features/catalog/presentation/catalog_access.dart';
 import 'features/saved_stops/data/memory_saved_stops_store.dart';
 import 'features/saved_stops/domain/saved_stops_store.dart';
 import 'features/saved_stops/presentation/cubit/favorite_arrivals_cubit.dart';
@@ -25,6 +27,7 @@ class BusaoGynApp extends StatelessWidget {
     this.themeStore,
     this.savedStopsStore,
     this.locale,
+    this.catalog,
     super.key,
   });
 
@@ -51,10 +54,17 @@ class BusaoGynApp extends StatelessWidget {
   /// português quando o do aparelho não é atendido.
   final Locale? locale;
 
+  /// Catálogo oficial de linhas e pontos. `null` = desligado (produção):
+  /// telas e busca ficam exatamente como antes.
+  final TransitCatalog? catalog;
+
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<TransitRepository>.value(
-      value: repository,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<TransitRepository>.value(value: repository),
+        RepositoryProvider<CatalogAccess>.value(value: CatalogAccess(catalog)),
+      ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(

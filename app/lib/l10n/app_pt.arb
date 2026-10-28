@@ -98,7 +98,7 @@
       }
     }
   },
-  "linesCount": "{count, plural, =1{1 linha} other{{count} linhas}}",
+  "linesCount": "{count, plural, =0{0 linhas} =1{1 linha} other{{count} linhas}}",
   "@linesCount": {
     "placeholders": {
       "count": {
@@ -108,7 +108,7 @@
   },
   "savedStopsNone": "Nenhum ponto salvo",
   "@savedStopsNone": {},
-  "savedStopsCount": "{count, plural, =1{1 ponto salvo} other{{count} pontos salvos}}",
+  "savedStopsCount": "{count, plural, =0{0 pontos salvos} =1{1 ponto salvo} other{{count} pontos salvos}}",
   "@savedStopsCount": {
     "placeholders": {
       "count": {
@@ -150,7 +150,7 @@
       }
     }
   },
-  "minutesLong": "{count, plural, =1{1 minuto} other{{count} minutos}}",
+  "minutesLong": "{count, plural, =0{0 minutos} =1{1 minuto} other{{count} minutos}}",
   "@minutesLong": {
     "placeholders": {
       "count": {
@@ -666,7 +666,7 @@
   },
   "mapNoBus": "Mapa de Goiânia. Nenhum ônibus acompanhado",
   "@mapNoBus": {},
-  "mapOthers": "{count, plural, =1{Mais 1 ônibus em tempo real a caminho do ponto} other{Mais {count} ônibus em tempo real a caminho do ponto}}",
+  "mapOthers": "{count, plural, =0{Mais 0 ônibus em tempo real a caminho do ponto} =1{Mais 1 ônibus em tempo real a caminho do ponto} other{Mais {count} ônibus em tempo real a caminho do ponto}}",
   "@mapOthers": {
     "placeholders": {
       "count": {
@@ -915,5 +915,140 @@
   "settingsLicenses": "Licenças",
   "@settingsLicenses": {},
   "settingsLicensesBody": "Bibliotecas e fontes usadas pelo app.",
-  "@settingsLicensesBody": {}
+  "@settingsLicensesBody": {},
+  "catalogSearchHint": "Código, rua, bairro ou cidade",
+  "catalogResultsTitle": "Pontos no cadastro",
+  "catalogResultsCount": "{count, plural, =0{Nenhum ponto} =1{1 ponto} other{{count} pontos}}",
+  "@catalogResultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogResultsMore": "Mostrando {shown} de {total}. Refine a busca para ver outros.",
+  "@catalogResultsMore": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogNoResultsTitle": "Nenhum ponto encontrado",
+  "catalogNoResultsBody": "Confira a grafia ou use o código impresso no ponto.",
+  "catalogSearchCodeHint": "Toque em um ponto para ver o endereço e as linhas, ou envie o código para consultar as chegadas.",
+  "catalogOpenStop": "Ponto {code}, {place}. Ver detalhes",
+  "@catalogOpenStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogStopNotFound": "Este código não está no cadastro oficial. A consulta de chegadas pode funcionar mesmo assim.",
+  "catalogStopLinesTitle": "Linhas que atendem este ponto",
+  "catalogStopLinesNote": "Cadastro oficial: mostra as linhas do ponto, não ônibus a caminho. Chegadas em tempo real ou programadas aparecem na consulta de chegadas.",
+  "catalogNoLinesListed": "Nenhuma linha associada a este ponto no cadastro.",
+  "catalogSeeArrivals": "Ver chegadas",
+  "catalogSourceNote": "Cadastro oficial CMTC · referência {reference} · disponível offline",
+  "@catalogSourceNote": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogDevBadge": "Dados de desenvolvimento, não publicados",
+  "catalogStation": "Estação sem endereço no cadastro",
+  "catalogStopTitle": "Ponto {code}",
+  "@catalogStopTitle": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogPreviewClose": "Voltar à busca",
+  "catalogAddress": "Endereço",
+  "catalogDistrict": "Bairro",
+  "catalogCity": "Município",
+  "catalogLinesHeaderSubtitle": "{count} linhas no cadastro oficial",
+  "@catalogLinesHeaderSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogLinesSearchHint": "Número ou nome da linha",
+  "catalogLinesNoResults": "Nenhuma linha encontrada.",
+  "catalogLinesAllTitle": "Linhas",
+  "catalogShowMore": "Mostrar mais",
+  "catalogLineVariants": "Variantes",
+  "catalogLineStops": "Pontos cadastrados ({count})",
+  "@catalogLineStops": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogLineStopsNote": "Pontos associados à linha no cadastro, sem ordem de percurso nem sentido.",
+  "catalogLineStatus": "Situação",
+  "catalogLineType": "Tipo",
+  "catalogLineCities": "Municípios",
+  "catalogLineOrigin": "Origem",
+  "catalogLineDestination": "Destino",
+  "catalogValidFrom": "Vigência desde {date}",
+  "@catalogValidFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogBackToLines": "Voltar às linhas",
+  "catalogOpenLine": "Linha {line}, {name}. Ver detalhes",
+  "@catalogOpenLine": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogLineNotFound": "Linha não encontrada no cadastro.",
+  "catalogVariantCount": "{count, plural, =0{Sem variantes} =1{1 variante} other{{count} variantes}}",
+  "@catalogVariantCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsCatalog": "Catálogo oficial (desenvolvimento)",
+  "settingsCatalogBody": "Versão {version} · referência {reference} · redistribuição: {license}. Ligado só neste build de desenvolvimento.",
+  "@settingsCatalogBody": {
+    "placeholders": {
+      "license": {
+        "type": "String"
+      },
+      "reference": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogIntroTitle": "Busque um ponto",
+  "catalogIntroBody": "Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa."
 }

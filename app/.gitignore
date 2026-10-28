@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Catálogo CMTC gerado localmente (dados oficiais, licença pendente). Nunca versionar.
+/dev_catalog/

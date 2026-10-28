@@ -127,6 +127,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count linhas',
       one: '1 linha',
+      zero: '0 linhas',
     );
     return '$_temp0';
   }
@@ -141,6 +142,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count pontos salvos',
       one: '1 ponto salvo',
+      zero: '0 pontos salvos',
     );
     return '$_temp0';
   }
@@ -189,6 +191,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: '$count minutos',
       one: '1 minuto',
+      zero: '0 minutos',
     );
     return '$_temp0';
   }
@@ -718,6 +721,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Mais $count ônibus em tempo real a caminho do ponto',
       one: 'Mais 1 ônibus em tempo real a caminho do ponto',
+      zero: 'Mais 0 ônibus em tempo real a caminho do ponto',
     );
     return '$_temp0';
   }
@@ -943,4 +947,176 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsLicensesBody => 'Bibliotecas e fontes usadas pelo app.';
+
+  @override
+  String get catalogSearchHint => 'Código, rua, bairro ou cidade';
+
+  @override
+  String get catalogResultsTitle => 'Pontos no cadastro';
+
+  @override
+  String catalogResultsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pontos',
+      one: '1 ponto',
+      zero: 'Nenhum ponto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogResultsMore(int shown, int total) {
+    return 'Mostrando $shown de $total. Refine a busca para ver outros.';
+  }
+
+  @override
+  String get catalogNoResultsTitle => 'Nenhum ponto encontrado';
+
+  @override
+  String get catalogNoResultsBody =>
+      'Confira a grafia ou use o código impresso no ponto.';
+
+  @override
+  String get catalogSearchCodeHint =>
+      'Toque em um ponto para ver o endereço e as linhas, ou envie o código para consultar as chegadas.';
+
+  @override
+  String catalogOpenStop(String code, String place) {
+    return 'Ponto $code, $place. Ver detalhes';
+  }
+
+  @override
+  String get catalogStopNotFound =>
+      'Este código não está no cadastro oficial. A consulta de chegadas pode funcionar mesmo assim.';
+
+  @override
+  String get catalogStopLinesTitle => 'Linhas que atendem este ponto';
+
+  @override
+  String get catalogStopLinesNote =>
+      'Cadastro oficial: mostra as linhas do ponto, não ônibus a caminho. Chegadas em tempo real ou programadas aparecem na consulta de chegadas.';
+
+  @override
+  String get catalogNoLinesListed =>
+      'Nenhuma linha associada a este ponto no cadastro.';
+
+  @override
+  String get catalogSeeArrivals => 'Ver chegadas';
+
+  @override
+  String catalogSourceNote(String reference) {
+    return 'Cadastro oficial CMTC · referência $reference · disponível offline';
+  }
+
+  @override
+  String get catalogDevBadge => 'Dados de desenvolvimento, não publicados';
+
+  @override
+  String get catalogStation => 'Estação sem endereço no cadastro';
+
+  @override
+  String catalogStopTitle(String code) {
+    return 'Ponto $code';
+  }
+
+  @override
+  String get catalogPreviewClose => 'Voltar à busca';
+
+  @override
+  String get catalogAddress => 'Endereço';
+
+  @override
+  String get catalogDistrict => 'Bairro';
+
+  @override
+  String get catalogCity => 'Município';
+
+  @override
+  String catalogLinesHeaderSubtitle(int count) {
+    return '$count linhas no cadastro oficial';
+  }
+
+  @override
+  String get catalogLinesSearchHint => 'Número ou nome da linha';
+
+  @override
+  String get catalogLinesNoResults => 'Nenhuma linha encontrada.';
+
+  @override
+  String get catalogLinesAllTitle => 'Linhas';
+
+  @override
+  String get catalogShowMore => 'Mostrar mais';
+
+  @override
+  String get catalogLineVariants => 'Variantes';
+
+  @override
+  String catalogLineStops(int count) {
+    return 'Pontos cadastrados ($count)';
+  }
+
+  @override
+  String get catalogLineStopsNote =>
+      'Pontos associados à linha no cadastro, sem ordem de percurso nem sentido.';
+
+  @override
+  String get catalogLineStatus => 'Situação';
+
+  @override
+  String get catalogLineType => 'Tipo';
+
+  @override
+  String get catalogLineCities => 'Municípios';
+
+  @override
+  String get catalogLineOrigin => 'Origem';
+
+  @override
+  String get catalogLineDestination => 'Destino';
+
+  @override
+  String catalogValidFrom(String date) {
+    return 'Vigência desde $date';
+  }
+
+  @override
+  String get catalogBackToLines => 'Voltar às linhas';
+
+  @override
+  String catalogOpenLine(String line, String name) {
+    return 'Linha $line, $name. Ver detalhes';
+  }
+
+  @override
+  String get catalogLineNotFound => 'Linha não encontrada no cadastro.';
+
+  @override
+  String catalogVariantCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count variantes',
+      one: '1 variante',
+      zero: 'Sem variantes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsCatalog => 'Catálogo oficial (desenvolvimento)';
+
+  @override
+  String settingsCatalogBody(String license, String reference, String version) {
+    return 'Versão $version · referência $reference · redistribuição: $license. Ligado só neste build de desenvolvimento.';
+  }
+
+  @override
+  String get catalogIntroTitle => 'Busque um ponto';
+
+  @override
+  String get catalogIntroBody =>
+      'Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa.';
 }

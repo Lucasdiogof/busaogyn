@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../catalog/presentation/catalog_access.dart';
 import '../../../transit/domain/entities/arrival.dart';
 import '../../../transit/presentation/formatters/transit_labels.dart';
 import '../../domain/saved_stop.dart';
@@ -230,7 +231,12 @@ class _StopTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final named = stop.name != null;
+    // Nome guardado (quando a fonte deu um) ou, com o catálogo oficial
+    // ligado, o endereço do cadastro. Só exibição: nada muda no que foi salvo.
+    final catalogStop = context.catalog?.stop(stop.code);
+    final name = stop.name ?? catalogStop?.address;
+    final place = catalogStop?.place;
+    final named = name != null;
     return Container(
       decoration: BoxDecoration(
         color: tokens.card,
@@ -246,7 +252,7 @@ class _StopTile extends StatelessWidget {
                 child: Semantics(
                   button: true,
                   label: named
-                      ? l10n.stopOpenArrivalsNamed(stop.code, stop.name!)
+                      ? l10n.stopOpenArrivalsNamed(stop.code, name)
                       : l10n.stopOpenArrivals(stop.code),
                   excludeSemantics: true,
                   child: InkWell(
@@ -271,7 +277,7 @@ class _StopTile extends StatelessWidget {
                                 children: [
                                   if (named)
                                     Text(
-                                      stop.name!,
+                                      name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: tokens.strongText,
@@ -302,6 +308,13 @@ class _StopTile extends StatelessWidget {
                                             ),
                                           ),
                                         ),
+                                        if (place != null)
+                                          TextSpan(
+                                            text: ' · $place',
+                                            style: TextStyle(
+                                              color: tokens.mutedText,
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -349,6 +362,7 @@ class _LineTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final address = context.catalog?.stop(line.stopCode)?.address;
     return Container(
       decoration: BoxDecoration(
         color: tokens.card,
@@ -363,7 +377,9 @@ class _LineTile extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: true,
-                  label: l10n.lineOpenArrivals(line.routeId, line.stopCode),
+                  label: address == null
+                      ? l10n.lineOpenArrivals(line.routeId, line.stopCode)
+                      : '${l10n.lineOpenArrivals(line.routeId, line.stopCode)}, $address',
                   excludeSemantics: true,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(Radii.card),
@@ -398,6 +414,13 @@ class _LineTile extends StatelessWidget {
                                         ),
                                       ),
                                     ),
+                                    if (address != null)
+                                      TextSpan(
+                                        text: ' · $address',
+                                        style: TextStyle(
+                                          color: tokens.mutedText,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),

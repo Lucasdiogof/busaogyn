@@ -9,6 +9,9 @@ import '../../../../core/config/map_config.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../catalog/domain/transit_catalog.dart';
+import '../../../catalog/presentation/catalog_access.dart';
+import '../../../catalog/presentation/catalog_widgets.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
 import '../../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import '../../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
@@ -129,6 +132,21 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// só quando ela der certo (v2).
   String? _pendingRecord;
 
+  /// Catálogo oficial ligado (só em desenvolvimento); `null` = como antes.
+  TransitCatalog? get _catalog => context.catalog;
+
+  /// Ponto escolhido no catálogo, com detalhes à vista (antes das chegadas).
+  String? _previewStop;
+
+  /// Último texto enviado como busca de chegadas; enquanto o campo mostra
+  /// esse mesmo texto, o painel mostra o resultado da consulta, não a lista
+  /// do catálogo.
+  String? _submittedQuery;
+
+  /// Aba Linhas com catálogo: busca e linha aberta.
+  final _linesQuery = TextEditingController();
+  String? _openLine;
+
   DateTime Function() get _clock => widget.clock ?? DateTime.now;
 
   @override
@@ -164,6 +182,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopController.dispose();
+    _linesQuery.dispose();
     _searchFocus.dispose();
     _sheetController.dispose();
     _sheetExtent.dispose();
@@ -174,6 +193,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   void _search() {
     FocusScope.of(context).unfocus();
+    final text = _stopController.text.trim();
+    // Com catálogo, texto (rua, bairro…) é busca local: a lista já está no
+    // painel e nada vai para a API.
+    if (_catalog != null && !RegExp(r'^\d+$').hasMatch(text)) return;
+    _submittedQuery = text;
     final cubit = context.read<StopArrivalsCubit>();
     // Com um ponto na tela, a busca só fecha quando der certo (ver
     // _onStateChanged); se falhar, o campo continua com o aviso.
@@ -189,6 +213,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// consulta já está em andamento, só mostra Pontos (nada de consulta em
   /// duplicidade); a geração do cubit descarta respostas de buscas antigas.
   void _openStop(String code) {
+    if (_previewStop != null) setState(() => _previewStop = null);
     final state = context.read<StopArrivalsCubit>().state;
     final inFlight =
         (state is StopArrivalsLoading && state.stopId == code) ||
@@ -247,6 +272,23 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       _pendingRecord = null;
       unawaited(context.read<SavedStopsCubit>().recordQuery(pending));
     }
+  }
+
+  /// Mostra os detalhes de um ponto do catálogo (offline), sem consultar a API.
+  void _openPreview(String code) {
+    FocusScope.of(context).unfocus();
+    setState(() => _previewStop = code);
+    _select(HomeTab.stop);
+  }
+
+  /// Fecha os detalhes e volta à busca, com o texto que estava no campo.
+  void _closePreview() {
+    setState(() {
+      _previewStop = null;
+      if (context.read<StopArrivalsCubit>().state is StopArrivalsLoaded) {
+        _searching = true;
+      }
+    });
   }
 
   void _searchExample(String stopId) {
@@ -579,7 +621,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 filled: false,
               ),
               title: l10n.dockLines,
-              subtitle: Text(l10n.comingSoon),
+              subtitle: Text(
+                _catalog == null
+                    ? l10n.comingSoon
+                    : l10n.catalogLinesHeaderSubtitle(_catalog!.lines.length),
+              ),
             ),
           ),
           HomeTab.favorites => (
@@ -643,6 +689,26 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   }
 
   (Key, Widget) _stopHeader(StopArrivalsState state) {
+    final catalog = _catalog;
+    final preview = _previewStop;
+    if (catalog != null && preview != null) {
+      final stop = catalog.stop(preview);
+      return (
+        ValueKey('header-preview-$preview'),
+        ContextHeader(
+          leading: const HeaderTile(Icons.location_on_outlined),
+          title: l10n.catalogStopTitle(preview),
+          subtitle: Text(
+            stop?.place ?? stop?.address ?? l10n.catalogStopNotFound,
+          ),
+          action: IconButton(
+            tooltip: l10n.catalogPreviewClose,
+            onPressed: _closePreview,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ),
+      );
+    }
     final stopId = switch (state) {
       StopArrivalsLoaded(:final stopId) => stopId,
       StopArrivalsLoading(:final stopId) => stopId,
@@ -657,19 +723,15 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     // sobre o ponto válido anterior, que não sai da tela.
     final searchingOther =
         state is StopArrivalsLoaded && state.searchingStopId != null;
-    final showSearch =
-        _searching ||
-        stopId == null ||
-        state is StopArrivalsInitial ||
-        searchingOther ||
-        searchError != null;
 
-    if (showSearch) {
+    // `stopId == null` repetido aqui para o Dart promover o tipo abaixo.
+    if (stopId == null || _isSearchVisible(state)) {
       return (
         const ValueKey('header-search'),
         SearchHeader(
           controller: _stopController,
           focusNode: _searchFocus,
+          allowText: catalog != null,
           loading: state is StopArrivalsLoading || searchingOther,
           error: searchError,
           onEdited: context.read<StopArrivalsCubit>().clearSearchError,
@@ -734,6 +796,26 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     );
   }
 
+  /// O campo de busca está à vista na aba Pontos (sem ponto, buscando outro
+  /// ou com erro de busca).
+  bool _isSearchVisible(StopArrivalsState state) {
+    final stopId = switch (state) {
+      StopArrivalsLoaded(:final stopId) => stopId,
+      StopArrivalsLoading(:final stopId) => stopId,
+      _ => null,
+    };
+    final searchError = switch (state) {
+      StopArrivalsInitial(:final searchError) => searchError,
+      StopArrivalsLoaded(:final searchError) => searchError,
+      _ => null,
+    };
+    return _searching ||
+        stopId == null ||
+        state is StopArrivalsInitial ||
+        (state is StopArrivalsLoaded && state.searchingStopId != null) ||
+        searchError != null;
+  }
+
   (Key, Widget) _trackingHeader(StopArrivalsState state) {
     final tracking = state is StopArrivalsLoaded ? state.tracking : null;
     if (state is! StopArrivalsLoaded || tracking == null) {
@@ -792,20 +874,49 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     return BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
       builder: (context, state) {
         final cubit = context.read<StopArrivalsCubit>();
-        final Widget child = switch (_tab) {
-          HomeTab.stop => ArrivalsPanel(
-            state: state,
-            onRefresh: cubit.refresh,
-            onTrack: _track,
-            onOpenTracking: () => _select(HomeTab.tracking),
-            onExample: _searchExample,
-            onRetrySearch: _search,
-            below: RecentStopsSection(
-              onOpen: _openStop,
-              excludeCode: state is StopArrivalsLoaded ? state.stopId : null,
-              showEmpty: state is StopArrivalsInitial,
-            ),
+        final catalog = _catalog;
+        final arrivals = ArrivalsPanel(
+          state: state,
+          onRefresh: cubit.refresh,
+          onTrack: _track,
+          onOpenTracking: () => _select(HomeTab.tracking),
+          onExample: _searchExample,
+          onRetrySearch: _search,
+          above: catalog != null && state is StopArrivalsLoaded
+              ? CatalogStopFacts(
+                  catalog: catalog,
+                  stopId: state.stopId,
+                  compact: true,
+                )
+              : null,
+          below: RecentStopsSection(
+            onOpen: _openStop,
+            excludeCode: state is StopArrivalsLoaded ? state.stopId : null,
+            showEmpty: state is StopArrivalsInitial,
           ),
+        );
+        final Widget child = switch (_tab) {
+          HomeTab.stop when catalog != null && _previewStop != null =>
+            StopPreview(
+              key: ValueKey('preview-$_previewStop'),
+              catalog: catalog,
+              stopId: _previewStop!,
+              onSeeArrivals: () => _openStop(_previewStop!),
+            ),
+          HomeTab.stop when catalog != null && _isSearchVisible(state) =>
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _stopController,
+              builder: (context, value, _) {
+                final query = value.text.trim();
+                if (query.isEmpty || query == _submittedQuery) return arrivals;
+                return StopSearchResults(
+                  catalog: catalog,
+                  query: query,
+                  onSelect: _openPreview,
+                );
+              },
+            ),
+          HomeTab.stop => arrivals,
           HomeTab.tracking => switch (state) {
             StopArrivalsLoaded(:final tracking?) => TrackingCard(
               state: state,
@@ -822,6 +933,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               onOpenStop: () => _select(HomeTab.stop),
             ),
           },
+          HomeTab.lines when catalog != null => CatalogLinesPanel(
+            catalog: catalog,
+            query: _linesQuery,
+            openLineId: _openLine,
+            onOpenLine: (id) => setState(() => _openLine = id),
+            onOpenStop: _openPreview,
+          ),
           HomeTab.lines => SeenLinesPanel(
             currentStopId: state is StopArrivalsLoaded ? state.stopId : null,
             currentGroups: state is StopArrivalsLoaded

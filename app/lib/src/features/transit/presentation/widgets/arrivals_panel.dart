@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
+import '../../../catalog/presentation/catalog_access.dart';
 import '../cubit/stop_arrivals_cubit.dart';
 import 'arrival_card.dart';
 
@@ -19,6 +20,7 @@ class ArrivalsPanel extends StatelessWidget {
     required this.onOpenTracking,
     required this.onExample,
     this.onRetrySearch,
+    this.above,
     this.below,
     super.key,
   });
@@ -34,6 +36,10 @@ class ArrivalsPanel extends StatelessWidget {
 
   /// Conteúdo extra no fim do painel (v2: Recentes). `null` no dock atual.
   final Widget? below;
+
+  /// Dados do ponto no catálogo oficial, acima das chegadas (só com o ponto
+  /// carregado). `null` com o catálogo desligado.
+  final Widget? above;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +67,7 @@ class ArrivalsPanel extends StatelessWidget {
     final tracking = state.tracking;
 
     return [
+      if (above != null) ...[above!, const SizedBox(height: Space.sm)],
       if (tracking != null) ...[
         _TrackingBanner(tracking: tracking, onOpen: onOpenTracking),
         const SizedBox(height: Space.sm),
@@ -322,8 +329,13 @@ class _Intro extends StatelessWidget {
       children: [
         MessageView(
           icon: Icons.location_on_outlined,
-          title: l10n.introTitle,
-          body: l10n.introBody,
+          // Com o catálogo oficial ligado, a busca aceita rua, bairro e cidade.
+          title: context.catalog == null
+              ? l10n.introTitle
+              : l10n.catalogIntroTitle,
+          body: context.catalog == null
+              ? l10n.introBody
+              : l10n.catalogIntroBody,
           action: Semantics(
             button: true,
             label: l10n.exampleStopSemantics(exampleStopId),

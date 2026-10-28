@@ -307,7 +307,7 @@ abstract class AppLocalizations {
   /// No description provided for @linesCount.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 linha} other{{count} linhas}}'**
+  /// **'{count, plural, =0{0 linhas} =1{1 linha} other{{count} linhas}}'**
   String linesCount(int count);
 
   /// No description provided for @savedStopsNone.
@@ -319,7 +319,7 @@ abstract class AppLocalizations {
   /// No description provided for @savedStopsCount.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 ponto salvo} other{{count} pontos salvos}}'**
+  /// **'{count, plural, =0{0 pontos salvos} =1{1 ponto salvo} other{{count} pontos salvos}}'**
   String savedStopsCount(int count);
 
   /// No description provided for @queryingArrivals.
@@ -391,7 +391,7 @@ abstract class AppLocalizations {
   /// No description provided for @minutesLong.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 minuto} other{{count} minutos}}'**
+  /// **'{count, plural, =0{0 minutos} =1{1 minuto} other{{count} minutos}}'**
   String minutesLong(int count);
 
   /// No description provided for @punctualityOnTime.
@@ -1241,7 +1241,7 @@ abstract class AppLocalizations {
   /// No description provided for @mapOthers.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =1{Mais 1 ônibus em tempo real a caminho do ponto} other{Mais {count} ônibus em tempo real a caminho do ponto}}'**
+  /// **'{count, plural, =0{Mais 0 ônibus em tempo real a caminho do ponto} =1{Mais 1 ônibus em tempo real a caminho do ponto} other{Mais {count} ônibus em tempo real a caminho do ponto}}'**
   String mapOthers(int count);
 
   /// No description provided for @favoriteStopAdd.
@@ -1591,6 +1591,264 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Bibliotecas e fontes usadas pelo app.'**
   String get settingsLicensesBody;
+
+  /// No description provided for @catalogSearchHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Código, rua, bairro ou cidade'**
+  String get catalogSearchHint;
+
+  /// No description provided for @catalogResultsTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pontos no cadastro'**
+  String get catalogResultsTitle;
+
+  /// No description provided for @catalogResultsCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhum ponto} =1{1 ponto} other{{count} pontos}}'**
+  String catalogResultsCount(int count);
+
+  /// No description provided for @catalogResultsMore.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mostrando {shown} de {total}. Refine a busca para ver outros.'**
+  String catalogResultsMore(int shown, int total);
+
+  /// No description provided for @catalogNoResultsTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum ponto encontrado'**
+  String get catalogNoResultsTitle;
+
+  /// No description provided for @catalogNoResultsBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Confira a grafia ou use o código impresso no ponto.'**
+  String get catalogNoResultsBody;
+
+  /// No description provided for @catalogSearchCodeHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque em um ponto para ver o endereço e as linhas, ou envie o código para consultar as chegadas.'**
+  String get catalogSearchCodeHint;
+
+  /// No description provided for @catalogOpenStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ponto {code}, {place}. Ver detalhes'**
+  String catalogOpenStop(String code, String place);
+
+  /// No description provided for @catalogStopNotFound.
+  ///
+  /// In pt, this message translates to:
+  /// **'Este código não está no cadastro oficial. A consulta de chegadas pode funcionar mesmo assim.'**
+  String get catalogStopNotFound;
+
+  /// No description provided for @catalogStopLinesTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linhas que atendem este ponto'**
+  String get catalogStopLinesTitle;
+
+  /// No description provided for @catalogStopLinesNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Cadastro oficial: mostra as linhas do ponto, não ônibus a caminho. Chegadas em tempo real ou programadas aparecem na consulta de chegadas.'**
+  String get catalogStopLinesNote;
+
+  /// No description provided for @catalogNoLinesListed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma linha associada a este ponto no cadastro.'**
+  String get catalogNoLinesListed;
+
+  /// No description provided for @catalogSeeArrivals.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver chegadas'**
+  String get catalogSeeArrivals;
+
+  /// No description provided for @catalogSourceNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Cadastro oficial CMTC · referência {reference} · disponível offline'**
+  String catalogSourceNote(String reference);
+
+  /// No description provided for @catalogDevBadge.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dados de desenvolvimento, não publicados'**
+  String get catalogDevBadge;
+
+  /// No description provided for @catalogStation.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estação sem endereço no cadastro'**
+  String get catalogStation;
+
+  /// No description provided for @catalogStopTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ponto {code}'**
+  String catalogStopTitle(String code);
+
+  /// No description provided for @catalogPreviewClose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Voltar à busca'**
+  String get catalogPreviewClose;
+
+  /// No description provided for @catalogAddress.
+  ///
+  /// In pt, this message translates to:
+  /// **'Endereço'**
+  String get catalogAddress;
+
+  /// No description provided for @catalogDistrict.
+  ///
+  /// In pt, this message translates to:
+  /// **'Bairro'**
+  String get catalogDistrict;
+
+  /// No description provided for @catalogCity.
+  ///
+  /// In pt, this message translates to:
+  /// **'Município'**
+  String get catalogCity;
+
+  /// No description provided for @catalogLinesHeaderSubtitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count} linhas no cadastro oficial'**
+  String catalogLinesHeaderSubtitle(int count);
+
+  /// No description provided for @catalogLinesSearchHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Número ou nome da linha'**
+  String get catalogLinesSearchHint;
+
+  /// No description provided for @catalogLinesNoResults.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma linha encontrada.'**
+  String get catalogLinesNoResults;
+
+  /// No description provided for @catalogLinesAllTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linhas'**
+  String get catalogLinesAllTitle;
+
+  /// No description provided for @catalogShowMore.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mostrar mais'**
+  String get catalogShowMore;
+
+  /// No description provided for @catalogLineVariants.
+  ///
+  /// In pt, this message translates to:
+  /// **'Variantes'**
+  String get catalogLineVariants;
+
+  /// No description provided for @catalogLineStops.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pontos cadastrados ({count})'**
+  String catalogLineStops(int count);
+
+  /// No description provided for @catalogLineStopsNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pontos associados à linha no cadastro, sem ordem de percurso nem sentido.'**
+  String get catalogLineStopsNote;
+
+  /// No description provided for @catalogLineStatus.
+  ///
+  /// In pt, this message translates to:
+  /// **'Situação'**
+  String get catalogLineStatus;
+
+  /// No description provided for @catalogLineType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tipo'**
+  String get catalogLineType;
+
+  /// No description provided for @catalogLineCities.
+  ///
+  /// In pt, this message translates to:
+  /// **'Municípios'**
+  String get catalogLineCities;
+
+  /// No description provided for @catalogLineOrigin.
+  ///
+  /// In pt, this message translates to:
+  /// **'Origem'**
+  String get catalogLineOrigin;
+
+  /// No description provided for @catalogLineDestination.
+  ///
+  /// In pt, this message translates to:
+  /// **'Destino'**
+  String get catalogLineDestination;
+
+  /// No description provided for @catalogValidFrom.
+  ///
+  /// In pt, this message translates to:
+  /// **'Vigência desde {date}'**
+  String catalogValidFrom(String date);
+
+  /// No description provided for @catalogBackToLines.
+  ///
+  /// In pt, this message translates to:
+  /// **'Voltar às linhas'**
+  String get catalogBackToLines;
+
+  /// No description provided for @catalogOpenLine.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linha {line}, {name}. Ver detalhes'**
+  String catalogOpenLine(String line, String name);
+
+  /// No description provided for @catalogLineNotFound.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linha não encontrada no cadastro.'**
+  String get catalogLineNotFound;
+
+  /// No description provided for @catalogVariantCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Sem variantes} =1{1 variante} other{{count} variantes}}'**
+  String catalogVariantCount(int count);
+
+  /// No description provided for @settingsCatalog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Catálogo oficial (desenvolvimento)'**
+  String get settingsCatalog;
+
+  /// No description provided for @settingsCatalogBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Versão {version} · referência {reference} · redistribuição: {license}. Ligado só neste build de desenvolvimento.'**
+  String settingsCatalogBody(String license, String reference, String version);
+
+  /// No description provided for @catalogIntroTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Busque um ponto'**
+  String get catalogIntroTitle;
+
+  /// No description provided for @catalogIntroBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa.'**
+  String get catalogIntroBody;
 }
 
 class _AppLocalizationsDelegate
