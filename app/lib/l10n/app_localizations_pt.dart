@@ -916,7 +916,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsBusDataBody =>
-      'RMTC, via API BusãoGyn. Posições e previsões em tempo real dependem do GPS informado pela fonte.';
+      'App independente, sem vínculo com a RMTC, a CMTC ou a Prefeitura. Dados da RMTC via API BusãoGyn; posições e previsões em tempo real dependem do GPS informado pela fonte.';
 
   @override
   String get settingsMap => 'Mapa';
@@ -937,6 +937,28 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsLicensesBody => 'Bibliotecas e fontes usadas pelo app.';
+
+  @override
+  String get settingsPrivacy => 'Privacidade';
+
+  @override
+  String get settingsPrivacyBody => 'O que o app faz com dados.';
+
+  @override
+  String get privacySummary =>
+      '• Sem conta, login ou cadastro.\n• O app não pede a sua localização e não acessa contatos, fotos, câmera nem microfone.\n• Sem publicidade, análise de uso, relatório de falhas ou rastreamento.\n• Favoritos, recentes e o tema ficam só neste aparelho.\n• Para mostrar chegadas e posições, o código do ponto e o número do ônibus vão para a API do BusãoGyn (Cloudflare), que consulta a RMTC. O mapa vem do OpenFreeMap. Como em qualquer acesso à internet, esses serviços recebem dados técnicos da conexão, como o IP.\n• Compartilhar abre a opção do sistema com o texto que você vê; nada é enviado sem a sua ação.';
+
+  @override
+  String get privacyFullPolicy => 'Política completa:';
+
+  @override
+  String get privacyCopyLink => 'Copiar link';
+
+  @override
+  String get privacyLinkCopied => 'Link copiado.';
+
+  @override
+  String get privacyClose => 'Fechar';
 
   @override
   String get catalogSearchHint => 'Código, rua, bairro ou cidade';
@@ -1671,6 +1693,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get shareCopied => 'Texto copiado para compartilhar.';
+
+  @override
+  String get shareUnavailable =>
+      'Não foi possível compartilhar neste aparelho ou navegador.';
 
   @override
   String shareStop(String code) {

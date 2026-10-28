@@ -1,6 +1,6 @@
 # BusãoGyn — comportamento de privacidade
 
-Atualizado em 17/10/2026, versão do app `1.0.0+1`.
+Atualizado em 28/10/2026 (Etapa E), versão do app `1.0.0+1`.
 
 Este documento descreve o que o app faz hoje com dados, a partir do código deste repositório. Ele **não é uma política de privacidade jurídica**; serve de base factual para redigi-la e para responder aos formulários das lojas (Google Play "Segurança dos dados" e App Store "Privacidade do app").
 
@@ -10,6 +10,8 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 - O app de produção **não usa a localização do usuário**: o build release do Android não declara permissão de localização (o manifesto principal as remove e também o serviço de localização do plugin). O iOS tem a frase `NSLocationWhenInUseUsageDescription` no `Info.plist` (o arquivo é o mesmo para todos os builds), mas o app de produção nunca pede a permissão: "Perto de mim" só existe com o catálogo de desenvolvimento (seção 1.1).
 - Não acessa contatos, fotos, câmera, microfone, arquivos ou calendário.
 - Não tem analytics, crash reporting, publicidade nem SDK de rastreamento.
+- **Compartilhar ponto** (também em produção): abre a folha de compartilhamento do sistema com o texto mostrado (código do ponto). Sem compartilhamento no aparelho ou navegador, o texto é copiado; nada é enviado pelo app.
+- A política fica acessível **dentro do app** (Ajustes → Privacidade: resumo e link da política completa), como exige a App Store.
 - O app guarda **no aparelho**, e só nele, a preferência de tema (claro, noturno ou sistema), os pontos favoritos, as linhas favoritas em cada ponto e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta. Não guarda histórico de buscas, previsões de chegada nem posições.
 
 ## 1. Dados do app
@@ -50,7 +52,7 @@ O app não envia identificadores próprios, cookies nem tokens.
 | OpenFreeMap (`tiles.openfreemap.org`) | Estilo, tiles, fontes e ícones do mapa | Área e zoom do mapa exibido, dados técnicos de rede | Todas |
 | unpkg (`unpkg.com`) | Biblioteca MapLibre GL JS 6.4.1 e seu CSS, carregados pelo plugin `maplibre_gl_web` | Dados técnicos de rede | Somente Web |
 | Google Fonts (`fonts.gstatic.com`) | Fontes de fallback do Flutter Web, baixadas só se a tela precisar de caracteres fora das fontes do app (por exemplo, emoji) | Dados técnicos de rede | Somente Web |
-| Cloudflare Workers (Static Assets, Worker `busaogyn-web`, ainda não publicado) | Arquivos do app Web | Dados técnicos de rede, conforme os logs da plataforma | Somente Web |
+| Cloudflare Workers (Static Assets, Worker `busaogyn-web`, publicado em `busaogyn.lucksrei.com`) | Arquivos do app Web; a zona também injeta uma verificação anti-robô (`/cdn-cgi/challenge-platform`, observada em 28/10/2026) | Dados técnicos de rede e sinais do navegador usados pela verificação, conforme a plataforma | Somente Web |
 
 Notas:
 
@@ -82,6 +84,8 @@ Esta seção descreve intenção para as próximas versões ([plano](v2/PLANO_BU
 - **Telemetria e crash reporting:** nenhum previsto.
 
 ## Pendências
+
+- **Política pública em lucksrei.com** (atualizada em 22/10/2026): falta citar o compartilhar e a verificação anti-robô da Cloudflare na versão Web. Texto proposto em [BUSAOGYN_2_0_ETAPA_E_PUBLICACAO.md](BUSAOGYN_2_0_ETAPA_E_PUBLICACAO.md#7-privacidade-e-segurança); o app aponta para `https://lucksrei.com/projects/busaogyn/privacy/`.
 
 - **Páginas públicas em três idiomas** (privacidade, exclusão de dados e suporte) em https://lucksrei.com/projects/busaogyn/ (repositório do site). Contato: marketing@lucksrei.com. Mantenha-as iguais a este documento quando algo mudar.
 - **Política de privacidade publicada**: o texto público está em `app/web/privacidade.html` (servido em `/privacidade.html` com o app Web). Falta só publicar o app Web e informar essa URL nas duas lojas. Mantenha a página igual a este documento quando algo mudar.

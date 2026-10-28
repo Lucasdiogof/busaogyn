@@ -1267,7 +1267,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   button,
                   stopShareText(stopId, stop: catalog?.stop(stopId)),
                 ),
-                icon: const Icon(Icons.ios_share_rounded),
+                icon: Icon(Icons.adaptive.share),
               ),
             ),
             searchButton,

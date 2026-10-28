@@ -10,6 +10,7 @@ import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dar
 import 'package:busaogyn/src/features/transit/domain/repositories/transit_repository.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
+import 'package:busaogyn/src/features/transit/presentation/widgets/settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -396,6 +397,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tema'), findsOneWidget);
+    // Play (órgão de governo): o app declara que não é oficial.
+    expect(find.textContaining('sem vínculo com a RMTC'), findsOneWidget);
     expect(
       find.text('OpenFreeMap · © OpenMapTiles · dados © OpenStreetMap'),
       findsOneWidget,
@@ -419,6 +422,39 @@ void main() {
     await tester.tap(find.byTooltip('Fechar ajustes'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchHeader), findsOneWidget);
+  });
+
+  testWidgets('Ajustes mostra a política de privacidade (App Store 5.1.1)', (
+    tester,
+  ) async {
+    await _pumpApp(tester, _FakeTransitRepository());
+    await tester.tap(find.byTooltip('Ajustes'));
+    await tester.pumpAndSettle();
+    // No celular o item fica abaixo da dobra: arrastar expande a folha e rola.
+    await tester.dragUntilVisible(
+      find.text('Privacidade'),
+      find.text('Tema'),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Privacidade'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byKey(const ValueKey('privacy-dialog'));
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.textContaining('não pede a sua localização'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(privacyPolicyUrl), findsOneWidget);
+    expect(privacyPolicyUrl, startsWith('https://'));
+
+    await tester.tap(find.text('Fechar'));
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
   });
 
   testWidgets('tema salvo é aplicado ao abrir', (tester) async {

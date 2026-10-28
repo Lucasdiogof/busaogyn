@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/settings/theme_mode_cubit.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../catalog/presentation/catalog_access.dart';
+
+/// Política de privacidade publicada (pt, en, es).
+const privacyPolicyUrl = 'https://lucksrei.com/projects/busaogyn/privacy/';
 
 /// Aba Ajustes: tema e informações sobre as fontes de dados do app.
 class SettingsPanel extends StatelessWidget {
@@ -71,11 +75,71 @@ class SettingsPanel extends StatelessWidget {
           body: l10n.settingsTypographyBody,
         ),
         const SizedBox(height: Space.xs),
+        // A App Store exige a política acessível dentro do app (5.1.1).
+        _Tile(
+          title: l10n.settingsPrivacy,
+          body: l10n.settingsPrivacyBody,
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) => const _PrivacyDialog(),
+          ),
+        ),
+        const SizedBox(height: Space.xs),
         _Tile(
           title: l10n.settingsLicenses,
           body: l10n.settingsLicensesBody,
           onTap: () =>
               showLicensePage(context: context, applicationName: 'BusãoGyn'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Resumo da política, com o link da versão completa para copiar (o app não
+/// abre navegador).
+class _PrivacyDialog extends StatelessWidget {
+  const _PrivacyDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    return AlertDialog(
+      key: const ValueKey('privacy-dialog'),
+      title: Text(l10n.settingsPrivacy),
+      scrollable: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.privacySummary),
+          const SizedBox(height: Space.sm),
+          Text(
+            l10n.privacyFullPolicy,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SelectableText(privacyPolicyUrl),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            try {
+              await Clipboard.setData(
+                const ClipboardData(text: privacyPolicyUrl),
+              );
+            } catch (_) {
+              return; // O link continua à vista e selecionável.
+            }
+            messenger?.showSnackBar(
+              SnackBar(content: Text(l10n.privacyLinkCopied)),
+            );
+          },
+          child: Text(l10n.privacyCopyLink),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.privacyClose),
         ),
       ],
     );

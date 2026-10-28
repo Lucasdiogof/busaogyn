@@ -1,6 +1,6 @@
 # BusãoGyn — release Android, iOS e Web
 
-Atualizado em 08/10/2026.
+Atualizado em 08/10/2026; revisado na Etapa E (28/10/2026, ver [BUSAOGYN_2_0_ETAPA_E_PUBLICACAO.md](BUSAOGYN_2_0_ETAPA_E_PUBLICACAO.md)).
 
 Este documento reúne a configuração de release, o checklist de publicação e as regras de produto que valem para qualquer build distribuído. Ele não substitui a documentação oficial das plataformas; requisitos de loja mudam e precisam ser conferidos na data da submissão.
 
@@ -95,7 +95,8 @@ Permissões efetivas do APK release (`aapt2 dump permissions`, CI de 08/10/2026)
 
 Ausentes no APK final: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `CAMERA`, `RECORD_AUDIO`, `READ_CONTACTS` e permissões de mídia ou armazenamento.
 
-- `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`, declaradas pelo MapLibre, são removidas no manifest com `tools:node="remove"`.
+- `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`, declaradas pelo MapLibre e pelo `geolocator`, são removidas no manifest principal com `tools:node="remove"`, junto com o `GeolocatorLocationService`. Só os manifests `debug` e `profile` as recolocam (Perto de mim, desenvolvimento).
+- No Android 17, o sistema acrescenta `ACCESS_LOCAL_NETWORK` por compatibilidade a apps com INTERNET; ela não está no APK.
 - O CI lista as permissões do APK release (`aapt2 dump permissions`) e falha se aparecer localização, câmera, microfone, contatos ou mídia.
 - Localização só pode entrar junto com uma funcionalidade que a use, e nesse caso a declaração de dados da Play precisa ser revista.
 
@@ -177,6 +178,7 @@ As bibliotecas nativas são `libflutter.so`, `libapp.so` (Flutter/NDK r28) e as 
 - [ ] Play Console: Play App Signing ativado, app criado com `com.lucksrei.busaogyn`.
 - [ ] Ficha da loja: nome, descrição curta (80 caracteres), descrição completa, ícone de 512×512, gráfico de destaque e capturas de tela (ver [Assets de loja](#assets-de-loja)).
 - [ ] Segurança dos dados e URL da política de privacidade (ver [PRIVACY.md](PRIVACY.md)).
+- [ ] Descrição com a declaração de independência e a fonte dos dados (política de apps com informação de órgão público; texto na Etapa E).
 - [ ] Classificação de conteúdo (questionário IARC), público-alvo e declaração de anúncios (não há anúncios).
 - [ ] Teste interno ou fechado antes da produção, com aparelho físico (gestos do MapLibre).
 
@@ -188,12 +190,13 @@ As bibliotecas nativas são `libflutter.so`, `libapp.so` (Flutter/NDK r28) e as 
 - O `Podfile` está versionado com `platform :ios, '15.0'`.
   - O primeiro `pod install` num Mac integra os Pods ao `Runner.xcodeproj` e gera o `Podfile.lock`. Os dois devem ser commitados (o `.gitignore` já libera `app/ios/Podfile.lock`).
 - `Info.plist`:
-  - Sem chaves de permissão: nada de `NSLocation*`, câmera, fotos, microfone ou contatos.
+  - `NSLocationWhenInUseUsageDescription` presente porque o `Info.plist` é o mesmo do build de desenvolvimento (Perto de mim). A produção nunca pede a permissão. Nada de câmera, fotos, microfone ou contatos.
   - `ITSAppUsesNonExemptEncryption = false`, porque o app só usa HTTPS do sistema, isento de documentação de exportação.
   - Orientações: retrato e paisagem no iPhone, todas no iPad.
 - App Transport Security: sem exceções; toda a rede é HTTPS.
 - Privacidade: o app não tem `PrivacyInfo.xcprivacy` próprio, porque o código do Runner não usa APIs que exijam justificativa. Flutter, `shared_preferences` e MapLibre trazem os manifestos deles. Detalhes em [PRIVACY.md](PRIVACY.md#4-manifestos-de-privacidade-de-sdks-ios).
-- Ciclo de vida: `AppDelegate` igual ao template do Flutter 3.38.5, sem `UIScene`. A Apple anunciou que o ciclo de vida UIScene será obrigatório nos SDKs após o iOS 26. Migrar quando o Flutter estável e os plugins suportarem, seguindo o guia oficial do Flutter.
+- Ciclo de vida: UIScene já adotado (`FlutterSceneDelegate` no `Info.plist`, `FlutterImplicitEngineDelegate` no `AppDelegate`), desde `afdad14`.
+- Política de privacidade dentro do app: Ajustes → Privacidade (diretriz 5.1.1(i)).
 
 ### Assinatura (sem nada no repositório)
 
@@ -223,7 +226,7 @@ O upload é feito pelo Xcode (Organizer → Distribute App) ou pelo Transporter.
 - [ ] Relatório de privacidade do Xcode revisado.
 - [ ] App Store Connect: app criado com o bundle ID, categoria (Navegação ou Viagem), classificação etária.
 - [ ] Privacidade do app ("Data Not Collected") e URL da política de privacidade.
-- [ ] Capturas de iPhone 6.9" e de iPad 13", porque o app suporta iPad (ver [Assets de loja](#assets-de-loja)).
+- [ ] Capturas de iPhone 6.9" e de iPad 13", porque o app suporta iPad (ver [Assets de loja](#assets-de-loja)). **Só de build iOS** (simulador ou aparelho): nunca reaproveitar capturas do Android ou do Web.
 - [ ] TestFlight interno em aparelho físico antes de enviar para revisão.
 - [ ] Notas para a revisão: o app não exige login. Indique um ponto de exemplo (30402) e explique que só ônibus com GPS informado pela RMTC aparecem em tempo real.
 
@@ -312,6 +315,7 @@ As capturas devem ser reais, tiradas do app. Não use mockups artificiais.
   - Web release;
   - tamanhos dos artefatos.
 - **build-ios** (macOS): build para simulador e build de release para dispositivo, ambos sem assinatura.
+- Desde a Etapa E: o job **flutter** falha se dados da CMTC forem versionados, e os jobs de build rodam `check-no-official-catalog.sh` nos artefatos (com controle positivo) e `check-bundle-secrets.sh` no Web.
 
 ## OpenFreeMap
 
