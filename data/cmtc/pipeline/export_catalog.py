@@ -8,13 +8,16 @@ Gera, em `app/dev_catalog/` (ignorado pelo Git):
 O `lib/main.dart` de produção nunca importa nada daqui; por isso nenhum build
 de produção contém os dados (ver docs/BUSAOGYN_2_0_FASE_2_IMPLEMENTACAO.md).
 
-Só dados OFICIAIS entram (cadastros e KMZ de pontos). Nada inferido.
+Dados oficiais (cadastros, KMZ, planilhas OSO) e, separada e rotulada, a
+sequência ESTIMADA de paradas (ADR-0005: só em desenvolvimento). As notas das
+planilhas não entram (trazem nome de pessoa); operadoras também não.
 
     cd data/cmtc && python3 -I pipeline/export_catalog.py
 """
 
 from __future__ import annotations
 
+import collections
 import datetime as dt
 import hashlib
 import json
@@ -24,7 +27,13 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
 from cmtc.geo import encode_polyline, length_m, simplify  # noqa: E402
+from cmtc.schedules import parse_sheet  # noqa: E402
+from cmtc.sequence import Params  # noqa: E402
 from cmtc.sources import read_lines, read_shapes, read_stop_points, read_stops  # noqa: E402
+from cmtc.stop_sequences import (MAX_AMBIGUOUS_SHARE, METHOD, MIN_ENTRIES, MIN_HIGH_SHARE,  # noqa: E402
+                                 MIN_STREET_RHO, sequence_shapes)
+from cmtc.timetables import build_timetables, delivered_date  # noqa: E402
+from cmtc.xlsx import read_workbook  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 RAW = os.path.join(ROOT, 'raw')
@@ -33,6 +42,7 @@ LINES_XLSX = 'Cadastro Geral das Linhas da RMTC _Setembro-2026 01.09.2026.xlsx'
 STOPS_XLSX = 'Cadastro Geral dos Pontos de Ônibus da RMTC- Outubro - 2026.xlsx'
 POINTS_KMZ = 'PED_S MUNICIPIO.kmz'
 SHAPES_KMZ = 'LINHAS RMTC.kmz'
+SCHEDULES_DIR = 'Planilhas Horárias por Terminal da RMTC _ 28-10-2026'
 
 # Tolerância de simplificação dos trajetos distribuídos ao app (Douglas-Peucker,
 # em metros). O original fica intacto em raw/ e processed/.
@@ -93,8 +103,9 @@ def build_catalog():
             round(p.lat, 6), round(p.lon, 6), [], p.label,
         ])
 
+    shapes = read_shapes(os.path.join(RAW, SHAPES_KMZ))
     shape_rows = []
-    for sh in read_shapes(os.path.join(RAW, SHAPES_KMZ)):
+    for sh in shapes:
         if sh.code is None or len(sh.coords) < 2:
             continue
         simple = simplify(sh.coords, SHAPE_TOLERANCE_M)
@@ -102,6 +113,46 @@ def build_catalog():
             sh.shape_id, sh.code.base, sh.code.variant_key, sh.direction, sh.description,
             encode_polyline(simple), round(length_m(sh.coords)), len(sh.coords),
         ])
+
+    # Horários programados (planilhas OSO): partidas agrupadas por aba, dia,
+    # código da planilha e tipo de viagem; minutos desde o início do dia de
+    # operação (>= 1440 = depois da meia-noite). Duplicidades ficam (repetidas).
+    folder = os.path.join(RAW, SCHEDULES_DIR)
+    sheets = []
+    for name in sorted(os.listdir(folder)):
+        if name.endswith('.xlsx') and not name.startswith('~$'):
+            sheets += [parse_sheet(s, name) for s in read_workbook(os.path.join(folder, name))]
+    delivered = delivered_date(SCHEDULES_DIR)
+    timetables = build_timetables(sheets, {l.code.variant_key for l in lines}, delivered)
+    timetable_rows, trip_rows = [], []
+    for tt in timetables:
+        if not tt.line:
+            continue
+        timetable_rows.append([tt.id, tt.line, tt.source, tt.line_name, tt.sheet_date, tt.oso, tt.validity,
+                               len(tt.issues)])
+        groups = collections.defaultdict(list)
+        for t in tt.trips:
+            groups[(t.day_type, t.variant_raw, t.variant_key, t.kind)].append(t.minutes)
+        for (day, raw, key, kind), minutes in groups.items():
+            trip_rows.append([tt.id, day, raw, key, kind, minutes])
+
+    # Sequência ESTIMADA (não oficial) por trajeto.
+    members = collections.defaultdict(list)
+    for s in stops:
+        if s.lat is not None:
+            for b in s.lines:
+                members[b].append((s.stop_id, s.lon, s.lat))
+    params = Params()
+    sequences = sequence_shapes(
+        shapes, members, {l.code.variant_key: (l.streets_outbound, l.streets_inbound) for l in lines},
+        {s.stop_id: s.street for s in stops}, params)
+    level_code = {'high': 'h', 'medium': 'm'}
+    sequence_rows = [
+        [r.shape_id, r.status, r.circular,
+         ';'.join(f'{e.stop_id},{round(e.along_m)},{level_code[e.level]}' for e in r.entries),
+         sorted({sid for sid, _ in r.ambiguous}, key=int)]
+        for r in sequences
+    ]
 
     return {
         'format': 'busaogyn.catalog',
@@ -116,8 +167,18 @@ def build_catalog():
             'licenseStatus': 'pendente',
             'restricted': True,
             'shapeToleranceM': SHAPE_TOLERANCE_M,
+            'timetablesDelivered': delivered,
+            'sequenceMethod': {
+                'id': METHOD, 'official': False, 'toleranceM': params.tolerance_m,
+                'minConfidence': params.min_confidence, 'minEntries': MIN_ENTRIES,
+                'minHighShare': MIN_HIGH_SHARE, 'maxAmbiguousShare': MAX_AMBIGUOUS_SHARE,
+                'minStreetRho': MIN_STREET_RHO,
+            },
             'files': {
                 SHAPES_KMZ: _sha(os.path.join(RAW, SHAPES_KMZ)),
+                SCHEDULES_DIR: hashlib.sha256(''.join(
+                    _sha(os.path.join(folder, n)) for n in sorted(os.listdir(folder))
+                    if n.endswith('.xlsx') and not n.startswith('~$')).encode()).hexdigest(),
                 LINES_XLSX: _sha(os.path.join(RAW, LINES_XLSX)),
                 STOPS_XLSX: _sha(os.path.join(RAW, STOPS_XLSX)),
                 POINTS_KMZ: _sha(os.path.join(RAW, POINTS_KMZ)),
@@ -134,6 +195,23 @@ def build_catalog():
             'fields': ['id', 'line', 'variant', 'direction', 'description', 'polyline', 'lengthM',
                        'sourceVertices'],
             'rows': shape_rows,
+        },
+        # Quadros de horário (uma aba OSO cada). validity: confirmed | recent |
+        # old | insufficient (ver cmtc/timetables.py). Sem sentido nem local de
+        # partida: a planilha não os informa.
+        'timetables': {
+            'fields': ['id', 'line', 'source', 'lineName', 'sheetDate', 'oso', 'validity', 'issues'],
+            'rows': timetable_rows,
+        },
+        'trips': {
+            'fields': ['timetable', 'day', 'code', 'variant', 'kind', 'minutes'],
+            'rows': trip_rows,
+        },
+        # ESTIMATIVA por geometria (não oficial). entries: 'ponto,metros,nível;…'
+        # na ordem do trajeto (nível h = alto, m = intermediário).
+        'sequences': {
+            'fields': ['shape', 'status', 'circular', 'entries', 'ambiguous'],
+            'rows': sequence_rows,
         },
         'stops': {
             'fields': ['id', 'kind', 'streetType', 'street', 'reference', 'district', 'city', 'lat', 'lon',
@@ -168,6 +246,11 @@ def main():
         'variantes': len(catalog['variants']['rows']),
         'pontos': len(catalog['stops']['rows']),
         'trajetos': len(catalog['shapes']['rows']),
+        'quadros': len(catalog['timetables']['rows']),
+        'partidas': sum(len(r[-1]) for r in catalog['trips']['rows']),
+        'sequencias': collections.Counter(r[1] for r in catalog['sequences']['rows']),
+        'bytes_por_tabela': {k: len(json.dumps(v, ensure_ascii=False, separators=(',', ':')).encode())
+                             for k, v in catalog.items() if isinstance(v, dict) and 'rows' in v},
     }, ensure_ascii=False))
 
 

@@ -776,7 +776,9 @@ class _TransitMapState extends State<TransitMap>
   ) {
     if (layerId == secondaryLayerId) widget.onSecondaryTap?.call(id);
     if (layerId == vehicleLayerId) widget.onTrackedTap?.call();
-    if (layerId == netStopsLayerId) widget.onStopTap?.call(id);
+    if (layerId == netStopsLayerId || layerId == netRouteStopsLayerId) {
+      widget.onStopTap?.call(id);
+    }
     if (layerId == netClusterLayerId) unawaited(_zoomInto(coordinates));
   }
 

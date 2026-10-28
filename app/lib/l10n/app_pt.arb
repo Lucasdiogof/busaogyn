@@ -1082,7 +1082,7 @@
   },
   "catalogMapHint": "Toque num ponto do mapa para ver endereço e linhas.",
   "trackMatchTitle": "Trajeto oficial (experimental)",
-  "trackMatchConfirmed": "Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Não há previsão de horário nem de próximo ponto.",
+  "trackMatchConfirmed": "Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Sem previsão de horário.",
   "@trackMatchConfirmed": {
     "placeholders": {
       "direction": {
@@ -1117,5 +1117,144 @@
   "trackReasonDirectionUnknown": "o destino não indica o sentido",
   "trackReasonShapeMissing": "não há trajeto oficial único para esse sentido",
   "trackReasonOffRoute": "o ônibus está fora do trajeto cadastrado",
-  "trackReasonMovingBackwards": "o deslocamento observado contraria o trajeto"
+  "trackReasonMovingBackwards": "o deslocamento observado contraria o trajeto",
+  "scheduleTitle": "Horários programados",
+  "scheduleDayWeekday": "Dias úteis",
+  "scheduleDaySaturday": "Sábado",
+  "scheduleDaySunday": "Domingo e feriado",
+  "scheduleAllCodes": "Todas",
+  "scheduleNone": "Sem quadro de horários para esta linha.",
+  "scheduleInsufficient": "Quadro indisponível: dados inconsistentes ou insuficientes na planilha.",
+  "scheduleRecent": "Referência de {date} · vigência não confirmada pela CMTC. Confira antes de sair.",
+  "@scheduleRecent": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleConfirmed": "Vigência confirmada · referência de {date}.",
+  "@scheduleConfirmed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleOld": "Quadro de referência antiga ({date}). Pode não estar mais em vigor.",
+  "@scheduleOld": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleShowOld": "Ver mesmo assim",
+  "scheduleSource": "Planilha: {source} · OSO {oso}",
+  "@scheduleSource": {
+    "placeholders": {
+      "oso": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleDepartureNote": "Horários de partida, não de passagem nos pontos. A planilha não informa sentido nem local de partida. Não são previsões em tempo real.",
+  "scheduleEmptyDay": "Sem partidas programadas neste dia.",
+  "scheduleCount": "{count, plural, =0{Nenhuma partida} =1{1 partida} other{{count} partidas}}",
+  "@scheduleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scheduleLegendNextDay": "+1: depois da meia-noite",
+  "scheduleLegendHalf": "MI: meia viagem, início no retorno · MF: meia viagem, fim no retorno",
+  "scheduleLegendRepeated": "×2: repetido na planilha",
+  "scheduleCodeUnregistered": "{code} (sem cadastro)",
+  "@scheduleCodeUnregistered": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "sequenceTitle": "Paradas estimadas · {direction} ({count})",
+  "@sequenceTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "sequenceEstimatedNote": "Ordem estimada pelo trajeto oficial. Não é a sequência oficial da CMTC.",
+  "sequenceUncertain": "posição incerta",
+  "sequenceRepeated": "passa de novo",
+  "sequencePartialTitle": "Pontos perto deste trajeto ({count})",
+  "@sequencePartialTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sequencePartialNote": "Sem confiança suficiente para ordenar as paradas: lista sem ordem de percurso.",
+  "sequenceNone": "Nenhum ponto do cadastro associado a este trajeto.",
+  "sequenceAmbiguous": "{count, plural, =0{Nenhum ponto ficou de fora por ambiguidade.} =1{1 ponto ficou de fora por ambiguidade.} other{{count} pontos ficaram de fora por ambiguidade.}}",
+  "@sequenceAmbiguous": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sequenceShowAll": "Mostrar todas ({count})",
+  "@sequenceShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itineraryTitle": "No itinerário (estimado)",
+  "itineraryRow": "{variant} · {direction} — parada {position} de {total}",
+  "@itineraryRow": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "position": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "itineraryNote": "Posição estimada pelo trajeto oficial; sem horário de passagem.",
+  "nextStopsTitle": "Próximos pontos (estimado)",
+  "nextStopLabel": "Próximo",
+  "nextStopsUncertain": "Próximo ponto incerto: lista em ordem estimada.",
+  "nextStopsRemaining": "{count, plural, =0{Nenhum ponto até o fim do trajeto} =1{1 ponto até o fim do trajeto} other{{count} pontos até o fim do trajeto}}",
+  "@nextStopsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nextStopsNote": "Pelo trajeto oficial e a posição real. Sem previsão de chegada por ponto.",
+  "nextStopsUnreliable": "Sem sequência confiável de paradas para este trajeto: só o acompanhamento no mapa.",
+  "nextStopsEnd": "Ônibus no fim do trajeto.",
+  "trackReasonGpsJump": "a posição saltou ao longo do trajeto",
+  "trackReasonRepeatedSection": "o trajeto passa duas vezes por este trecho"
 }

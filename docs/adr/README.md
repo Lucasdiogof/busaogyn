@@ -8,6 +8,7 @@ Registro curto das decisões que orientam o BusãoGyn v2. Cada ADR diz o context
 | [0002](0002-dados-confiaveis-e-nao-inferencia.md) | Dados confiáveis e não inferência | Aceito (10/10/2026) |
 | [0003](0003-protecao-do-mapa-e-do-realtime.md) | Proteção do mapa e do realtime | Aceito (10/10/2026) |
 | [0004](0004-persistencia-local-de-pontos.md) | Persistência local de favoritos e recentes | Aceito (17/10/2026) |
+| [0005](0005-sequencia-estimada-so-em-desenvolvimento.md) | Sequência estimada e horários CMTC só em desenvolvimento (exceção limitada ao ADR‑0002) | Aceito (28/10/2026) |
 
 Escopo, backlog e estimativas da v2: [../v2/PLANO_BUSAOGYN_V2.md](../v2/PLANO_BUSAOGYN_V2.md). Contrato de aceite do próximo PR de interface: [../v2/PR-6-home-shell-aceite.md](../v2/PR-6-home-shell-aceite.md).
 

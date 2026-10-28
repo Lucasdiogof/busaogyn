@@ -1,4 +1,6 @@
 import '../../transit/domain/entities/tracked_vehicle.dart';
+import '../../transit/domain/models/observed_movement.dart';
+import 'route_geometry.dart';
 import 'text_search.dart';
 import 'transit_catalog.dart';
 
@@ -32,6 +34,13 @@ enum RouteMatchReason {
   offRoute,
   waitingMovement,
   movingBackwards,
+
+  /// Avanço pelo trajeto muito maior que o deslocamento real: a projeção
+  /// pulou para outra passagem do trajeto.
+  gpsJump,
+
+  /// O trajeto passa duas vezes pelo trecho e as posições não decidem qual.
+  repeatedSection,
 }
 
 class RouteMatch {
@@ -66,6 +75,15 @@ const routeMatchMinProgressM = 20.0;
 
 /// Recuo tolerado entre duas amostras (ruído de GPS).
 const _backTolerance = 15.0;
+
+/// Avanço máximo pelo trajeto entre duas amostras: 1,5x o deslocamento em
+/// linha reta + 300 m (curvas e retornos).
+const _detourFactor = 1.5;
+const _detourSlackM = 300.0;
+
+/// Cadeias coerentes que terminam a até 50 m uma da outra apontam o mesmo
+/// lugar (geometria sinuosa perto da amostra): não é ambiguidade.
+const _convergeM = 50.0;
 
 Set<String> _words(String? text) => {
   for (final w in searchTokens(text))
@@ -102,7 +120,12 @@ String? directionByDestination(String? destination, String? variantName) {
 /// 4. a posição atual (não expirada) e as posições observadas precisam estar
 ///    a até [routeMatchMaxDistanceM] do trajeto;
 /// 5. as posições observadas precisam avançar pelo menos
-///    [routeMatchMinProgressM] no sentido do trajeto, sem recuar.
+///    [routeMatchMinProgressM] no sentido do trajeto, sem recuar nem saltar;
+///    em trecho percorrido duas vezes, só vale se uma única sequência de
+///    passagens for coerente.
+///
+/// As mesmas regras estão em `data/cmtc/pipeline/cmtc/tracking.py` (avaliação
+/// com veículos reais); mudar aqui exige mudar lá.
 RouteMatch matchTrackedRoute({
   required TransitCatalog catalog,
   required String? routeId,
@@ -173,51 +196,81 @@ RouteMatch matchTrackedRoute({
     );
   }
   final shape = candidates.single;
-  final line = shape.line;
-
-  final current = line.project(position);
-  if (current.distanceM > routeMatchMaxDistanceM) {
-    return RouteMatch(
-      RouteMatchLevel.ambiguous,
-      RouteMatchReason.offRoute,
-      shape: shape,
-    );
+  final points = [...trail];
+  if (points.isEmpty || points.last != position) points.add(position);
+  final (along, failure) = _chain(shape.line, points);
+  if (along == null) {
+    return RouteMatch(RouteMatchLevel.ambiguous, failure!, shape: shape);
   }
-  final along = <double>[];
-  for (final p in trail) {
-    final projection = line.project(p);
-    if (projection.distanceM > routeMatchMaxDistanceM) {
-      return RouteMatch(
-        RouteMatchLevel.ambiguous,
-        RouteMatchReason.offRoute,
-        shape: shape,
-      );
-    }
-    along.add(projection.alongM);
-  }
-  if (along.isEmpty || along.last != current.alongM) along.add(current.alongM);
-  for (var i = 1; i < along.length; i++) {
-    if (along[i] < along[i - 1] - _backTolerance) {
-      return RouteMatch(
-        RouteMatchLevel.ambiguous,
-        RouteMatchReason.movingBackwards,
-        shape: shape,
-      );
-    }
-  }
+  final current = along.last;
   if (along.last - along.first < routeMatchMinProgressM) {
     return RouteMatch(
       RouteMatchLevel.pending,
       RouteMatchReason.waitingMovement,
       shape: shape,
-      alongM: current.alongM,
+      alongM: current,
     );
   }
   return RouteMatch(
     RouteMatchLevel.confirmed,
     RouteMatchReason.confirmed,
     shape: shape,
-    alongM: current.alongM,
-    future: line.sliceFrom(current.alongM),
+    alongM: current,
+    future: shape.line.sliceFrom(current),
+  );
+}
+
+/// Posições ao longo do trajeto com continuidade: cada amostra fica na
+/// passagem mais próxima à frente da anterior. Cada passagem da 1ª amostra
+/// inicia uma cadeia; vale se as coerentes terminam no mesmo lugar (até
+/// [_convergeM]).
+(List<double>?, RouteMatchReason?) _chain(
+  RouteLine line,
+  List<GeoPosition> points,
+) {
+  final candidates = [
+    for (final p in points) line.projectAll(p, routeMatchMaxDistanceM),
+  ];
+  if (candidates.any((c) => c.isEmpty)) {
+    return (null, RouteMatchReason.offRoute);
+  }
+  final chains = <List<double>>[];
+  RouteMatchReason? failure;
+  for (final start in candidates.first) {
+    final along = [start.alongM];
+    var ok = true;
+    for (var i = 1; i < candidates.length; i++) {
+      final ahead = [
+        for (final p in candidates[i])
+          if (p.alongM >= along.last - _backTolerance) p.alongM,
+      ];
+      if (ahead.isEmpty) {
+        failure = RouteMatchReason.movingBackwards;
+        ok = false;
+        break;
+      }
+      final step = ahead.reduce((a, b) => a < b ? a : b);
+      final limit =
+          geoDistanceMeters(points[i - 1], points[i]) * _detourFactor +
+          _detourSlackM;
+      if (step - along.last > limit) {
+        failure = RouteMatchReason.gpsJump;
+        ok = false;
+        break;
+      }
+      along.add(step);
+    }
+    if (ok) chains.add(along);
+  }
+  if (chains.isEmpty) return (null, failure);
+  final ends = [for (final c in chains) c.last];
+  final spread =
+      ends.reduce((a, b) => a > b ? a : b) -
+      ends.reduce((a, b) => a < b ? a : b);
+  if (spread > _convergeM) return (null, RouteMatchReason.repeatedSection);
+  // Convergem: vale a de menor avanço (a mais conservadora para confirmar).
+  return (
+    chains.reduce((a, b) => (a.last - a.first) <= (b.last - b.first) ? a : b),
+    null,
   );
 }

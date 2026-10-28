@@ -76,6 +76,21 @@ class _Repository implements TransitRepository {
   }
 }
 
+/// Sem internet: toda consulta falha.
+class _OfflineRepository extends _Repository {
+  _OfflineRepository() : super(routeName: null);
+
+  @override
+  Future<TransitSnapshot<List<ArrivalGroup>>> getArrivals(String stopId) =>
+      Future.error(Exception('sem conexão'));
+
+  @override
+  Future<TransitSnapshot<TrackedVehicle?>> getVehiclePosition({
+    required String vehicleNumber,
+    required String stopId,
+  }) => Future.error(Exception('sem conexão'));
+}
+
 /// Conta quantas vezes a superfície do mapa é criada.
 class _CountingMap extends StatefulWidget {
   const _CountingMap();
@@ -279,6 +294,7 @@ void main() {
     // Uma amostra só: variante achada, sentido ainda não confirmado.
     expect(find.byKey(const ValueKey('route-match-pending')), findsOneWidget);
     expect(_features(_map(tester).network!.trackRoute), isEmpty);
+    expect(find.byKey(const ValueKey('next-stops')), findsNothing);
 
     // Duas atualizações de GPS andando para leste: confirmado.
     await tester.pump(const Duration(seconds: 15));
@@ -288,8 +304,24 @@ void main() {
     expect(find.byKey(const ValueKey('route-match-confirmed')), findsOneWidget);
     final track = _features(_map(tester).network!.trackRoute);
     expect(track.map((f) => f['properties']['kind']), ['official', 'future']);
+    expect(find.textContaining('Sem previsão de horário'), findsOneWidget);
+    // Sequência estimada confiável: próximos pontos, o 1º em destaque
+    // (1202, a 500 m, já ficou para trás).
+    expect(find.byKey(const ValueKey('next-stops')), findsOneWidget);
     expect(
-      find.textContaining('Não há previsão de horário nem de próximo ponto'),
+      find.byKey(const ValueKey('next-stops-confident-true')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('next-stop-0')),
+        matching: find.textContaining('00294'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('next-stop-2')), findsNothing);
+    expect(
+      find.textContaining('Sem previsão de chegada por ponto'),
       findsOneWidget,
     );
 
@@ -345,6 +377,174 @@ void main() {
     context(tester).read<StopArrivalsCubit>().stopTracking();
   });
 
+  testWidgets('horários: tipo de dia, validade, marcas e filtro por código', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    await tester.tap(_dock('Linhas'));
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'catalog-line-001');
+    await tester.ensureVisible(find.byKey(const ValueKey('timetable-001')));
+    await tester.pumpAndSettle();
+
+    // 27/10/2026 é terça: abre em dias úteis, com aviso de vigência.
+    expect(find.byKey(const ValueKey('timetable-recent')), findsOneWidget);
+    expect(find.textContaining('vigência não confirmada'), findsOneWidget);
+    final times = find.byKey(const ValueKey('timetable-times-weekday'));
+    final clocks = tester
+        .widgetList<Text>(
+          find.descendant(of: times, matching: find.byType(Text)),
+        )
+        .map((t) => t.data)
+        .where((t) => RegExp(r'^\d\d:\d\d$').hasMatch(t ?? ''))
+        .toList();
+    expect(clocks, ['05:30', '05:45', '06:00', '06:40', '08:20', '00:15']);
+    expect(find.text('6 partidas'), findsOneWidget);
+    expect(find.text('06:40'), findsOneWidget); // duplicidade exibida uma vez
+    expect(find.textContaining('×2: repetido na planilha'), findsOneWidget);
+    expect(find.textContaining('+1'), findsWidgets);
+    expect(find.textContaining('MI'), findsWidgets);
+    expect(find.textContaining('não de passagem nos pontos'), findsOneWidget);
+    expect(find.text('Planilha: Fictício · OSO 0001/2026'), findsOneWidget);
+    expect(find.text('001-7 (sem cadastro)'), findsOneWidget);
+
+    await _tapKey(tester, 'timetable-code-001-2');
+    expect(find.text('1 partida'), findsOneWidget);
+    await _tapKey(tester, 'timetable-code-all');
+    await _tapKey(tester, 'timetable-day-saturday');
+    expect(find.text('1 partida'), findsOneWidget);
+    await _tapKey(tester, 'timetable-day-sundayHoliday');
+    expect(find.byKey(const ValueKey('timetable-empty-day')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('horários antigos só com aviso; sem dados, indisponível', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    await tester.tap(_dock('Linhas'));
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'catalog-line-042');
+    await tester.ensureVisible(find.byKey(const ValueKey('timetable-042')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('timetable-old')), findsOneWidget);
+    expect(find.byKey(const ValueKey('timetable-times-weekday')), findsNothing);
+    await _tapKey(tester, 'timetable-show-old');
+    expect(find.byKey(const ValueKey('timetable-old-shown')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('timetable-times-weekday')),
+      findsOneWidget,
+    );
+
+    await _tapKey(tester, 'catalog-line-back');
+    await _tapKey(tester, 'catalog-line-NS9');
+    await tester.ensureVisible(find.byKey(const ValueKey('timetable-NS9')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('timetable-insufficient')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('timetable-times-weekday')), findsNothing);
+  });
+
+  testWidgets('sequência: estimada na ida, sem ordem na volta, nenhuma', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    await tester.tap(_dock('Linhas'));
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'catalog-line-001');
+    expect(find.byKey(const ValueKey('sequence-estimated')), findsOneWidget);
+    expect(find.text('PARADAS ESTIMADAS · IDA (3)'), findsOneWidget);
+    expect(find.textContaining('Não é a sequência oficial'), findsOneWidget);
+    expect(find.textContaining('posição incerta'), findsOneWidget);
+    expect(find.textContaining('1 ponto ficou de fora'), findsOneWidget);
+    expect(find.byKey(const ValueKey('sequence-stop-2')), findsOneWidget);
+
+    await _tapKey(tester, _volta);
+    expect(find.byKey(const ValueKey('sequence-partial')), findsOneWidget);
+    expect(find.text('PONTOS PERTO DESTE TRAJETO (2)'), findsOneWidget);
+    expect(
+      find.textContaining('Sem confiança suficiente para ordenar'),
+      findsOneWidget,
+    );
+
+    await _tapKey(
+      tester,
+      'catalog-shape-001-2i - T. FICTICIO NORTE / HOSPITAL TESTE - IDA',
+    );
+    expect(find.byKey(const ValueKey('sequence-none')), findsOneWidget);
+
+    // Toque numa parada abre o ponto; o itinerário volta ao trajeto e o
+    // reenquadra (mesmo trajeto já ativo).
+    await _tapKey(tester, _ida);
+    await _tapKey(tester, 'sequence-stop-1');
+    expect(
+      find.byKey(const ValueKey('catalog-stop-facts-00294')),
+      findsOneWidget,
+    );
+    final pointFocus = _map(tester).network!.focus!;
+    expect(pointFocus.point, isNotNull);
+    // Painel expandido: a troca de conteúdo cancela a animação da folha;
+    // o enquadramento não pode ficar esperando por ela.
+    await tester.drag(
+      find.byType(DraggableScrollableSheet),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+    await _tapKey(
+      tester,
+      'itinerary-001-1i - T. FICTICIO NORTE / CENTRO IMAGINARIO - IDA',
+    );
+    final routeFocus = _map(tester).network!.focus!;
+    expect(routeFocus.bounds, isNotNull);
+    expect(routeFocus.serial, greaterThan(pointFocus.serial));
+  });
+
+  testWidgets('ponto: contexto no itinerário abre a linha com o trajeto', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    _map(tester).onStopTap!('00294');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('itinerary-00294')), findsOneWidget);
+    expect(find.text('001-1 · Ida — parada 2 de 3'), findsOneWidget);
+    expect(find.text('042-1 · Ida — parada 1 de 2'), findsOneWidget);
+    await _tapKey(
+      tester,
+      'itinerary-001-1i - T. FICTICIO NORTE / CENTRO IMAGINARIO - IDA',
+    );
+    expect(
+      find.byKey(const ValueKey('catalog-line-detail-001')),
+      findsOneWidget,
+    );
+    expect(find.text('No mapa: 001-1 · Ida'), findsOneWidget);
+    // Enquadra o trajeto (não fica no ponto).
+    expect(_map(tester).network!.focus!.bounds, isNotNull);
+
+    // Ponto sem sequência confiável: sem bloco de itinerário (sem ruído).
+    _map(tester).onStopTap!('40999');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('itinerary-40999')), findsNothing);
+  });
+
+  testWidgets('offline: horários e sequência vêm só do catálogo', (
+    tester,
+  ) async {
+    await _pump(tester, _OfflineRepository());
+    await tester.tap(_dock('Linhas'));
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'catalog-line-001');
+    expect(find.byKey(const ValueKey('sequence-estimated')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('timetable-001')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('timetable-times-weekday')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   for (final (size, scale) in [
     (const Size(320, 640), 1.0),
     (const Size(390, 844), 2.0),
@@ -363,6 +563,13 @@ void main() {
         await tester.tap(_dock('Linhas'));
         await _settle(tester);
         await _tapKey(tester, 'catalog-line-001');
+        // Sequência, horários e marcas no detalhe da linha.
+        await tester.ensureVisible(find.byKey(const ValueKey('timetable-001')));
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
+        _map(tester).onStopTap!('00294');
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
         await _startTracking(tester);
         await tester.tap(_dock('Meu ônibus'));
         await _settle(tester);

@@ -12,8 +12,10 @@ import '../../../../core/ui/busao_components.dart';
 import '../../../catalog/domain/network_geojson.dart';
 import '../../../catalog/domain/route_geometry.dart';
 import '../../../catalog/domain/route_match.dart';
+import '../../../catalog/domain/stop_sequence.dart';
 import '../../../catalog/domain/transit_catalog.dart';
 import '../../../catalog/presentation/catalog_access.dart';
+import '../../../catalog/presentation/catalog_schedule_widgets.dart';
 import '../../../catalog/presentation/catalog_widgets.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
 import '../../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
@@ -188,12 +190,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     });
     // Painel aberto por cima do mapa: baixa antes de enquadrar, senão o
     // trajeto caberia numa faixa mínima.
-    if (_sheetExtent.value > _sheetMid + 0.01 && _sheetController.isAttached) {
-      await _sheetController.animateTo(
-        _sheetMid,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
+    if (_sheetExtent.value > _sheetMid + 0.01) {
+      _animateSheet(_sheetMid);
+      // Sem await: se o conteúdo do painel troca no meio, a animação é
+      // cancelada e o futuro dela nunca completa (o enquadramento ficaria
+      // para sempre esperando).
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
     }
     // O painel muda de altura com o trajeto; enquadra com a margem nova.
     await WidgetsBinding.instance.endOfFrame;
@@ -240,6 +243,16 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         return (a.direction ?? 'z').compareTo(b.direction ?? 'z');
       });
     unawaited(_showRoute(ordered.first.id));
+  }
+
+  /// Abre a linha de um trajeto já com ele no mapa (contexto do ponto no
+  /// itinerário estimado).
+  void _openRoute(String shapeId) {
+    final shape = _catalog?.shape(shapeId);
+    if (shape == null) return;
+    setState(() => _openLine = shape.lineId);
+    _select(HomeTab.lines);
+    unawaited(_showRoute(shapeId));
   }
 
   /// Associação experimental do ônibus acompanhado a um trajeto oficial.
@@ -1029,6 +1042,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               catalog: catalog,
               stopId: _previewStop!,
               onSeeArrivals: () => _openStop(_previewStop!),
+              onOpenRoute: _openRoute,
             ),
           HomeTab.stop when catalog != null && _isSearchVisible(state) =>
             ValueListenableBuilder<TextEditingValue>(
@@ -1061,6 +1075,15 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 if (_routeMatch(state) case final match?) ...[
                   const SizedBox(height: Space.sm),
                   RouteMatchNote(match: match),
+                  const SizedBox(height: Space.sm),
+                  NextStopsCard(
+                    catalog: catalog!,
+                    next: nextStopsFor(
+                      match,
+                      catalog.sequenceOf(match.shape?.id),
+                    ),
+                    onOpenStop: _openPreview,
+                  ),
                 ],
               ],
             ),
@@ -1078,6 +1101,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             onShowRoute: _showRoute,
             onClearRoute: _clearRoute,
             onOpenStop: _openPreview,
+            now: _clock,
           ),
           HomeTab.lines => SeenLinesPanel(
             currentStopId: state is StopArrivalsLoaded ? state.stopId : null,

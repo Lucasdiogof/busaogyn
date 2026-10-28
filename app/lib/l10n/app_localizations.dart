@@ -1919,7 +1919,7 @@ abstract class AppLocalizations {
   /// No description provided for @trackMatchConfirmed.
   ///
   /// In pt, this message translates to:
-  /// **'Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Não há previsão de horário nem de próximo ponto.'**
+  /// **'Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Sem previsão de horário.'**
   String trackMatchConfirmed(String direction, String variant);
 
   /// No description provided for @trackMatchPending.
@@ -1987,6 +1987,251 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'o deslocamento observado contraria o trajeto'**
   String get trackReasonMovingBackwards;
+
+  /// No description provided for @scheduleTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Horários programados'**
+  String get scheduleTitle;
+
+  /// No description provided for @scheduleDayWeekday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dias úteis'**
+  String get scheduleDayWeekday;
+
+  /// No description provided for @scheduleDaySaturday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sábado'**
+  String get scheduleDaySaturday;
+
+  /// No description provided for @scheduleDaySunday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Domingo e feriado'**
+  String get scheduleDaySunday;
+
+  /// No description provided for @scheduleAllCodes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Todas'**
+  String get scheduleAllCodes;
+
+  /// No description provided for @scheduleNone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem quadro de horários para esta linha.'**
+  String get scheduleNone;
+
+  /// No description provided for @scheduleInsufficient.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quadro indisponível: dados inconsistentes ou insuficientes na planilha.'**
+  String get scheduleInsufficient;
+
+  /// No description provided for @scheduleRecent.
+  ///
+  /// In pt, this message translates to:
+  /// **'Referência de {date} · vigência não confirmada pela CMTC. Confira antes de sair.'**
+  String scheduleRecent(String date);
+
+  /// No description provided for @scheduleConfirmed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Vigência confirmada · referência de {date}.'**
+  String scheduleConfirmed(String date);
+
+  /// No description provided for @scheduleOld.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quadro de referência antiga ({date}). Pode não estar mais em vigor.'**
+  String scheduleOld(String date);
+
+  /// No description provided for @scheduleShowOld.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver mesmo assim'**
+  String get scheduleShowOld;
+
+  /// No description provided for @scheduleSource.
+  ///
+  /// In pt, this message translates to:
+  /// **'Planilha: {source} · OSO {oso}'**
+  String scheduleSource(String oso, String source);
+
+  /// No description provided for @scheduleDepartureNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Horários de partida, não de passagem nos pontos. A planilha não informa sentido nem local de partida. Não são previsões em tempo real.'**
+  String get scheduleDepartureNote;
+
+  /// No description provided for @scheduleEmptyDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem partidas programadas neste dia.'**
+  String get scheduleEmptyDay;
+
+  /// No description provided for @scheduleCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhuma partida} =1{1 partida} other{{count} partidas}}'**
+  String scheduleCount(int count);
+
+  /// No description provided for @scheduleLegendNextDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'+1: depois da meia-noite'**
+  String get scheduleLegendNextDay;
+
+  /// No description provided for @scheduleLegendHalf.
+  ///
+  /// In pt, this message translates to:
+  /// **'MI: meia viagem, início no retorno · MF: meia viagem, fim no retorno'**
+  String get scheduleLegendHalf;
+
+  /// No description provided for @scheduleLegendRepeated.
+  ///
+  /// In pt, this message translates to:
+  /// **'×2: repetido na planilha'**
+  String get scheduleLegendRepeated;
+
+  /// No description provided for @scheduleCodeUnregistered.
+  ///
+  /// In pt, this message translates to:
+  /// **'{code} (sem cadastro)'**
+  String scheduleCodeUnregistered(String code);
+
+  /// No description provided for @sequenceTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Paradas estimadas · {direction} ({count})'**
+  String sequenceTitle(int count, String direction);
+
+  /// No description provided for @sequenceEstimatedNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ordem estimada pelo trajeto oficial. Não é a sequência oficial da CMTC.'**
+  String get sequenceEstimatedNote;
+
+  /// No description provided for @sequenceUncertain.
+  ///
+  /// In pt, this message translates to:
+  /// **'posição incerta'**
+  String get sequenceUncertain;
+
+  /// No description provided for @sequenceRepeated.
+  ///
+  /// In pt, this message translates to:
+  /// **'passa de novo'**
+  String get sequenceRepeated;
+
+  /// No description provided for @sequencePartialTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pontos perto deste trajeto ({count})'**
+  String sequencePartialTitle(int count);
+
+  /// No description provided for @sequencePartialNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem confiança suficiente para ordenar as paradas: lista sem ordem de percurso.'**
+  String get sequencePartialNote;
+
+  /// No description provided for @sequenceNone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum ponto do cadastro associado a este trajeto.'**
+  String get sequenceNone;
+
+  /// No description provided for @sequenceAmbiguous.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhum ponto ficou de fora por ambiguidade.} =1{1 ponto ficou de fora por ambiguidade.} other{{count} pontos ficaram de fora por ambiguidade.}}'**
+  String sequenceAmbiguous(int count);
+
+  /// No description provided for @sequenceShowAll.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mostrar todas ({count})'**
+  String sequenceShowAll(int count);
+
+  /// No description provided for @itineraryTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'No itinerário (estimado)'**
+  String get itineraryTitle;
+
+  /// No description provided for @itineraryRow.
+  ///
+  /// In pt, this message translates to:
+  /// **'{variant} · {direction} — parada {position} de {total}'**
+  String itineraryRow(
+    String direction,
+    int position,
+    int total,
+    String variant,
+  );
+
+  /// No description provided for @itineraryNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Posição estimada pelo trajeto oficial; sem horário de passagem.'**
+  String get itineraryNote;
+
+  /// No description provided for @nextStopsTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximos pontos (estimado)'**
+  String get nextStopsTitle;
+
+  /// No description provided for @nextStopLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximo'**
+  String get nextStopLabel;
+
+  /// No description provided for @nextStopsUncertain.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximo ponto incerto: lista em ordem estimada.'**
+  String get nextStopsUncertain;
+
+  /// No description provided for @nextStopsRemaining.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhum ponto até o fim do trajeto} =1{1 ponto até o fim do trajeto} other{{count} pontos até o fim do trajeto}}'**
+  String nextStopsRemaining(int count);
+
+  /// No description provided for @nextStopsNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pelo trajeto oficial e a posição real. Sem previsão de chegada por ponto.'**
+  String get nextStopsNote;
+
+  /// No description provided for @nextStopsUnreliable.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem sequência confiável de paradas para este trajeto: só o acompanhamento no mapa.'**
+  String get nextStopsUnreliable;
+
+  /// No description provided for @nextStopsEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ônibus no fim do trajeto.'**
+  String get nextStopsEnd;
+
+  /// No description provided for @trackReasonGpsJump.
+  ///
+  /// In pt, this message translates to:
+  /// **'a posição saltou ao longo do trajeto'**
+  String get trackReasonGpsJump;
+
+  /// No description provided for @trackReasonRepeatedSection.
+  ///
+  /// In pt, this message translates to:
+  /// **'o trajeto passa duas vezes por este trecho'**
+  String get trackReasonRepeatedSection;
 }
 
 class _AppLocalizationsDelegate

@@ -22,7 +22,8 @@ for target in "$@"; do
 import os, sys, zipfile
 
 # Marcas que só existem no payload gerado por data/cmtc/pipeline/export_catalog.py.
-MARKERS = ['busaogyn-cmtc-payload', 'cmtc-2026-10', '"stops":{"fields"', '\\"stops\\":{\\"fields\\"']
+MARKERS = ['busaogyn-cmtc-payload', 'cmtc-2026-10', '"stops":{"fields"', '\\"stops\\":{\\"fields\\"',
+           '"trips":{"fields"', '"sequences":{"fields"', 'projecao-kmz-v2']
 NEEDLES = [(m, enc, m.encode(enc)) for m in MARKERS for enc in ('utf-8', 'utf-16-le')]
 target = sys.argv[1]
 hits = []
