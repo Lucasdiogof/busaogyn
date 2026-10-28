@@ -1618,4 +1618,158 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sheetSummaryTracking => 'Bus tracking';
+
+  @override
+  String get nearbyButton => 'Near me';
+
+  @override
+  String get nearbyLocating => 'Finding your location…';
+
+  @override
+  String get nearbyHint =>
+      'Uses your location only now, on this device: it is not stored or sent anywhere.';
+
+  @override
+  String get nearbyTitle => 'Near you';
+
+  @override
+  String get nearbyRefresh => 'Refresh';
+
+  @override
+  String nearbyImprecise(int meters) {
+    return 'Approximate location (± $meters m). Check the map.';
+  }
+
+  @override
+  String get nearbyEmpty => 'No registered stop within 1 km of you.';
+
+  @override
+  String nearbyDistance(int meters) {
+    return '$meters m in a straight line';
+  }
+
+  @override
+  String get nearbyStraightLine =>
+      'Straight-line distances: the walk may be longer.';
+
+  @override
+  String get nearbyDenied =>
+      'No location permission. You can search for the stop by code, street or neighborhood.';
+
+  @override
+  String get nearbyDeniedForever =>
+      'Location is blocked for BusãoGyn. To use it, allow it in the device settings.';
+
+  @override
+  String get nearbyServiceOff => 'Device location is turned off.';
+
+  @override
+  String get nearbyTimeout =>
+      'Couldn\'t get your location in time. Try again, ideally outdoors.';
+
+  @override
+  String get nearbyUnavailable =>
+      'Location is unavailable on this device or browser.';
+
+  @override
+  String get nearbyOpenSettings => 'Open settings';
+
+  @override
+  String get shareCopied => 'Text copied to share.';
+
+  @override
+  String shareStop(String code) {
+    return 'Bus stop $code';
+  }
+
+  @override
+  String get shareFooter => 'Sent from BusãoGyn (independent, unofficial app).';
+
+  @override
+  String shareLine(String line, String name) {
+    return 'Line $line — $name';
+  }
+
+  @override
+  String get shareCatalogNote =>
+      'Registry data; check times and route before leaving.';
+
+  @override
+  String shareTripTitle(String from, String to) {
+    return 'Bus trip (estimate): $from → $to';
+  }
+
+  @override
+  String shareTripLeg(int step, String line, String from, String to) {
+    return '$step. Line $line: board at $from, get off at $to';
+  }
+
+  @override
+  String get shareTripNote =>
+      'Estimate based on registry data, not an official route. Check before leaving.';
+
+  @override
+  String get shareStopAction => 'Share stop';
+
+  @override
+  String get shareLineAction => 'Share line';
+
+  @override
+  String get shareTripAction => 'Share trip';
+
+  @override
+  String get tripSave => 'Save trip';
+
+  @override
+  String get tripSaved => 'Trip saved';
+
+  @override
+  String get tripSavedNotice => 'Trip saved in Saved.';
+
+  @override
+  String tripsLimit(int count) {
+    return 'You already have $count saved trips. Remove one to save another.';
+  }
+
+  @override
+  String get tripMissingStop =>
+      'A stop on this trip is not in the current registry.';
+
+  @override
+  String get savedTripsTitle => 'Trips';
+
+  @override
+  String get tripRenameTitle => 'Trip name';
+
+  @override
+  String get tripRenameSave => 'Save';
+
+  @override
+  String get tripMenu => 'Trip options';
+
+  @override
+  String get tripRename => 'Rename';
+
+  @override
+  String get tripRemove => 'Remove';
+
+  @override
+  String get catalogSearchApproximate =>
+      'No exact match: showing similar names (one typo).';
+
+  @override
+  String get nearbyDeniedBrowser =>
+      'Location is blocked for this site. Allow it in the browser\'s permissions.';
+
+  @override
+  String nearbySummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops',
+      one: '1 stop',
+      zero: 'no stops',
+    );
+    return 'Near you · $_temp0';
+  }
 }

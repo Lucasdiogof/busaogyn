@@ -1,6 +1,11 @@
 import 'dart:convert';
 
 import 'package:busaogyn/src/app.dart';
+import 'package:busaogyn/src/core/location/location_service.dart';
+import 'package:busaogyn/src/core/share/share_text.dart';
+import 'package:busaogyn/src/features/saved_stops/data/memory_saved_stops_store.dart';
+import 'package:busaogyn/src/features/saved_stops/domain/saved_stop.dart';
+import 'package:busaogyn/src/features/saved_stops/domain/saved_stops_store.dart';
 import 'package:busaogyn/src/features/catalog/data/catalog_codec.dart';
 import 'package:busaogyn/src/features/catalog/domain/transit_catalog.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
@@ -12,6 +17,7 @@ import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.d
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -95,6 +101,34 @@ class _OfflineRepository extends _Repository {
   }) => Future.error(Exception('sem conexão'));
 }
 
+/// Localização de mentira: devolve a posição ou lança o problema; conta
+/// pedidos e aberturas dos ajustes.
+class _FakeLocation implements LocationService {
+  _FakeLocation.ok({this.accuracy = 12})
+    : problem = null,
+      fix = const GeoPosition(latitude: -16.6805, longitude: -49.2605);
+  _FakeLocation.failing(LocationProblem this.problem)
+    : fix = null,
+      accuracy = 0;
+
+  final LocationProblem? problem;
+  final GeoPosition? fix;
+  final double accuracy;
+  var calls = 0;
+  final settingsOpened = <LocationProblem>[];
+
+  @override
+  Future<LocationFix> current() async {
+    calls++;
+    if (problem case final p?) throw LocationFailure(p);
+    return LocationFix(fix!, accuracy);
+  }
+
+  @override
+  Future<void> openSettings(LocationProblem problem) async =>
+      settingsOpened.add(problem);
+}
+
 /// Conta quantas vezes a superfície do mapa é criada.
 class _CountingMap extends StatefulWidget {
   const _CountingMap();
@@ -120,6 +154,9 @@ Future<void> _pump(
   _Repository repo, {
   Size size = const Size(390, 844),
   TransitCatalog? catalog,
+  LocationService? location,
+  SavedStopsStore? savedStopsStore,
+  bool noCatalog = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -134,7 +171,9 @@ Future<void> _pump(
       secondaryRefreshInterval: null,
       mapBuilder: (context, params) => const _CountingMap(),
       clock: () => _now,
-      catalog: catalog ?? fixtureCatalog(),
+      catalog: noCatalog ? null : catalog ?? fixtureCatalog(),
+      locationService: location ?? _FakeLocation.ok(),
+      savedStopsStore: savedStopsStore,
     ),
   );
   await tester.pumpAndSettle();
@@ -188,6 +227,8 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
+  _stageCTests();
+
   testWidgets(
     'pontos sempre no mapa; ponto tocado abre o detalhe e é destacado',
     (tester) async {
@@ -745,3 +786,254 @@ void main() {
 
 BuildContext context(WidgetTester tester) =>
     tester.element(find.byType(NavDock));
+
+/// Etapa C: perto de mim, viagens salvas, compartilhar e busca tolerante.
+void _stageCTests() {
+  group('Etapa C', () {
+    group('perto de mim', () {
+      testWidgets('só pede a posição no toque; lista por distância e '
+          'mostra você no mapa', (tester) async {
+        final location = _FakeLocation.ok();
+        await _pump(tester, _Repository(routeName: null), location: location);
+        expect(location.calls, 0, reason: 'nada de pedir ao abrir o app');
+        expect(find.text('Perto de mim'), findsOneWidget);
+
+        await _tapKey(tester, 'nearby-locate');
+        expect(location.calls, 1);
+        expect(find.text('PERTO DE VOCÊ'), findsOneWidget);
+        // 00294 fica a ~70 m; os outros pontos da fixture passam de 1 km.
+        expect(find.byKey(const ValueKey('nearby-00294')), findsOneWidget);
+        expect(find.byKey(const ValueKey('nearby-1201')), findsNothing);
+        expect(find.textContaining('m em linha reta'), findsOneWidget);
+        expect(_features(_map(tester).network!.me), hasLength(1));
+
+        // Abrir o ponto mostra a prévia, como na busca.
+        await _tapKey(tester, 'nearby-00294');
+        expect(find.text('Ponto 00294'), findsWidgets);
+        expect(_CountingMap.created, 1);
+      });
+
+      testWidgets('posição imprecisa avisa', (tester) async {
+        await _pump(
+          tester,
+          _Repository(routeName: null),
+          location: _FakeLocation.ok(accuracy: 900),
+        );
+        await _tapKey(tester, 'nearby-locate');
+        expect(
+          find.textContaining('Posição aproximada (± 900 m)'),
+          findsOneWidget,
+        );
+      });
+
+      for (final (problem, text, settings) in [
+        (LocationProblem.denied, 'Sem permissão de localização', false),
+        (LocationProblem.deniedForever, 'bloqueada para o BusãoGyn', true),
+        (LocationProblem.serviceOff, 'está desligada', true),
+        (LocationProblem.timeout, 'a tempo', false),
+        (LocationProblem.unavailable, 'indisponível', false),
+      ]) {
+        testWidgets('falha ${problem.name}: explica, sem insistir', (
+          tester,
+        ) async {
+          final location = _FakeLocation.failing(problem);
+          await _pump(tester, _Repository(routeName: null), location: location);
+          await _tapKey(tester, 'nearby-locate');
+          expect(find.textContaining(text), findsOneWidget);
+          await _settle(tester);
+          expect(location.calls, 1, reason: 'sem novas tentativas sozinho');
+          // Busca manual continua à vista.
+          expect(find.byType(SearchHeader), findsOneWidget);
+          expect(_features(_map(tester).network!.me), isEmpty);
+          final button = find.byKey(const ValueKey('nearby-settings'));
+          expect(button, settings ? findsOneWidget : findsNothing);
+          if (settings) {
+            await _tapKey(tester, 'nearby-settings');
+            expect(location.settingsOpened, [problem]);
+          }
+        });
+      }
+
+      testWidgets('sem catálogo não há "Perto de mim"', (tester) async {
+        final location = _FakeLocation.ok();
+        await _pump(
+          tester,
+          _Repository(routeName: null),
+          location: location,
+          noCatalog: true,
+        );
+        expect(find.byKey(const ValueKey('nearby-locate')), findsNothing);
+        expect(location.calls, 0);
+      });
+    });
+
+    group('viagens salvas', () {
+      Future<void> plan(WidgetTester tester) async {
+        await _tapKey(tester, 'dock-plan');
+        await _tapKey(tester, 'planner-pick-origin');
+        _map(tester).onStopTap!('1202');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-pick-destination');
+        _map(tester).onStopTap!('1201');
+        await _settle(tester);
+      }
+
+      testWidgets('salvar, abrir (recalcula), renomear e remover', (
+        tester,
+      ) async {
+        final store = MemorySavedStopsStore();
+        await _pump(
+          tester,
+          _Repository(routeName: null),
+          savedStopsStore: store,
+        );
+        await plan(tester);
+        await _tapKey(tester, 'planner-save');
+        expect(find.text('Viagem salva em Salvos.'), findsOneWidget);
+        expect(find.text('Viagem salva'), findsOneWidget);
+        expect((await store.load()).data.trips.single.from, '1202');
+
+        await _tapKey(tester, 'planner-clear');
+        await tester.tap(_dock('Salvos'));
+        await _settle(tester);
+        const tile = 'saved-trip-1202-1201';
+        expect(find.byKey(const ValueKey(tile)), findsOneWidget);
+
+        // Abrir: vai para Planejar com o itinerário calculado agora.
+        await _tapKey(tester, tile);
+        expect(find.byKey(const ValueKey('planner-option-0')), findsOneWidget);
+
+        await tester.tap(_dock('Salvos'));
+        await _settle(tester);
+        await _tapKey(tester, 'saved-trip-menu-1202-1201');
+        await tester.tap(find.text('Renomear'));
+        await _settle(tester);
+        await tester.enterText(
+          find.byKey(const ValueKey('trip-name-field')),
+          'Trabalho',
+        );
+        await _tapKey(tester, 'trip-name-save');
+        expect(find.text('Trabalho'), findsOneWidget);
+
+        await _tapKey(tester, 'saved-trip-menu-1202-1201');
+        await tester.tap(find.text('Remover'));
+        await _settle(tester);
+        expect(find.byKey(const ValueKey(tile)), findsNothing);
+        expect((await store.load()).data.trips, isEmpty);
+        expect(_CountingMap.created, 1);
+      });
+
+      testWidgets('ponto fora do catálogo: aviso, sem rota inventada', (
+        tester,
+      ) async {
+        await _pump(
+          tester,
+          _Repository(routeName: null),
+          savedStopsStore: MemorySavedStopsStore(
+            initial: SavedStopsData(
+              trips: [
+                SavedTrip(from: '1201', to: '99999', at: DateTime.utc(2026)),
+              ],
+            ),
+          ),
+        );
+        await tester.tap(_dock('Salvos'));
+        await _settle(tester);
+        const missing = 'Um ponto desta viagem não está no cadastro atual.';
+        expect(find.text(missing), findsOneWidget);
+        await _tapKey(tester, 'saved-trip-1201-99999');
+        expect(find.text(missing), findsNWidgets(2));
+        expect(find.byKey(const ValueKey('trip-planner')), findsNothing);
+      });
+    });
+
+    group('compartilhar', () {
+      late List<String> shared;
+      final original = sharePlatform;
+      setUp(() {
+        shared = [];
+        sharePlatform = (text) async => shared.add(text);
+      });
+      tearDown(() => sharePlatform = original);
+
+      testWidgets('ponto, linha e viagem: só texto, com avisos', (
+        tester,
+      ) async {
+        await _pump(tester, _Repository(routeName: null));
+        final context = tester.element(find.byType(NavDock));
+        await context.read<StopArrivalsCubit>().load('00294');
+        await _settle(tester);
+        await _tapKey(tester, 'share-stop');
+        expect(shared.last, contains('Ponto de ônibus 00294'));
+        expect(shared.last, contains('Rua Fictícia'));
+        expect(shared.last, contains('não oficial'));
+
+        await tester.tap(_dock('Linhas'));
+        await _settle(tester);
+        await _tapKey(tester, 'catalog-line-001');
+        await _tapKey(tester, 'catalog-line-share');
+        expect(shared.last, startsWith('Linha 001'));
+
+        await _tapKey(tester, 'dock-plan');
+        await _tapKey(tester, 'planner-pick-origin');
+        _map(tester).onStopTap!('1202');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-pick-destination');
+        _map(tester).onStopTap!('1201');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-search');
+        await _tapKey(tester, 'planner-share');
+        expect(shared.last, contains('(estimativa)'));
+        expect(shared.last, contains('não é itinerário oficial'));
+        expect(shared.last, isNot(contains('-16.')), reason: 'sem posição');
+      });
+
+      testWidgets('sem compartilhamento do sistema, copia e avisa', (
+        tester,
+      ) async {
+        sharePlatform = (_) async => throw StateError('indisponível');
+        String? copied;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copied = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await _pump(tester, _Repository(routeName: null));
+        final context = tester.element(find.byType(NavDock));
+        await context.read<StopArrivalsCubit>().load('00294');
+        await _settle(tester);
+        await _tapKey(tester, 'share-stop');
+        expect(copied, contains('00294'));
+        expect(find.text('Texto copiado para compartilhar.'), findsOneWidget);
+      });
+    });
+
+    testWidgets('busca: sem acento e com um erro de digitação', (tester) async {
+      await _pump(tester, _Repository(routeName: null));
+      await tester.enterText(find.byType(TextField).first, 'praca civica');
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('catalog-stop-1203')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('catalog-search-approximate')),
+        findsNothing,
+      );
+      await tester.enterText(find.byType(TextField).first, 'fictcia');
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('catalog-stop-00294')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('catalog-search-approximate')),
+        findsOneWidget,
+      );
+    });
+  });
+}

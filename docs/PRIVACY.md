@@ -7,7 +7,7 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 ## Resumo
 
 - Não há conta, login, cadastro nem identificador de usuário.
-- O app **não usa a localização do usuário**: não há permissão de localização no Android, nem chave `NSLocation*` no iOS.
+- O app de produção **não usa a localização do usuário**: o build release do Android não declara permissão de localização (o manifesto principal as remove e também o serviço de localização do plugin). O iOS tem a frase `NSLocationWhenInUseUsageDescription` no `Info.plist` (o arquivo é o mesmo para todos os builds), mas o app de produção nunca pede a permissão: "Perto de mim" só existe com o catálogo de desenvolvimento (seção 1.1).
 - Não acessa contatos, fotos, câmera, microfone, arquivos ou calendário.
 - Não tem analytics, crash reporting, publicidade nem SDK de rastreamento.
 - O app guarda **no aparelho**, e só nele, a preferência de tema (claro, noturno ou sistema), os pontos favoritos, as linhas favoritas em cada ponto e os últimos pontos consultados com sucesso (seção 1). Nada disso sai do aparelho nem exige conta. Não guarda histórico de buscas, previsões de chegada nem posições.
@@ -23,6 +23,14 @@ Este documento descreve o que o app faz hoje com dados, a partir do código dest
 | Código do ponto digitado | Memória, durante a sessão | Até fechar o app | Sim, na consulta à API BusãoGyn |
 | Número do ônibus acompanhado | Memória, durante a sessão | Até parar o acompanhamento ou fechar o app | Sim, na consulta de posição à API BusãoGyn |
 | Posições observadas do ônibus (rastro e direção) | Memória, até 20 posições | Limpas ao trocar ou parar o acompanhamento | Não (vêm da API, não do aparelho) |
+
+### 1.1 Builds de desenvolvimento (catálogo local, Etapa C)
+
+Só existem com o catálogo de desenvolvimento, que não vai para produção:
+
+- **Perto de mim:** uma leitura da posição atual, em primeiro plano, **só quando o usuário toca no botão** (Android debug/profile declaram `ACCESS_COARSE_LOCATION`/`ACCESS_FINE_LOCATION`; iOS pede "durante o uso"; Web usa a API do navegador). A posição fica na memória até o usuário sair do app, é usada só para ordenar os pontos do catálogo do próprio aparelho e **não é gravada nem enviada** a nenhum servidor. Sem segundo plano, sem histórico.
+- **Viagens salvas:** na mesma chave `busaogyn.saved_stops.v1` (schema 3): códigos de origem e destino, nome opcional dado pelo usuário (até 40 caracteres) e hora. Máximo de 20. O itinerário não é gravado.
+- **Compartilhar:** abre a folha de compartilhamento do sistema com um texto que o usuário vê (código/endereço do ponto, linha ou passos da viagem). Nada é enviado sem a ação do usuário; nunca inclui a posição dele.
 
 As posições do rastro são do **ônibus**, recebidas da API, e não do usuário. Elas não são gravadas em disco.
 

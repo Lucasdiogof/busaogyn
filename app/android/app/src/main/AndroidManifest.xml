@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- O plugin de mapa declara localização; o app ainda não usa. -->
+    <!-- Produção: sem localização. Os plugins de mapa/localização declaram;
+         só os builds de desenvolvimento (debug/profile) pedem "Perto de mim". -->
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION"
         tools:node="remove" />
@@ -12,6 +13,10 @@
         android:label="BusãoGyn"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Só posição atual, em primeiro plano: sem serviço de localização. -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            tools:node="remove" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

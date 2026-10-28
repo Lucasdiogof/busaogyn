@@ -413,5 +413,116 @@
   "sheetSummaryLines": "Line catalog",
   "sheetSummaryLine": "Line {line}",
   "sheetSummarySaved": "Favorites and recent",
-  "sheetSummaryTracking": "Bus tracking"
+  "sheetSummaryTracking": "Bus tracking",
+  "nearbyButton": "Near me",
+  "nearbyLocating": "Finding your location…",
+  "nearbyHint": "Uses your location only now, on this device: it is not stored or sent anywhere.",
+  "nearbyTitle": "Near you",
+  "nearbyRefresh": "Refresh",
+  "nearbyImprecise": "Approximate location (± {meters} m). Check the map.",
+  "@nearbyImprecise": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyEmpty": "No registered stop within 1 km of you.",
+  "nearbyDistance": "{meters} m in a straight line",
+  "@nearbyDistance": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyStraightLine": "Straight-line distances: the walk may be longer.",
+  "nearbyDenied": "No location permission. You can search for the stop by code, street or neighborhood.",
+  "nearbyDeniedForever": "Location is blocked for BusãoGyn. To use it, allow it in the device settings.",
+  "nearbyServiceOff": "Device location is turned off.",
+  "nearbyTimeout": "Couldn't get your location in time. Try again, ideally outdoors.",
+  "nearbyUnavailable": "Location is unavailable on this device or browser.",
+  "nearbyOpenSettings": "Open settings",
+  "shareCopied": "Text copied to share.",
+  "shareStop": "Bus stop {code}",
+  "@shareStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "shareFooter": "Sent from BusãoGyn (independent, unofficial app).",
+  "shareLine": "Line {line} — {name}",
+  "@shareLine": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCatalogNote": "Registry data; check times and route before leaving.",
+  "shareTripTitle": "Bus trip (estimate): {from} → {to}",
+  "@shareTripTitle": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripLeg": "{step}. Line {line}: board at {from}, get off at {to}",
+  "@shareTripLeg": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "line": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripNote": "Estimate based on registry data, not an official route. Check before leaving.",
+  "shareStopAction": "Share stop",
+  "shareLineAction": "Share line",
+  "shareTripAction": "Share trip",
+  "tripSave": "Save trip",
+  "tripSaved": "Trip saved",
+  "tripSavedNotice": "Trip saved in Saved.",
+  "tripsLimit": "You already have {count} saved trips. Remove one to save another.",
+  "@tripsLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripMissingStop": "A stop on this trip is not in the current registry.",
+  "savedTripsTitle": "Trips",
+  "tripRenameTitle": "Trip name",
+  "tripRenameSave": "Save",
+  "tripMenu": "Trip options",
+  "tripRename": "Rename",
+  "tripRemove": "Remove",
+  "catalogSearchApproximate": "No exact match: showing similar names (one typo).",
+  "nearbyDeniedBrowser": "Location is blocked for this site. Allow it in the browser's permissions.",
+  "nearbySummary": "Near you · {count, plural, =0{no stops} =1{1 stop} other{{count} stops}}",
+  "@nearbySummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

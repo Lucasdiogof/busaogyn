@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/share/share_text.dart';
 import '../../../core/theme/busao_tokens.dart';
 import '../../../core/ui/busao_components.dart';
 import '../../saved_stops/domain/saved_stop.dart';
@@ -12,6 +13,7 @@ import '../domain/text_search.dart';
 import '../domain/transit_catalog.dart';
 import 'catalog_access.dart';
 import 'catalog_schedule_widgets.dart';
+import 'share_texts.dart';
 
 /// Código para mostrar ao passageiro: terminal inferido não tem código de
 /// ponto (o id 'T-…' é interno).
@@ -96,10 +98,18 @@ class _LinePlates extends StatelessWidget {
 /// Um ponto do catálogo numa lista: código, endereço, bairro/município e
 /// linhas. Toque abre os detalhes.
 class CatalogStopTile extends StatelessWidget {
-  const CatalogStopTile({required this.stop, required this.onTap, super.key});
+  const CatalogStopTile({
+    required this.stop,
+    required this.onTap,
+    this.detail,
+    super.key,
+  });
 
   final CatalogStop stop;
   final VoidCallback onTap;
+
+  /// Linha extra em destaque (ex.: distância em linha reta).
+  final String? detail;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +118,10 @@ class CatalogStopTile extends StatelessWidget {
     final place = stop.place;
     return Semantics(
       button: true,
-      label: l10n.catalogOpenStop(stop.id, [?address, ?place].join(', ')),
+      label: [
+        l10n.catalogOpenStop(stop.id, [?address, ?place].join(', ')),
+        ?detail,
+      ].join('. '),
       excludeSemantics: true,
       child: Material(
         color: tokens.card,
@@ -173,6 +186,17 @@ class CatalogStopTile extends StatelessWidget {
                             color: tokens.mutedText,
                           ),
                         ),
+                        if (detail != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            detail!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: tokens.accentText,
+                            ),
+                          ),
+                        ],
                         if (stop.lineIds.isNotEmpty) ...[
                           const SizedBox(height: Space.xs),
                           _LinePlates(stop.lineIds, max: 8),
@@ -207,7 +231,10 @@ class StopSearchResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = catalog.rankStops(query, limit: 1 << 30);
+    final (results: all, :approximate) = catalog.findStops(
+      query,
+      limit: 1 << 30,
+    );
     final shown = all.take(catalogStopResultsLimit).toList();
     final digits = RegExp(r'^\d+$').hasMatch(query.trim());
     return Column(
@@ -233,6 +260,13 @@ class StopSearchResults extends StatelessWidget {
         else ...[
           if (digits) ...[
             FootNote(child: Text(l10n.catalogSearchCodeHint)),
+            const SizedBox(height: Space.xs),
+          ],
+          if (approximate) ...[
+            FootNote(
+              key: const ValueKey('catalog-search-approximate'),
+              child: Text(l10n.catalogSearchApproximate),
+            ),
             const SizedBox(height: Space.xs),
           ],
           for (final ranked in shown) ...[
@@ -876,6 +910,12 @@ class _LineDetail extends StatelessWidget {
                   color: tokens.strongText,
                 ),
               ),
+            ),
+            IconButton(
+              key: const ValueKey('catalog-line-share'),
+              tooltip: l10n.shareLineAction,
+              onPressed: () => shareText(context, lineShareText(catalog, line)),
+              icon: const Icon(Icons.ios_share_rounded),
             ),
           ],
         ),

@@ -74,6 +74,61 @@ class SavedLine {
 /// nome confiável** (hoje nenhuma dá, então fica `null` e a tela mostra o
 /// código) e [at], a hora em que foi favoritado ou consultado pela última vez.
 /// Nenhuma previsão de chegada é guardada.
+/// Viagens salvas: até 20, sem remoção automática.
+const defaultSavedTripsLimit = 20;
+
+const maxTripNameLength = 40;
+
+/// Código de ponto do catálogo (pontos, estações e terminais: `1201`,
+/// `T-PADRE-PELAGIO`). `null` quando não parece um código.
+String? canonicalCatalogStopId(String? raw) {
+  final id = raw?.trim();
+  if (id == null || id.isEmpty || id.length > 40) return null;
+  return RegExp(r'^[A-Za-z0-9-]+$').hasMatch(id) ? id : null;
+}
+
+/// Par origem → destino salvo pelo passageiro. Só os códigos dos pontos e um
+/// nome opcional: o itinerário é recalculado sempre que a viagem é aberta,
+/// nunca guardado como se valesse para sempre.
+@immutable
+class SavedTrip {
+  const SavedTrip({
+    required this.from,
+    required this.to,
+    required this.at,
+    this.name,
+  });
+
+  final String from;
+  final String to;
+  final String? name;
+  final DateTime at;
+
+  bool matches(String origin, String destination) =>
+      from == origin && to == destination;
+
+  SavedTrip copyWith({String? Function()? name}) => SavedTrip(
+    from: from,
+    to: to,
+    at: at,
+    name: name == null ? this.name : name(),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is SavedTrip &&
+      other.from == from &&
+      other.to == to &&
+      other.name == name &&
+      other.at == at;
+
+  @override
+  int get hashCode => Object.hash(from, to, name, at);
+
+  @override
+  String toString() => 'SavedTrip($from → $to, $name, $at)';
+}
+
 @immutable
 class SavedStop {
   const SavedStop({required this.code, required this.at, this.name});
@@ -113,6 +168,7 @@ class SavedStopsData {
     this.favorites = const [],
     this.recents = const [],
     this.lines = const [],
+    this.trips = const [],
   });
 
   static const empty = SavedStopsData();
@@ -122,6 +178,8 @@ class SavedStopsData {
 
   /// Linhas favoritas por ponto, da mais nova à mais antiga.
   final List<SavedLine> lines;
+
+  final List<SavedTrip> trips;
 }
 
 /// Resultado da leitura: [unreadable] indica armazenamento corrompido ou de um

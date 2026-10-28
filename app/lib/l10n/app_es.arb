@@ -413,5 +413,116 @@
   "sheetSummaryLines": "Catálogo de líneas",
   "sheetSummaryLine": "Línea {line}",
   "sheetSummarySaved": "Favoritos y recientes",
-  "sheetSummaryTracking": "Seguimiento del autobús"
+  "sheetSummaryTracking": "Seguimiento del autobús",
+  "nearbyButton": "Cerca de mí",
+  "nearbyLocating": "Buscando tu ubicación…",
+  "nearbyHint": "Usa tu ubicación solo ahora, en el dispositivo: no se guarda ni se envía.",
+  "nearbyTitle": "Cerca de ti",
+  "nearbyRefresh": "Actualizar",
+  "nearbyImprecise": "Ubicación aproximada (± {meters} m). Revisa el mapa.",
+  "@nearbyImprecise": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyEmpty": "Ninguna parada registrada a menos de 1 km.",
+  "nearbyDistance": "{meters} m en línea recta",
+  "@nearbyDistance": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyStraightLine": "Distancias en línea recta: el camino a pie puede ser más largo.",
+  "nearbyDenied": "Sin permiso de ubicación. Puedes buscar la parada por código, calle o barrio.",
+  "nearbyDeniedForever": "La ubicación está bloqueada para BusãoGyn. Para usarla, permítela en los ajustes del dispositivo.",
+  "nearbyServiceOff": "La ubicación del dispositivo está desactivada.",
+  "nearbyTimeout": "No se pudo obtener tu ubicación a tiempo. Inténtalo de nuevo, mejor al aire libre.",
+  "nearbyUnavailable": "Ubicación no disponible en este dispositivo o navegador.",
+  "nearbyOpenSettings": "Abrir ajustes",
+  "shareCopied": "Texto copiado para compartir.",
+  "shareStop": "Parada de autobús {code}",
+  "@shareStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "shareFooter": "Enviado desde BusãoGyn (app independiente, no oficial).",
+  "shareLine": "Línea {line} — {name}",
+  "@shareLine": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCatalogNote": "Datos de registro; revisa horarios y recorrido antes de salir.",
+  "shareTripTitle": "Viaje en autobús (estimación): {from} → {to}",
+  "@shareTripTitle": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripLeg": "{step}. Línea {line}: sube en {from}, baja en {to}",
+  "@shareTripLeg": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "line": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripNote": "Estimación a partir del registro, no es un recorrido oficial. Revisa antes de salir.",
+  "shareStopAction": "Compartir parada",
+  "shareLineAction": "Compartir línea",
+  "shareTripAction": "Compartir viaje",
+  "tripSave": "Guardar viaje",
+  "tripSaved": "Viaje guardado",
+  "tripSavedNotice": "Viaje guardado en Guardados.",
+  "tripsLimit": "Ya tienes {count} viajes guardados. Quita uno para guardar otro.",
+  "@tripsLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripMissingStop": "Una parada de este viaje no está en el registro actual.",
+  "savedTripsTitle": "Viajes",
+  "tripRenameTitle": "Nombre del viaje",
+  "tripRenameSave": "Guardar",
+  "tripMenu": "Opciones del viaje",
+  "tripRename": "Renombrar",
+  "tripRemove": "Quitar",
+  "catalogSearchApproximate": "Nada exacto: mostrando nombres parecidos (un error de escritura).",
+  "nearbyDeniedBrowser": "La ubicación está bloqueada para este sitio. Permítela en los permisos del navegador.",
+  "nearbySummary": "Cerca de ti · {count, plural, =0{ninguna parada} =1{1 parada} other{{count} paradas}}",
+  "@nearbySummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

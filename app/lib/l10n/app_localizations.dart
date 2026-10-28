@@ -2592,6 +2592,246 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Acompanhamento do ônibus'**
   String get sheetSummaryTracking;
+
+  /// No description provided for @nearbyButton.
+  ///
+  /// In pt, this message translates to:
+  /// **'Perto de mim'**
+  String get nearbyButton;
+
+  /// No description provided for @nearbyLocating.
+  ///
+  /// In pt, this message translates to:
+  /// **'Procurando sua posição…'**
+  String get nearbyLocating;
+
+  /// No description provided for @nearbyHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Usa sua localização só agora, no aparelho: ela não é guardada nem enviada.'**
+  String get nearbyHint;
+
+  /// No description provided for @nearbyTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Perto de você'**
+  String get nearbyTitle;
+
+  /// No description provided for @nearbyRefresh.
+  ///
+  /// In pt, this message translates to:
+  /// **'Atualizar'**
+  String get nearbyRefresh;
+
+  /// No description provided for @nearbyImprecise.
+  ///
+  /// In pt, this message translates to:
+  /// **'Posição aproximada (± {meters} m). Confira no mapa.'**
+  String nearbyImprecise(int meters);
+
+  /// No description provided for @nearbyEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum ponto do cadastro a até 1 km de você.'**
+  String get nearbyEmpty;
+
+  /// No description provided for @nearbyDistance.
+  ///
+  /// In pt, this message translates to:
+  /// **'{meters} m em linha reta'**
+  String nearbyDistance(int meters);
+
+  /// No description provided for @nearbyStraightLine.
+  ///
+  /// In pt, this message translates to:
+  /// **'Distâncias em linha reta: o caminho a pé pode ser maior.'**
+  String get nearbyStraightLine;
+
+  /// No description provided for @nearbyDenied.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem permissão de localização. Você pode buscar o ponto pelo código, rua ou bairro.'**
+  String get nearbyDenied;
+
+  /// No description provided for @nearbyDeniedForever.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização está bloqueada para o BusãoGyn. Para usar, libere nos ajustes do aparelho.'**
+  String get nearbyDeniedForever;
+
+  /// No description provided for @nearbyServiceOff.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização do aparelho está desligada.'**
+  String get nearbyServiceOff;
+
+  /// No description provided for @nearbyTimeout.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para obter sua posição a tempo. Tente de novo, de preferência em local aberto.'**
+  String get nearbyTimeout;
+
+  /// No description provided for @nearbyUnavailable.
+  ///
+  /// In pt, this message translates to:
+  /// **'Localização indisponível neste aparelho ou navegador.'**
+  String get nearbyUnavailable;
+
+  /// No description provided for @nearbyOpenSettings.
+  ///
+  /// In pt, this message translates to:
+  /// **'Abrir ajustes'**
+  String get nearbyOpenSettings;
+
+  /// No description provided for @shareCopied.
+  ///
+  /// In pt, this message translates to:
+  /// **'Texto copiado para compartilhar.'**
+  String get shareCopied;
+
+  /// No description provided for @shareStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ponto de ônibus {code}'**
+  String shareStop(String code);
+
+  /// No description provided for @shareFooter.
+  ///
+  /// In pt, this message translates to:
+  /// **'Enviado pelo BusãoGyn (app independente, não oficial).'**
+  String get shareFooter;
+
+  /// No description provided for @shareLine.
+  ///
+  /// In pt, this message translates to:
+  /// **'Linha {line} — {name}'**
+  String shareLine(String line, String name);
+
+  /// No description provided for @shareCatalogNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dados de cadastro; confira horários e itinerário antes de sair.'**
+  String get shareCatalogNote;
+
+  /// No description provided for @shareTripTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Viagem de ônibus (estimativa): {from} → {to}'**
+  String shareTripTitle(String from, String to);
+
+  /// No description provided for @shareTripLeg.
+  ///
+  /// In pt, this message translates to:
+  /// **'{step}. Linha {line}: embarque em {from}, desça em {to}'**
+  String shareTripLeg(int step, String line, String from, String to);
+
+  /// No description provided for @shareTripNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estimativa a partir do cadastro, não é itinerário oficial. Confira antes de sair.'**
+  String get shareTripNote;
+
+  /// No description provided for @shareStopAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Compartilhar ponto'**
+  String get shareStopAction;
+
+  /// No description provided for @shareLineAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Compartilhar linha'**
+  String get shareLineAction;
+
+  /// No description provided for @shareTripAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Compartilhar viagem'**
+  String get shareTripAction;
+
+  /// No description provided for @tripSave.
+  ///
+  /// In pt, this message translates to:
+  /// **'Salvar viagem'**
+  String get tripSave;
+
+  /// No description provided for @tripSaved.
+  ///
+  /// In pt, this message translates to:
+  /// **'Viagem salva'**
+  String get tripSaved;
+
+  /// No description provided for @tripSavedNotice.
+  ///
+  /// In pt, this message translates to:
+  /// **'Viagem salva em Salvos.'**
+  String get tripSavedNotice;
+
+  /// No description provided for @tripsLimit.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você já tem {count} viagens salvas. Remova uma para salvar outra.'**
+  String tripsLimit(int count);
+
+  /// No description provided for @tripMissingStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Um ponto desta viagem não está no cadastro atual.'**
+  String get tripMissingStop;
+
+  /// No description provided for @savedTripsTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Viagens'**
+  String get savedTripsTitle;
+
+  /// No description provided for @tripRenameTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nome da viagem'**
+  String get tripRenameTitle;
+
+  /// No description provided for @tripRenameSave.
+  ///
+  /// In pt, this message translates to:
+  /// **'Salvar'**
+  String get tripRenameSave;
+
+  /// No description provided for @tripMenu.
+  ///
+  /// In pt, this message translates to:
+  /// **'Opções da viagem'**
+  String get tripMenu;
+
+  /// No description provided for @tripRename.
+  ///
+  /// In pt, this message translates to:
+  /// **'Renomear'**
+  String get tripRename;
+
+  /// No description provided for @tripRemove.
+  ///
+  /// In pt, this message translates to:
+  /// **'Remover'**
+  String get tripRemove;
+
+  /// No description provided for @catalogSearchApproximate.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada exato: mostrando nomes parecidos (um erro de digitação).'**
+  String get catalogSearchApproximate;
+
+  /// No description provided for @nearbyDeniedBrowser.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização está bloqueada para este site. Libere nas permissões do navegador.'**
+  String get nearbyDeniedBrowser;
+
+  /// No description provided for @nearbySummary.
+  ///
+  /// In pt, this message translates to:
+  /// **'Perto de você · {count, plural, =0{nenhum ponto} =1{1 ponto} other{{count} pontos}}'**
+  String nearbySummary(int count);
 }
 
 class _AppLocalizationsDelegate

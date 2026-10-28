@@ -174,6 +174,7 @@ class NetworkOverlay {
     this.selectedStop = emptyCollection,
     this.trackRoute = emptyCollection,
     this.plan = emptyCollection,
+    this.me = emptyCollection,
     this.focus,
   });
 
@@ -186,6 +187,9 @@ class NetworkOverlay {
 
   /// Viagem planejada selecionada (planejador).
   final Map<String, dynamic> plan;
+
+  /// Posição do passageiro ("Perto de mim"), só enquanto ele a pediu.
+  final Map<String, dynamic> me;
   final MapFocus? focus;
 }
 
@@ -207,6 +211,8 @@ class NetworkOverlayBuilder {
   var _track = emptyCollection;
   TripOption? _planKey;
   var _plan = emptyCollection;
+  GeoPosition? _meKey;
+  var _me = emptyCollection;
 
   NetworkOverlay build({
     String? selectedStopId,
@@ -214,8 +220,13 @@ class NetworkOverlayBuilder {
     String? routeShapeId,
     RouteMatch? trackMatch,
     TripOption? plan,
+    GeoPosition? me,
     MapFocus? focus,
   }) {
+    if (!identical(me, _meKey)) {
+      _meKey = me;
+      _me = me == null ? emptyCollection : featureCollection([_point(me, {})]);
+    }
     if (!identical(plan, _planKey)) {
       _planKey = plan;
       _plan = planCollection(catalog, plan);
@@ -255,6 +266,7 @@ class NetworkOverlayBuilder {
       selectedStop: _selected,
       trackRoute: _track,
       plan: _plan,
+      me: _me,
       focus: focus,
     );
   }

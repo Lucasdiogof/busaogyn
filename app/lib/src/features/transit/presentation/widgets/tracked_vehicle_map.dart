@@ -552,6 +552,7 @@ class _TransitMapState extends State<TransitMap>
       push(netSelectedSourceId, shown.selectedStop, next.selectedStop);
       push(netTrackSourceId, shown.trackRoute, next.trackRoute);
       push(netPlanSourceId, shown.plan, next.plan);
+      push(netMeSourceId, shown.me, next.me);
       _shownNetwork = next;
     }
     final focus = next.focus;
