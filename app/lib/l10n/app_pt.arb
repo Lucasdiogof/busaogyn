@@ -1256,5 +1256,93 @@
   "nextStopsUnreliable": "Sem sequência confiável de paradas para este trajeto: só o acompanhamento no mapa.",
   "nextStopsEnd": "Ônibus no fim do trajeto.",
   "trackReasonGpsJump": "a posição saltou ao longo do trajeto",
-  "trackReasonRepeatedSection": "o trajeto passa duas vezes por este trecho"
+  "trackReasonRepeatedSection": "o trajeto passa duas vezes por este trecho",
+  "plannerOpen": "Planejar viagem",
+  "plannerTitle": "Planejar viagem",
+  "plannerIntro": "De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.",
+  "plannerOrigin": "Origem",
+  "plannerDestination": "Destino",
+  "plannerSearchHint": "Código, rua, bairro ou cidade",
+  "plannerPickOnMap": "Escolher no mapa",
+  "plannerPicking": "Toque num ponto no mapa para definir: {field}.",
+  "@plannerPicking": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "plannerSwap": "Inverter origem e destino",
+  "plannerSearch": "Buscar viagens",
+  "plannerClose": "Fechar planejador",
+  "plannerNotCovered": "fora do planejador",
+  "plannerNoResultTitle": "Nenhuma viagem para mostrar",
+  "plannerSameStop": "Origem e destino são o mesmo ponto.",
+  "plannerUnknownStop": "Ponto não encontrado no catálogo.",
+  "plannerNoCoverageOrigin": "A origem ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.",
+  "plannerNoCoverageDestination": "O destino ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.",
+  "plannerNoRoute": "Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.",
+  "plannerTruncated": "A busca parou no limite de processamento; pode haver outras opções.",
+  "plannerResultsTitle": "{count, plural, =0{Nenhuma alternativa} =1{1 alternativa} other{{count} alternativas}}",
+  "@plannerResultsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plannerReliable": "Confiável",
+  "plannerEstimated": "Estimada",
+  "plannerBuses": "{count, plural, =0{Nenhum ônibus} =1{1 ônibus} other{{count} ônibus}}",
+  "@plannerBuses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plannerDirect": "direto",
+  "plannerTransfers": "{count, plural, =0{sem baldeação} =1{1 baldeação} other{{count} baldeações}}",
+  "@plannerTransfers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plannerBoard": "Embarque",
+  "plannerTransfer": "Baldeação",
+  "plannerAlight": "Desembarque",
+  "plannerLeg": "{variant} · {direction} · {stops} paradas · {km} km pelo trajeto",
+  "@plannerLeg": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "stops": {
+        "type": "int"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "plannerWalk": "a pé, ~{meters} m em linha reta",
+  "@plannerWalk": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "plannerShowOnMap": "Ver no mapa",
+  "plannerOnMap": "No mapa",
+  "plannerNoTimes": "Sem tempo de viagem nem horário: os quadros não têm vigência confirmada. A ordem das paradas é estimada pelo trajeto oficial; o km é medido nele.",
+  "plannerCautionOrder": "Ordem das paradas não conferida com os logradouros oficiais.",
+  "plannerCautionUncertain": "Posição incerta de um ponto de embarque ou desembarque.",
+  "plannerCautionRepeated": "O ônibus passa mais de uma vez por um dos pontos.",
+  "plannerCautionWalk": "Baldeação a pé: travessia, calçada e acessibilidade não verificadas."
 }

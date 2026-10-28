@@ -2232,6 +2232,228 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'o trajeto passa duas vezes por este trecho'**
   String get trackReasonRepeatedSection;
+
+  /// No description provided for @plannerOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Planejar viagem'**
+  String get plannerOpen;
+
+  /// No description provided for @plannerTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Planejar viagem'**
+  String get plannerTitle;
+
+  /// No description provided for @plannerIntro.
+  ///
+  /// In pt, this message translates to:
+  /// **'De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.'**
+  String get plannerIntro;
+
+  /// No description provided for @plannerOrigin.
+  ///
+  /// In pt, this message translates to:
+  /// **'Origem'**
+  String get plannerOrigin;
+
+  /// No description provided for @plannerDestination.
+  ///
+  /// In pt, this message translates to:
+  /// **'Destino'**
+  String get plannerDestination;
+
+  /// No description provided for @plannerSearchHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Código, rua, bairro ou cidade'**
+  String get plannerSearchHint;
+
+  /// No description provided for @plannerPickOnMap.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escolher no mapa'**
+  String get plannerPickOnMap;
+
+  /// No description provided for @plannerPicking.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque num ponto no mapa para definir: {field}.'**
+  String plannerPicking(String field);
+
+  /// No description provided for @plannerSwap.
+  ///
+  /// In pt, this message translates to:
+  /// **'Inverter origem e destino'**
+  String get plannerSwap;
+
+  /// No description provided for @plannerSearch.
+  ///
+  /// In pt, this message translates to:
+  /// **'Buscar viagens'**
+  String get plannerSearch;
+
+  /// No description provided for @plannerClose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fechar planejador'**
+  String get plannerClose;
+
+  /// No description provided for @plannerNotCovered.
+  ///
+  /// In pt, this message translates to:
+  /// **'fora do planejador'**
+  String get plannerNotCovered;
+
+  /// No description provided for @plannerNoResultTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma viagem para mostrar'**
+  String get plannerNoResultTitle;
+
+  /// No description provided for @plannerSameStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Origem e destino são o mesmo ponto.'**
+  String get plannerSameStop;
+
+  /// No description provided for @plannerUnknownStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ponto não encontrado no catálogo.'**
+  String get plannerUnknownStop;
+
+  /// No description provided for @plannerNoCoverageOrigin.
+  ///
+  /// In pt, this message translates to:
+  /// **'A origem ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.'**
+  String get plannerNoCoverageOrigin;
+
+  /// No description provided for @plannerNoCoverageDestination.
+  ///
+  /// In pt, this message translates to:
+  /// **'O destino ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.'**
+  String get plannerNoCoverageDestination;
+
+  /// No description provided for @plannerNoRoute.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.'**
+  String get plannerNoRoute;
+
+  /// No description provided for @plannerTruncated.
+  ///
+  /// In pt, this message translates to:
+  /// **'A busca parou no limite de processamento; pode haver outras opções.'**
+  String get plannerTruncated;
+
+  /// No description provided for @plannerResultsTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhuma alternativa} =1{1 alternativa} other{{count} alternativas}}'**
+  String plannerResultsTitle(int count);
+
+  /// No description provided for @plannerReliable.
+  ///
+  /// In pt, this message translates to:
+  /// **'Confiável'**
+  String get plannerReliable;
+
+  /// No description provided for @plannerEstimated.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estimada'**
+  String get plannerEstimated;
+
+  /// No description provided for @plannerBuses.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhum ônibus} =1{1 ônibus} other{{count} ônibus}}'**
+  String plannerBuses(int count);
+
+  /// No description provided for @plannerDirect.
+  ///
+  /// In pt, this message translates to:
+  /// **'direto'**
+  String get plannerDirect;
+
+  /// No description provided for @plannerTransfers.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{sem baldeação} =1{1 baldeação} other{{count} baldeações}}'**
+  String plannerTransfers(int count);
+
+  /// No description provided for @plannerBoard.
+  ///
+  /// In pt, this message translates to:
+  /// **'Embarque'**
+  String get plannerBoard;
+
+  /// No description provided for @plannerTransfer.
+  ///
+  /// In pt, this message translates to:
+  /// **'Baldeação'**
+  String get plannerTransfer;
+
+  /// No description provided for @plannerAlight.
+  ///
+  /// In pt, this message translates to:
+  /// **'Desembarque'**
+  String get plannerAlight;
+
+  /// No description provided for @plannerLeg.
+  ///
+  /// In pt, this message translates to:
+  /// **'{variant} · {direction} · {stops} paradas · {km} km pelo trajeto'**
+  String plannerLeg(String direction, String km, int stops, String variant);
+
+  /// No description provided for @plannerWalk.
+  ///
+  /// In pt, this message translates to:
+  /// **'a pé, ~{meters} m em linha reta'**
+  String plannerWalk(int meters);
+
+  /// No description provided for @plannerShowOnMap.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver no mapa'**
+  String get plannerShowOnMap;
+
+  /// No description provided for @plannerOnMap.
+  ///
+  /// In pt, this message translates to:
+  /// **'No mapa'**
+  String get plannerOnMap;
+
+  /// No description provided for @plannerNoTimes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem tempo de viagem nem horário: os quadros não têm vigência confirmada. A ordem das paradas é estimada pelo trajeto oficial; o km é medido nele.'**
+  String get plannerNoTimes;
+
+  /// No description provided for @plannerCautionOrder.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ordem das paradas não conferida com os logradouros oficiais.'**
+  String get plannerCautionOrder;
+
+  /// No description provided for @plannerCautionUncertain.
+  ///
+  /// In pt, this message translates to:
+  /// **'Posição incerta de um ponto de embarque ou desembarque.'**
+  String get plannerCautionUncertain;
+
+  /// No description provided for @plannerCautionRepeated.
+  ///
+  /// In pt, this message translates to:
+  /// **'O ônibus passa mais de uma vez por um dos pontos.'**
+  String get plannerCautionRepeated;
+
+  /// No description provided for @plannerCautionWalk.
+  ///
+  /// In pt, this message translates to:
+  /// **'Baldeação a pé: travessia, calçada e acessibilidade não verificadas.'**
+  String get plannerCautionWalk;
 }
 
 class _AppLocalizationsDelegate

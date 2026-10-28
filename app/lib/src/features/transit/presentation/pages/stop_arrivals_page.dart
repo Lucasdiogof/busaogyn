@@ -14,9 +14,11 @@ import '../../../catalog/domain/route_geometry.dart';
 import '../../../catalog/domain/route_match.dart';
 import '../../../catalog/domain/stop_sequence.dart';
 import '../../../catalog/domain/transit_catalog.dart';
+import '../../../catalog/domain/trip_planner.dart';
 import '../../../catalog/presentation/catalog_access.dart';
 import '../../../catalog/presentation/catalog_schedule_widgets.dart';
 import '../../../catalog/presentation/catalog_widgets.dart';
+import '../../../catalog/presentation/trip_planner_widgets.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
 import '../../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import '../../../saved_stops/presentation/widgets/saved_stops_widgets.dart';
@@ -162,6 +164,63 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     return _networkBuilder = NetworkOverlayBuilder(catalog);
   }
 
+  /// Planejador de viagens (só com catálogo); estado sobrevive à troca de aba.
+  TripPlannerController? _plannerController;
+  TripPlannerController? get _planner {
+    final catalog = _catalog;
+    if (catalog == null) return null;
+    final current = _plannerController;
+    if (current != null && identical(current.catalog, catalog)) return current;
+    current?.removeListener(_onPlannerChanged);
+    return _plannerController = TripPlannerController(catalog)
+      ..addListener(_onPlannerChanged);
+  }
+
+  TripOption? _shownPlan;
+  (String?, String?) _plannerEnds = (null, null);
+
+  /// Alternativa escolhida: sai o trajeto de linha, entra a viagem
+  /// enquadrada.
+  void _onPlannerChanged() {
+    if (!mounted) return;
+    final planner = _plannerController!;
+    final option = planner.active ? planner.selectedOption : null;
+    // Origem/destino recém-escolhidos: o mapa vai até o ponto.
+    final ends = (planner.origin, planner.destination);
+    final changed = ends.$1 != _plannerEnds.$1
+        ? ends.$1
+        : ends.$2 != _plannerEnds.$2
+        ? ends.$2
+        : null;
+    _plannerEnds = ends;
+    if (changed != null && option == null) _focusOnStop(changed);
+    setState(() {
+      if (!identical(option, _shownPlan)) {
+        _shownPlan = option;
+        if (option != null) {
+          _routeLine = null;
+          _routeShape = null;
+          unawaited(
+            _frame(
+              tripBounds(option),
+              stillWanted: () => identical(_shownPlan, option),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  /// Toque num ponto do mapa: preenche o campo do planejador, se ele estiver
+  /// esperando; senão abre o ponto.
+  void _onMapStopTap(String code) {
+    if (_planner?.pickFromMap(code) ?? false) {
+      _focusOnStop(code);
+      return;
+    }
+    _openPreview(code);
+  }
+
   /// Trajeto oficial mostrado no mapa (linha + Placemark).
   String? _routeLine;
   String? _routeShape;
@@ -188,8 +247,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       _routeLine = shape.lineId;
       _routeShape = shape.id;
     });
-    // Painel aberto por cima do mapa: baixa antes de enquadrar, senão o
-    // trajeto caberia numa faixa mínima.
+    await _frame(
+      GeoBounds.of(shape.points),
+      stillWanted: () => _routeShape == shape.id,
+    );
+  }
+
+  /// Enquadra [bounds] depois de o painel se acomodar (ele baixa ou encolhe
+  /// com um trajeto/viagem no mapa; senão o enquadramento caberia numa
+  /// faixa mínima).
+  Future<void> _frame(
+    GeoBounds bounds, {
+    required bool Function() stillWanted,
+  }) async {
     if (_sheetExtent.value > _sheetMid + 0.01) {
       _animateSheet(_sheetMid);
       // Sem await: se o conteúdo do painel troca no meio, a animação é
@@ -198,14 +268,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       await Future<void>.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
     }
-    // O painel muda de altura com o trajeto; enquadra com a margem nova.
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
-    if (!mounted || _routeShape != shape.id) return;
-    setState(
-      () =>
-          _focus = MapFocus.bounds(++_focusSerial, GeoBounds.of(shape.points)),
-    );
+    if (!mounted || !stillWanted()) return;
+    setState(() => _focus = MapFocus.bounds(++_focusSerial, bounds));
   }
 
   /// Volta ao mapa normal (sem trajeto).
@@ -315,6 +381,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     _searchFocus.dispose();
     _sheetController.dispose();
     _sheetExtent.dispose();
+    _plannerController
+      ?..removeListener(_onPlannerChanged)
+      ..dispose();
     _panelHeight.dispose();
     _follow.dispose();
     super.dispose();
@@ -595,7 +664,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   routeLineId: _routeLine,
                   routeShapeId: _routeShape,
                   focus: _focus,
-                  onStopTap: _openPreview,
+                  plan: _shownPlan,
+                  onStopTap: _onMapStopTap,
                 ),
               ),
             ),
@@ -605,8 +675,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                 left: geometry.left,
                 width: geometry.width,
                 bottom: geometry.panelBottom,
-                // Com trajeto no mapa, o painel fica na metade de baixo.
-                top: _routeLine == null
+                // Com trajeto ou viagem no mapa, o painel fica na metade de
+                // baixo.
+                top: _routeLine == null && _shownPlan == null
                     ? geometry.panelTop
                     : math.max(geometry.panelTop, geometry.size.height * 0.5),
                 child: Align(
@@ -1035,7 +1106,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
             showEmpty: state is StopArrivalsInitial,
           ),
         );
+        final planner = _planner;
         final Widget child = switch (_tab) {
+          HomeTab.stop when planner != null && planner.active =>
+            TripPlannerPanel(controller: planner, onOpenStop: _focusOnStop),
           HomeTab.stop when catalog != null && _previewStop != null =>
             StopPreview(
               key: ValueKey('preview-$_previewStop'),
@@ -1118,6 +1192,18 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           ),
           HomeTab.settings => const SettingsPanel(),
         };
+        // Atalho do planejador na aba Pontos (só com catálogo).
+        final content =
+            _tab == HomeTab.stop && planner != null && !planner.active
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PlanTripButton(onPressed: planner.open),
+                  const SizedBox(height: Space.sm),
+                  child,
+                ],
+              )
+            : child;
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
           switchInCurve: Curves.easeOutCubic,
@@ -1136,7 +1222,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               child: child,
             ),
           ),
-          child: KeyedSubtree(key: ValueKey(_tab), child: child),
+          child: KeyedSubtree(key: ValueKey(_tab), child: content),
         );
       },
     );
@@ -1216,8 +1302,12 @@ class _MapBinding extends StatelessWidget {
     this.routeLineId,
     this.routeShapeId,
     this.focus,
+    this.plan,
     this.onStopTap,
   });
+
+  /// Viagem planejada selecionada (só desenho; não é rastreamento).
+  final TripOption? plan;
 
   /// Rede do catálogo de desenvolvimento; `null` = mapa de sempre.
   final NetworkOverlayBuilder? network;
@@ -1285,6 +1375,7 @@ class _MapBinding extends StatelessWidget {
       routeLineId: routeLineId,
       routeShapeId: routeShapeId,
       trackMatch: match,
+      plan: plan,
       focus: focus,
     );
   }

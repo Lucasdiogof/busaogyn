@@ -150,7 +150,7 @@ def build_catalog():
     sequence_rows = [
         [r.shape_id, r.status, r.circular,
          ';'.join(f'{e.stop_id},{round(e.along_m)},{level_code[e.level]}' for e in r.entries),
-         sorted({sid for sid, _ in r.ambiguous}, key=int)]
+         sorted({sid for sid, _ in r.ambiguous}, key=int), r.street_rho]
         for r in sequences
     ]
 
@@ -210,7 +210,9 @@ def build_catalog():
         # ESTIMATIVA por geometria (não oficial). entries: 'ponto,metros,nível;…'
         # na ordem do trajeto (nível h = alto, m = intermediário).
         'sequences': {
-            'fields': ['shape', 'status', 'circular', 'entries', 'ambiguous'],
+            # streetRho: concordância (Spearman) da ordem estimada com a lista
+            # oficial de logradouros do sentido; null = não verificável.
+            'fields': ['shape', 'status', 'circular', 'entries', 'ambiguous', 'streetRho'],
             'rows': sequence_rows,
         },
         'stops': {

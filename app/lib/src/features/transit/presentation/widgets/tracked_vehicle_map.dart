@@ -551,6 +551,7 @@ class _TransitMapState extends State<TransitMap>
       push(netRouteStopsSourceId, shown.routeStops, next.routeStops);
       push(netSelectedSourceId, shown.selectedStop, next.selectedStop);
       push(netTrackSourceId, shown.trackRoute, next.trackRoute);
+      push(netPlanSourceId, shown.plan, next.plan);
       _shownNetwork = next;
     }
     final focus = next.focus;
@@ -776,7 +777,9 @@ class _TransitMapState extends State<TransitMap>
   ) {
     if (layerId == secondaryLayerId) widget.onSecondaryTap?.call(id);
     if (layerId == vehicleLayerId) widget.onTrackedTap?.call();
-    if (layerId == netStopsLayerId || layerId == netRouteStopsLayerId) {
+    if (layerId == netStopsLayerId ||
+        layerId == netRouteStopsLayerId ||
+        layerId == netPlanPointsLayerId) {
       widget.onStopTap?.call(id);
     }
     if (layerId == netClusterLayerId) unawaited(_zoomInto(coordinates));

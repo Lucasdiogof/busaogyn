@@ -37,7 +37,15 @@ class StopSequence {
     required String encoded,
     this.circular = false,
     this.ambiguous = const [],
+    this.streetRho,
   }) : _encoded = encoded;
+
+  /// Concordância (Spearman) da ordem estimada com a lista OFICIAL de
+  /// logradouros do sentido; `null` quando não há logradouros suficientes.
+  final double? streetRho;
+
+  /// Ordem conferida contra os logradouros oficiais (não só geometria).
+  bool get streetValidated => (streetRho ?? -1) >= 0.5;
 
   final String shapeId;
   final SequenceStatus status;
