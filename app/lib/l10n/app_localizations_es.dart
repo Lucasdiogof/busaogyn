@@ -1119,4 +1119,94 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get catalogIntroBody =>
       'Por el código de la placa, la calle, el barrio o la ciudad. Luego mira las próximas llegadas y sigue el bus en el mapa.';
+
+  @override
+  String get catalogDirectionOutbound => 'Ida';
+
+  @override
+  String get catalogDirectionInbound => 'Vuelta';
+
+  @override
+  String get catalogDirectionUnknown => 'Trayecto';
+
+  @override
+  String catalogRouteOnMap(String direction, String variant) {
+    return 'En el mapa: $variant · $direction';
+  }
+
+  @override
+  String get catalogClearRoute => 'Quitar trayecto';
+
+  @override
+  String get catalogShowRouteHint =>
+      'Toca Ida o Vuelta para ver el trayecto oficial en el mapa.';
+
+  @override
+  String get catalogRouteLegend =>
+      'Ida: ámbar continua · Vuelta: discontinua · Otros trayectos de la línea: gris · Anillos: paradas registradas de la línea, sin orden de parada.';
+
+  @override
+  String get catalogKmzOnlyShapes =>
+      'Trayectos del KMZ sin variante en el registro';
+
+  @override
+  String catalogShowRouteSemantics(String direction, String variant) {
+    return 'Mostrar en el mapa el trayecto $variant, $direction';
+  }
+
+  @override
+  String get catalogMapHint =>
+      'Toca una parada en el mapa para ver dirección y líneas.';
+
+  @override
+  String get trackMatchTitle => 'Trayecto oficial (experimental)';
+
+  @override
+  String trackMatchConfirmed(String direction, String variant) {
+    return 'Asociado a $variant · $direction. En el mapa, el recorrido oficial aparece en gris y el tramo por delante, estimado, en ámbar discontinuo. No hay previsión de horario ni de próxima parada.';
+  }
+
+  @override
+  String trackMatchPending(String variant) {
+    return 'Variante $variant identificada. Esperando que el bus avance para confirmar el sentido; todavía no se dibuja ningún trayecto.';
+  }
+
+  @override
+  String trackMatchAmbiguous(String reason) {
+    return 'Sin asociación segura a un trayecto oficial: $reason. El mapa muestra solo la posición y el rastro observado.';
+  }
+
+  @override
+  String get trackMatchNoShapes =>
+      'Esta línea no tiene trayecto oficial en el catálogo.';
+
+  @override
+  String get trackMatchNoPosition =>
+      'Sin posición actual del bus: no se dibuja ningún trayecto.';
+
+  @override
+  String get trackReasonRouteNameMissing =>
+      'la fuente no informó el itinerario';
+
+  @override
+  String get trackReasonRouteNameNoMatch =>
+      'el itinerario informado no está en el registro';
+
+  @override
+  String get trackReasonRouteNameSeveral =>
+      'más de una variante tiene ese itinerario';
+
+  @override
+  String get trackReasonDirectionUnknown => 'el destino no indica el sentido';
+
+  @override
+  String get trackReasonShapeMissing =>
+      'no hay un trayecto oficial único para ese sentido';
+
+  @override
+  String get trackReasonOffRoute => 'el bus está fuera del trayecto registrado';
+
+  @override
+  String get trackReasonMovingBackwards =>
+      'el desplazamiento observado contradice el trayecto';
 }

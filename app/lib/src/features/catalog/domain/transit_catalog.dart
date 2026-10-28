@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../transit/domain/entities/tracked_vehicle.dart';
+import 'route_geometry.dart';
 import 'text_search.dart';
 
 /// Versão e proveniência do catálogo estático.
@@ -13,7 +15,11 @@ class CatalogVersion {
     this.generatedAt,
     this.linesReference,
     this.stopsReference,
+    this.shapeToleranceM,
   });
+
+  /// Tolerância (m) da simplificação dos trajetos distribuídos.
+  final double? shapeToleranceM;
 
   final String id;
   final String source;
@@ -156,6 +162,39 @@ class CatalogStop {
   }
 }
 
+/// Trajeto oficial (KMZ da CMTC) de uma variante num sentido. A geometria
+/// vem simplificada para exibição (ver `version.shapeToleranceM`); o
+/// original fica no pipeline. Decodificada só quando usada.
+class CatalogShape {
+  CatalogShape({
+    required this.id,
+    required this.lineId,
+    required this.variantId,
+    required this.direction,
+    required this.encoded,
+    this.description,
+    this.lengthM,
+    this.sourceVertices,
+  });
+
+  /// Nome original do Placemark ('003-1i - T. MARANATA / … - IDA').
+  final String id;
+  final String lineId;
+  final String variantId;
+
+  /// 'i' (ida) ou 'v' (volta), do nome oficial; `null` quando ausente.
+  final String? direction;
+  final String? description;
+  final String encoded;
+
+  /// Comprimento do trajeto original (antes de simplificar).
+  final int? lengthM;
+  final int? sourceVertices;
+
+  late final List<GeoPosition> points = decodePolyline(encoded);
+  late final RouteLine line = RouteLine(points);
+}
+
 /// Resultado de busca com pontuação (maior = mais relevante).
 @immutable
 class Ranked<T> {
@@ -173,9 +212,14 @@ class TransitCatalog {
     required List<CatalogLine> lines,
     required List<CatalogVariant> variants,
     required List<CatalogStop> stops,
+    List<CatalogShape> shapes = const [],
   }) : lines = List.unmodifiable(lines),
        variants = List.unmodifiable(variants),
-       stops = List.unmodifiable(stops) {
+       stops = List.unmodifiable(stops),
+       shapes = List.unmodifiable(shapes) {
+    for (final shape in this.shapes) {
+      _shapesByLine.putIfAbsent(shape.lineId, () => []).add(shape);
+    }
     for (final line in this.lines) {
       _lineById[line.id] = line;
     }
@@ -198,6 +242,12 @@ class TransitCatalog {
   final List<CatalogLine> lines;
   final List<CatalogVariant> variants;
   final List<CatalogStop> stops;
+  final List<CatalogShape> shapes;
+  final _shapesByLine = <String, List<CatalogShape>>{};
+
+  /// Trajetos oficiais da linha (todas as variantes e sentidos).
+  List<CatalogShape> shapesOf(String lineId) =>
+      List.unmodifiable(_shapesByLine[normalizeLineId(lineId)] ?? const []);
 
   final _lineById = <String, CatalogLine>{};
   final _stopById = <String, CatalogStop>{};

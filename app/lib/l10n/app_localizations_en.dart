@@ -1113,4 +1113,95 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get catalogIntroBody =>
       'By the code on the sign, the street, the district or the city. Then see the next arrivals and follow the bus on the map.';
+
+  @override
+  String get catalogDirectionOutbound => 'Outbound';
+
+  @override
+  String get catalogDirectionInbound => 'Inbound';
+
+  @override
+  String get catalogDirectionUnknown => 'Route';
+
+  @override
+  String catalogRouteOnMap(String direction, String variant) {
+    return 'On the map: $variant · $direction';
+  }
+
+  @override
+  String get catalogClearRoute => 'Clear route';
+
+  @override
+  String get catalogShowRouteHint =>
+      'Tap Outbound or Inbound to see the official route on the map.';
+
+  @override
+  String get catalogRouteLegend =>
+      'Outbound: solid amber · Inbound: dashed · Other routes of the line: grey · Rings: registered stops of the line, in no stopping order.';
+
+  @override
+  String get catalogKmzOnlyShapes =>
+      'KMZ routes without a variant in the registry';
+
+  @override
+  String catalogShowRouteSemantics(String direction, String variant) {
+    return 'Show route $variant, $direction on the map';
+  }
+
+  @override
+  String get catalogMapHint =>
+      'Tap a stop on the map to see its address and lines.';
+
+  @override
+  String get trackMatchTitle => 'Official route (experimental)';
+
+  @override
+  String trackMatchConfirmed(String direction, String variant) {
+    return 'Matched to $variant · $direction. On the map, the official route is grey and the stretch ahead, estimated, is dashed amber. There is no time or next-stop prediction.';
+  }
+
+  @override
+  String trackMatchPending(String variant) {
+    return 'Variant $variant identified. Waiting for the bus to move to confirm the direction; no route is drawn yet.';
+  }
+
+  @override
+  String trackMatchAmbiguous(String reason) {
+    return 'No reliable match to an official route: $reason. The map shows only the position and the observed trail.';
+  }
+
+  @override
+  String get trackMatchNoShapes =>
+      'This line has no official route in the catalog.';
+
+  @override
+  String get trackMatchNoPosition =>
+      'No current bus position: no route is drawn.';
+
+  @override
+  String get trackReasonRouteNameMissing =>
+      'the source did not report the itinerary';
+
+  @override
+  String get trackReasonRouteNameNoMatch =>
+      'the reported itinerary is not in the registry';
+
+  @override
+  String get trackReasonRouteNameSeveral =>
+      'more than one variant has this itinerary';
+
+  @override
+  String get trackReasonDirectionUnknown =>
+      'the destination does not indicate the direction';
+
+  @override
+  String get trackReasonShapeMissing =>
+      'there is no single official route for that direction';
+
+  @override
+  String get trackReasonOffRoute => 'the bus is off the registered route';
+
+  @override
+  String get trackReasonMovingBackwards =>
+      'the observed movement contradicts the route';
 }

@@ -1849,6 +1849,144 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa.'**
   String get catalogIntroBody;
+
+  /// No description provided for @catalogDirectionOutbound.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ida'**
+  String get catalogDirectionOutbound;
+
+  /// No description provided for @catalogDirectionInbound.
+  ///
+  /// In pt, this message translates to:
+  /// **'Volta'**
+  String get catalogDirectionInbound;
+
+  /// No description provided for @catalogDirectionUnknown.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trajeto'**
+  String get catalogDirectionUnknown;
+
+  /// No description provided for @catalogRouteOnMap.
+  ///
+  /// In pt, this message translates to:
+  /// **'No mapa: {variant} · {direction}'**
+  String catalogRouteOnMap(String direction, String variant);
+
+  /// No description provided for @catalogClearRoute.
+  ///
+  /// In pt, this message translates to:
+  /// **'Limpar trajeto'**
+  String get catalogClearRoute;
+
+  /// No description provided for @catalogShowRouteHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque em Ida ou Volta para ver o trajeto oficial no mapa.'**
+  String get catalogShowRouteHint;
+
+  /// No description provided for @catalogRouteLegend.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ida: âmbar contínua · Volta: tracejada · Outros trajetos da linha: cinza · Anéis: pontos cadastrados da linha, sem ordem de parada.'**
+  String get catalogRouteLegend;
+
+  /// No description provided for @catalogKmzOnlyShapes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trajetos do KMZ sem variante no cadastro'**
+  String get catalogKmzOnlyShapes;
+
+  /// No description provided for @catalogShowRouteSemantics.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mostrar no mapa o trajeto {variant}, {direction}'**
+  String catalogShowRouteSemantics(String direction, String variant);
+
+  /// No description provided for @catalogMapHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque num ponto do mapa para ver endereço e linhas.'**
+  String get catalogMapHint;
+
+  /// No description provided for @trackMatchTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trajeto oficial (experimental)'**
+  String get trackMatchTitle;
+
+  /// No description provided for @trackMatchConfirmed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Não há previsão de horário nem de próximo ponto.'**
+  String trackMatchConfirmed(String direction, String variant);
+
+  /// No description provided for @trackMatchPending.
+  ///
+  /// In pt, this message translates to:
+  /// **'Variante {variant} identificada. Aguardando o ônibus andar para confirmar o sentido; nenhum trajeto é desenhado ainda.'**
+  String trackMatchPending(String variant);
+
+  /// No description provided for @trackMatchAmbiguous.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem associação segura a um trajeto oficial: {reason}. O mapa mostra só a posição e o rastro observado.'**
+  String trackMatchAmbiguous(String reason);
+
+  /// No description provided for @trackMatchNoShapes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Esta linha não tem trajeto oficial no catálogo.'**
+  String get trackMatchNoShapes;
+
+  /// No description provided for @trackMatchNoPosition.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem posição atual do ônibus: nenhum trajeto é desenhado.'**
+  String get trackMatchNoPosition;
+
+  /// No description provided for @trackReasonRouteNameMissing.
+  ///
+  /// In pt, this message translates to:
+  /// **'a fonte não informou o itinerário'**
+  String get trackReasonRouteNameMissing;
+
+  /// No description provided for @trackReasonRouteNameNoMatch.
+  ///
+  /// In pt, this message translates to:
+  /// **'o itinerário informado não está no cadastro'**
+  String get trackReasonRouteNameNoMatch;
+
+  /// No description provided for @trackReasonRouteNameSeveral.
+  ///
+  /// In pt, this message translates to:
+  /// **'mais de uma variante tem esse itinerário'**
+  String get trackReasonRouteNameSeveral;
+
+  /// No description provided for @trackReasonDirectionUnknown.
+  ///
+  /// In pt, this message translates to:
+  /// **'o destino não indica o sentido'**
+  String get trackReasonDirectionUnknown;
+
+  /// No description provided for @trackReasonShapeMissing.
+  ///
+  /// In pt, this message translates to:
+  /// **'não há trajeto oficial único para esse sentido'**
+  String get trackReasonShapeMissing;
+
+  /// No description provided for @trackReasonOffRoute.
+  ///
+  /// In pt, this message translates to:
+  /// **'o ônibus está fora do trajeto cadastrado'**
+  String get trackReasonOffRoute;
+
+  /// No description provided for @trackReasonMovingBackwards.
+  ///
+  /// In pt, this message translates to:
+  /// **'o deslocamento observado contraria o trajeto'**
+  String get trackReasonMovingBackwards;
 }
 
 class _AppLocalizationsDelegate

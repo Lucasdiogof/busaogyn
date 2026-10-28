@@ -23,7 +23,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from cmtc.sources import read_lines, read_stop_points, read_stops  # noqa: E402
+from cmtc.geo import encode_polyline, length_m, simplify  # noqa: E402
+from cmtc.sources import read_lines, read_shapes, read_stop_points, read_stops  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 RAW = os.path.join(ROOT, 'raw')
@@ -31,6 +32,11 @@ APP_DEV = os.path.abspath(os.path.join(ROOT, '..', '..', 'app', 'dev_catalog'))
 LINES_XLSX = 'Cadastro Geral das Linhas da RMTC _Setembro-2026 01.09.2026.xlsx'
 STOPS_XLSX = 'Cadastro Geral dos Pontos de Ônibus da RMTC- Outubro - 2026.xlsx'
 POINTS_KMZ = 'PED_S MUNICIPIO.kmz'
+SHAPES_KMZ = 'LINHAS RMTC.kmz'
+
+# Tolerância de simplificação dos trajetos distribuídos ao app (Douglas-Peucker,
+# em metros). O original fica intacto em raw/ e processed/.
+SHAPE_TOLERANCE_M = 3.0
 
 
 def _sha(path):
@@ -87,6 +93,16 @@ def build_catalog():
             round(p.lat, 6), round(p.lon, 6), [], p.label,
         ])
 
+    shape_rows = []
+    for sh in read_shapes(os.path.join(RAW, SHAPES_KMZ)):
+        if sh.code is None or len(sh.coords) < 2:
+            continue
+        simple = simplify(sh.coords, SHAPE_TOLERANCE_M)
+        shape_rows.append([
+            sh.shape_id, sh.code.base, sh.code.variant_key, sh.direction, sh.description,
+            encode_polyline(simple), round(length_m(sh.coords)), len(sh.coords),
+        ])
+
     return {
         'format': 'busaogyn.catalog',
         'formatVersion': 1,
@@ -99,7 +115,9 @@ def build_catalog():
             'referenceDates': {'lines': '2026-09-01', 'stops': '2026-10'},
             'licenseStatus': 'pendente',
             'restricted': True,
+            'shapeToleranceM': SHAPE_TOLERANCE_M,
             'files': {
+                SHAPES_KMZ: _sha(os.path.join(RAW, SHAPES_KMZ)),
                 LINES_XLSX: _sha(os.path.join(RAW, LINES_XLSX)),
                 STOPS_XLSX: _sha(os.path.join(RAW, STOPS_XLSX)),
                 POINTS_KMZ: _sha(os.path.join(RAW, POINTS_KMZ)),
@@ -110,6 +128,12 @@ def build_catalog():
             'fields': ['id', 'line', 'code', 'name', 'characteristic', 'status', 'origin', 'destination',
                        'city', 'validFrom', 'company1', 'company2'],
             'rows': variant_rows,
+        },
+        # Trajetos oficiais (KMZ), um por variante + sentido ('i'/'v' do nome).
+        'shapes': {
+            'fields': ['id', 'line', 'variant', 'direction', 'description', 'polyline', 'lengthM',
+                       'sourceVertices'],
+            'rows': shape_rows,
         },
         'stops': {
             'fields': ['id', 'kind', 'streetType', 'street', 'reference', 'district', 'city', 'lat', 'lon',
@@ -143,6 +167,7 @@ def main():
         'linhas': len(catalog['lines']['rows']),
         'variantes': len(catalog['variants']['rows']),
         'pontos': len(catalog['stops']['rows']),
+        'trajetos': len(catalog['shapes']['rows']),
     }, ensure_ascii=False))
 
 

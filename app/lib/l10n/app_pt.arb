@@ -1050,5 +1050,72 @@
     }
   },
   "catalogIntroTitle": "Busque um ponto",
-  "catalogIntroBody": "Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa."
+  "catalogIntroBody": "Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa.",
+  "catalogDirectionOutbound": "Ida",
+  "catalogDirectionInbound": "Volta",
+  "catalogDirectionUnknown": "Trajeto",
+  "catalogRouteOnMap": "No mapa: {variant} · {direction}",
+  "@catalogRouteOnMap": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogClearRoute": "Limpar trajeto",
+  "catalogShowRouteHint": "Toque em Ida ou Volta para ver o trajeto oficial no mapa.",
+  "catalogRouteLegend": "Ida: âmbar contínua · Volta: tracejada · Outros trajetos da linha: cinza · Anéis: pontos cadastrados da linha, sem ordem de parada.",
+  "catalogKmzOnlyShapes": "Trajetos do KMZ sem variante no cadastro",
+  "catalogShowRouteSemantics": "Mostrar no mapa o trajeto {variant}, {direction}",
+  "@catalogShowRouteSemantics": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogMapHint": "Toque num ponto do mapa para ver endereço e linhas.",
+  "trackMatchTitle": "Trajeto oficial (experimental)",
+  "trackMatchConfirmed": "Associado a {variant} · {direction}. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Não há previsão de horário nem de próximo ponto.",
+  "@trackMatchConfirmed": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "trackMatchPending": "Variante {variant} identificada. Aguardando o ônibus andar para confirmar o sentido; nenhum trajeto é desenhado ainda.",
+  "@trackMatchPending": {
+    "placeholders": {
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "trackMatchAmbiguous": "Sem associação segura a um trajeto oficial: {reason}. O mapa mostra só a posição e o rastro observado.",
+  "@trackMatchAmbiguous": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "trackMatchNoShapes": "Esta linha não tem trajeto oficial no catálogo.",
+  "trackMatchNoPosition": "Sem posição atual do ônibus: nenhum trajeto é desenhado.",
+  "trackReasonRouteNameMissing": "a fonte não informou o itinerário",
+  "trackReasonRouteNameNoMatch": "o itinerário informado não está no cadastro",
+  "trackReasonRouteNameSeveral": "mais de uma variante tem esse itinerário",
+  "trackReasonDirectionUnknown": "o destino não indica o sentido",
+  "trackReasonShapeMissing": "não há trajeto oficial único para esse sentido",
+  "trackReasonOffRoute": "o ônibus está fora do trajeto cadastrado",
+  "trackReasonMovingBackwards": "o deslocamento observado contraria o trajeto"
 }

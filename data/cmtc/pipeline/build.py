@@ -24,7 +24,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from cmtc.geo import simplify  # noqa: E402
+from cmtc.geo import encode_polyline, simplify  # noqa: E402
 from cmtc.schedules import parse_sheet  # noqa: E402
 from cmtc.sequence import Params, assign_direction, build_sequence, street_hint  # noqa: E402
 from cmtc.sources import read_lines, read_shapes, read_stop_points, read_stops  # noqa: E402
@@ -423,19 +423,6 @@ def main():
     db.executemany('INSERT INTO variant VALUES (?,?,?,?,?,?,?,?)', [(l.code.variant_key, l.code.base, l.raw_code, l.name, l.origin, l.destination, l.characteristic, l.valid_from) for l in lines])
     db.executemany('INSERT INTO stop VALUES (?,?,?,?,?,?,?)', [(s.stop_id, s.street, s.reference, s.district, s.city, s.lat, s.lon) for s in stops])
     db.executemany('INSERT OR IGNORE INTO stop_line VALUES (?,?)', [(s.stop_id, b) for s in stops for b in s.lines])
-
-    def encode_polyline(coords):  # algoritmo do Google, precisão 1e-5
-        out, plat, plon = [], 0, 0
-        for lon, lat in coords:
-            ilat, ilon = round(lat * 1e5), round(lon * 1e5)
-            for v in (ilat - plat, ilon - plon):
-                v = ~(v << 1) if v < 0 else v << 1
-                while v >= 0x20:
-                    out.append(chr((0x20 | (v & 0x1f)) + 63))
-                    v >>= 5
-                out.append(chr(v + 63))
-            plat, plon = ilat, ilon
-        return ''.join(out)
 
     db.executemany('INSERT INTO pattern VALUES (?,?,?,?)', [(sh.shape_id, sh.code.variant_key if sh.code else None, sh.direction, encode_polyline(simplify(sh.coords, 3))) for sh in shapes])
     db.executemany('INSERT INTO pattern_stop VALUES (?,?,?,?,?)', [(r.shape_id, n, m.stop_id, m.along_m, m.confidence) for r in seqs.values() for n, m in enumerate(final[r.shape_id], 1)])

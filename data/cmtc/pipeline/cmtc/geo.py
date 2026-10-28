@@ -108,6 +108,23 @@ def simplify(coords: list[tuple[float, float]], tolerance_m: float) -> list[tupl
     return [c for c, k in zip(coords, keep) if k]
 
 
+def encode_polyline(coords: list[tuple[float, float]], precision: int = 5) -> str:
+    """Algoritmo de polyline do Google; `coords` = (lon, lat). Precisão 1e-5
+    (~1,1 m), bem abaixo da simplificação de 3 m usada na distribuição."""
+    factor = 10 ** precision
+    out, plat, plon = [], 0, 0
+    for lon, lat in coords:
+        ilat, ilon = round(lat * factor), round(lon * factor)
+        for v in (ilat - plat, ilon - plon):
+            v = ~(v << 1) if v < 0 else v << 1
+            while v >= 0x20:
+                out.append(chr((0x20 | (v & 0x1f)) + 63))
+                v >>= 5
+            out.append(chr(v + 63))
+        plat, plon = ilat, ilon
+    return ''.join(out)
+
+
 def bearing_deg(a: tuple[float, float], b: tuple[float, float]) -> float:
     """Azimute de a para b (lon, lat), 0 = norte."""
     (x1, y1), (x2, y2) = to_xy(*a), to_xy(*b)

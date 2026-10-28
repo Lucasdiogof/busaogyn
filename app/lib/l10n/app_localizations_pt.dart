@@ -1119,4 +1119,92 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get catalogIntroBody =>
       'Pelo código da placa, pela rua, pelo bairro ou pela cidade. Depois veja as próximas chegadas e acompanhe o ônibus no mapa.';
+
+  @override
+  String get catalogDirectionOutbound => 'Ida';
+
+  @override
+  String get catalogDirectionInbound => 'Volta';
+
+  @override
+  String get catalogDirectionUnknown => 'Trajeto';
+
+  @override
+  String catalogRouteOnMap(String direction, String variant) {
+    return 'No mapa: $variant · $direction';
+  }
+
+  @override
+  String get catalogClearRoute => 'Limpar trajeto';
+
+  @override
+  String get catalogShowRouteHint =>
+      'Toque em Ida ou Volta para ver o trajeto oficial no mapa.';
+
+  @override
+  String get catalogRouteLegend =>
+      'Ida: âmbar contínua · Volta: tracejada · Outros trajetos da linha: cinza · Anéis: pontos cadastrados da linha, sem ordem de parada.';
+
+  @override
+  String get catalogKmzOnlyShapes => 'Trajetos do KMZ sem variante no cadastro';
+
+  @override
+  String catalogShowRouteSemantics(String direction, String variant) {
+    return 'Mostrar no mapa o trajeto $variant, $direction';
+  }
+
+  @override
+  String get catalogMapHint =>
+      'Toque num ponto do mapa para ver endereço e linhas.';
+
+  @override
+  String get trackMatchTitle => 'Trajeto oficial (experimental)';
+
+  @override
+  String trackMatchConfirmed(String direction, String variant) {
+    return 'Associado a $variant · $direction. No mapa, o percurso oficial aparece em cinza e o trecho à frente, estimado, em âmbar tracejado. Não há previsão de horário nem de próximo ponto.';
+  }
+
+  @override
+  String trackMatchPending(String variant) {
+    return 'Variante $variant identificada. Aguardando o ônibus andar para confirmar o sentido; nenhum trajeto é desenhado ainda.';
+  }
+
+  @override
+  String trackMatchAmbiguous(String reason) {
+    return 'Sem associação segura a um trajeto oficial: $reason. O mapa mostra só a posição e o rastro observado.';
+  }
+
+  @override
+  String get trackMatchNoShapes =>
+      'Esta linha não tem trajeto oficial no catálogo.';
+
+  @override
+  String get trackMatchNoPosition =>
+      'Sem posição atual do ônibus: nenhum trajeto é desenhado.';
+
+  @override
+  String get trackReasonRouteNameMissing => 'a fonte não informou o itinerário';
+
+  @override
+  String get trackReasonRouteNameNoMatch =>
+      'o itinerário informado não está no cadastro';
+
+  @override
+  String get trackReasonRouteNameSeveral =>
+      'mais de uma variante tem esse itinerário';
+
+  @override
+  String get trackReasonDirectionUnknown => 'o destino não indica o sentido';
+
+  @override
+  String get trackReasonShapeMissing =>
+      'não há trajeto oficial único para esse sentido';
+
+  @override
+  String get trackReasonOffRoute => 'o ônibus está fora do trajeto cadastrado';
+
+  @override
+  String get trackReasonMovingBackwards =>
+      'o deslocamento observado contraria o trajeto';
 }

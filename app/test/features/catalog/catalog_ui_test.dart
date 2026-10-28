@@ -351,10 +351,19 @@ void main() {
         find.textContaining('sem ordem de percurso nem sentido'),
         findsOneWidget,
       );
-      // Não inventa trajeto nem sentido.
+      // Ida/Volta vêm do nome oficial do trajeto (KMZ); a ordem dos pontos
+      // continua sem sentido nem sequência.
       expect(
-        find.textContaining(RegExp(r'\b(Ida|Volta|IDA|VOLTA)\b')),
-        findsNothing,
+        find.byKey(
+          const ValueKey(
+            'catalog-shape-001-1i - T. FICTICIO NORTE / CENTRO IMAGINARIO - IDA',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('sem ordem de percurso nem sentido'),
+        findsOneWidget,
       );
 
       // Ponto da linha abre o detalhe na aba Pontos, sem consultar a API.
