@@ -276,47 +276,56 @@ class _DetailsToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Semantics(
-      button: true,
-      expanded: expanded,
-      label: expanded
-          ? l10n.busDetailsCollapseSemantics
-          : l10n.busDetailsExpandSemantics,
-      excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.plate),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 18,
-                    color: tokens.accentText,
-                  ),
-                  const SizedBox(width: Space.xs),
-                  Expanded(
-                    child: Text(
-                      l10n.busDetails,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: tokens.strongText,
+    return FocusLink(
+      onTap: onTap,
+      builder: (_, focus) => Semantics(
+        button: true,
+        expanded: expanded,
+        label: expanded
+            ? l10n.busDetailsCollapseSemantics
+            : l10n.busDetailsExpandSemantics,
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: onTap,
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.plate),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: tokens.accentText,
+                    ),
+                    const SizedBox(width: Space.xs),
+                    Expanded(
+                      child: Text(
+                        l10n.busDetails,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.strongText,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(
-                    expanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: tokens.softText,
-                  ),
-                ],
+                    Icon(
+                      expanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: tokens.softText,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

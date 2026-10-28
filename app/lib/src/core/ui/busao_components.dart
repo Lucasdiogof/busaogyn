@@ -12,6 +12,86 @@ Duration motion(BuildContext context, Duration duration) =>
     ? Duration.zero
     : duration;
 
+/// Estado de foco entregue ao `Semantics` de um botão desenhado à mão.
+typedef FocusLinkState = ({bool focused, VoidCallback request});
+
+/// Liga o foco do teclado ao nó de semântica de um botão desenhado à mão
+/// (`Semantics(excludeSemantics: true)` em volta de um `InkWell`). Sem isto o
+/// nó não reflete o foco do Flutter: no Web, com a árvore de acessibilidade
+/// ligada (leitor de tela), o Tab volta sempre para o mesmo botão.
+///
+/// O nó usa `focused: focus.focused` e `onFocus: focus.request`; Enter/Espaço
+/// tocam o botão e o anel de foco aparece só na navegação por teclado.
+class FocusLink extends StatefulWidget {
+  const FocusLink({
+    required this.onTap,
+    required this.builder,
+    this.radius = Radii.card,
+    super.key,
+  });
+
+  final VoidCallback? onTap;
+  final double radius;
+  final Widget Function(BuildContext context, FocusLinkState focus) builder;
+
+  @override
+  State<FocusLink> createState() => _FocusLinkState();
+}
+
+class _FocusLinkState extends State<FocusLink> {
+  final _node = FocusNode(debugLabel: 'FocusLink');
+  var _focused = false;
+
+  @override
+  void dispose() {
+    _node.dispose();
+    super.dispose();
+  }
+
+  Object? _activate(Intent _) {
+    widget.onTap?.call();
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    final ring =
+        _focused &&
+        FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    return Actions(
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: _activate),
+        ButtonActivateIntent: CallbackAction<ButtonActivateIntent>(
+          onInvoke: _activate,
+        ),
+      },
+      child: Focus(
+        focusNode: _node,
+        canRequestFocus: enabled,
+        includeSemantics: false,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            border: ring
+                ? Border.all(color: context.tokens.accentText, width: 2)
+                : null,
+          ),
+          // O foco é deste nó: o InkWell de dentro não vira outra parada.
+          child: ExcludeFocus(
+            child: widget.builder(context, (
+              focused: _focused,
+              request: _node.requestFocus,
+            )),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Superfície que flutua sobre o mapa: quase opaca, borda fina e sombra.
 ///
 /// Sem `BackdropFilter`: o mapa é uma platform view (Android/iOS) ou um

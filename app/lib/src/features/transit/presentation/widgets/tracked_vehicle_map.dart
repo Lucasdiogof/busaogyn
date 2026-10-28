@@ -10,6 +10,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../../core/platform/map_attribution_offset.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/busao_tokens.dart';
+import '../../../../core/ui/busao_components.dart';
 import '../../../catalog/domain/network_geojson.dart';
 import '../../../catalog/domain/route_geometry.dart';
 import '../../domain/entities/map_vehicle.dart';
@@ -917,61 +918,70 @@ class _RecenterButton extends StatelessWidget {
     return Tooltip(
       message: l10n.centerBus,
       excludeFromSemantics: true,
-      child: Semantics(
-        button: true,
-        label: following ? l10n.centerBusFollowing : l10n.centerBusPaused,
-        excludeSemantics: true,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(Radii.field),
-            border: Border.all(
-              color: following ? tokens.glassBorder : tokens.accent,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: tokens.shadow,
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
+      child: FocusLink(
+        onTap: onPressed,
+        builder: (_, focus) => Semantics(
+          button: true,
+          label: following ? l10n.centerBusFollowing : l10n.centerBusPaused,
+          excludeSemantics: true,
+          // Toque e foco no próprio nó: o excludeSemantics esconde os do
+          // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+          onTap: onPressed,
+          focusable: true,
+          focused: focus.focused,
+          onFocus: focus.request,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: background,
               borderRadius: BorderRadius.circular(Radii.field),
-              onTap: onPressed,
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                child: SizedBox(
-                  height: 48,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: following ? Space.sm : Space.md,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.my_location_rounded,
-                          size: 22,
-                          color: foreground,
-                        ),
-                        if (!following) ...[
-                          const SizedBox(width: Space.xs),
-                          Text(
-                            l10n.center,
-                            style: TextStyle(
-                              color: foreground,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
+              border: Border.all(
+                color: following ? tokens.glassBorder : tokens.accent,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: tokens.shadow,
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(Radii.field),
+                onTap: onPressed,
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: SizedBox(
+                    height: 48,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: following ? Space.sm : Space.md,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.my_location_rounded,
+                            size: 22,
+                            color: foreground,
                           ),
+                          if (!following) ...[
+                            const SizedBox(width: Space.xs),
+                            Text(
+                              l10n.center,
+                              style: TextStyle(
+                                color: foreground,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),

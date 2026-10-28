@@ -92,62 +92,74 @@ class LineFavoriteButton extends StatelessWidget {
         final label = favorite
             ? l10n.favoriteLineRemove(routeId, stopCode)
             : l10n.favoriteLineAdd(routeId);
-        return Semantics(
-          button: true,
-          selected: favorite,
-          label: label,
-          excludeSemantics: true,
-          child: Tooltip(
-            message: label,
-            excludeFromSemantics: true,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(Radii.card),
-              onTap: () => _toggle(context),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: Space.xs),
-                    // Feedback ao favoritar: a estrela troca com um leve salto.
-                    AnimatedSwitcher(
-                      duration: motion(
-                        context,
-                        const Duration(milliseconds: 220),
-                      ),
-                      transitionBuilder: (child, animation) => ScaleTransition(
-                        scale: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutBack,
+        return FocusLink(
+          onTap: () => _toggle(context),
+          builder: (_, focus) => Semantics(
+            button: true,
+            selected: favorite,
+            label: label,
+            excludeSemantics: true,
+            // Toque e foco no próprio nó: o excludeSemantics esconde os do
+            // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+            onTap: () => _toggle(context),
+            focusable: true,
+            focused: focus.focused,
+            onFocus: focus.request,
+            child: Tooltip(
+              message: label,
+              excludeFromSemantics: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(Radii.card),
+                onTap: () => _toggle(context),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: Space.xs),
+                      // Feedback ao favoritar: a estrela troca com um leve salto.
+                      AnimatedSwitcher(
+                        duration: motion(
+                          context,
+                          const Duration(milliseconds: 220),
                         ),
-                        child: child,
-                      ),
-                      child: Icon(
-                        favorite
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        key: ValueKey(favorite),
-                        size: 20,
-                        color: favorite ? tokens.accentText : tokens.mutedText,
-                      ),
-                    ),
-                    const SizedBox(width: Space.xs),
-                    Flexible(
-                      child: Text(
-                        favorite ? l10n.favoriteLineOn : l10n.favoriteLineOff,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                        transitionBuilder: (child, animation) =>
+                            ScaleTransition(
+                              scale: CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutBack,
+                              ),
+                              child: child,
+                            ),
+                        child: Icon(
+                          favorite
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          key: ValueKey(favorite),
+                          size: 20,
                           color: favorite
                               ? tokens.accentText
                               : tokens.mutedText,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: Space.xs),
-                  ],
+                      const SizedBox(width: Space.xs),
+                      Flexible(
+                        child: Text(
+                          favorite ? l10n.favoriteLineOn : l10n.favoriteLineOff,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: favorite
+                                ? tokens.accentText
+                                : tokens.mutedText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Space.xs),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -264,79 +276,88 @@ class _StopTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  button: true,
-                  label: named
-                      ? l10n.stopOpenArrivalsNamed(stop.code, name)
-                      : l10n.stopOpenArrivals(stop.code),
-                  excludeSemantics: true,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(Radii.card),
+                child: FocusLink(
+                  onTap: onOpen,
+                  builder: (_, focus) => Semantics(
+                    button: true,
+                    label: named
+                        ? l10n.stopOpenArrivalsNamed(stop.code, name)
+                        : l10n.stopOpenArrivals(stop.code),
+                    excludeSemantics: true,
+                    // Toque e foco no próprio nó: o excludeSemantics esconde os do
+                    // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
                     onTap: onOpen,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 56),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Space.sm,
-                          Space.xs,
-                          Space.xs,
-                          Space.xs,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(icon, size: 20, color: tokens.accentText),
-                            const SizedBox(width: Space.sm),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (named)
-                                    Text(
-                                      name,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: tokens.strongText,
-                                      ),
-                                    ),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: '${l10n.stopWord} ',
-                                          style: TextStyle(
-                                            fontWeight: named
-                                                ? FontWeight.w400
-                                                : FontWeight.w600,
-                                            color: named
-                                                ? tokens.mutedText
-                                                : tokens.strongText,
-                                          ),
+                    focusable: true,
+                    focused: focus.focused,
+                    onFocus: focus.request,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(Radii.card),
+                      onTap: onOpen,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 56),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            Space.sm,
+                            Space.xs,
+                            Space.xs,
+                            Space.xs,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(icon, size: 20, color: tokens.accentText),
+                              const SizedBox(width: Space.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (named)
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: tokens.strongText,
                                         ),
-                                        TextSpan(
-                                          text: stop.code,
-                                          style: monoStyle(
-                                            TextStyle(
-                                              fontWeight: FontWeight.w700,
+                                      ),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: '${l10n.stopWord} ',
+                                            style: TextStyle(
+                                              fontWeight: named
+                                                  ? FontWeight.w400
+                                                  : FontWeight.w600,
                                               color: named
                                                   ? tokens.mutedText
                                                   : tokens.strongText,
                                             ),
                                           ),
-                                        ),
-                                        if (place != null)
                                           TextSpan(
-                                            text: ' · $place',
-                                            style: TextStyle(
-                                              color: tokens.mutedText,
+                                            text: stop.code,
+                                            style: monoStyle(
+                                              TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                color: named
+                                                    ? tokens.mutedText
+                                                    : tokens.strongText,
+                                              ),
                                             ),
                                           ),
-                                      ],
+                                          if (place != null)
+                                            TextSpan(
+                                              text: ' · $place',
+                                              style: TextStyle(
+                                                color: tokens.mutedText,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -390,57 +411,68 @@ class _LineTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Semantics(
-                  button: true,
-                  label: address == null
-                      ? l10n.lineOpenArrivals(line.routeId, line.stopCode)
-                      : '${l10n.lineOpenArrivals(line.routeId, line.stopCode)}, $address',
-                  excludeSemantics: true,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(Radii.card),
+                child: FocusLink(
+                  onTap: onOpen,
+                  builder: (_, focus) => Semantics(
+                    button: true,
+                    label: address == null
+                        ? l10n.lineOpenArrivals(line.routeId, line.stopCode)
+                        : '${l10n.lineOpenArrivals(line.routeId, line.stopCode)}, $address',
+                    excludeSemantics: true,
+                    // Toque e foco no próprio nó: o excludeSemantics esconde os do
+                    // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
                     onTap: onOpen,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 56),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Space.sm,
-                          Space.xs,
-                          Space.xs,
-                          Space.xs,
-                        ),
-                        child: Row(
-                          children: [
-                            RoutePlate(line.routeId),
-                            const SizedBox(width: Space.sm),
-                            Expanded(
-                              child: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: '${l10n.atStopWord} ',
-                                      style: TextStyle(color: tokens.mutedText),
-                                    ),
-                                    TextSpan(
-                                      text: line.stopCode,
-                                      style: monoStyle(
-                                        TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: tokens.strongText,
-                                        ),
-                                      ),
-                                    ),
-                                    if (address != null)
+                    focusable: true,
+                    focused: focus.focused,
+                    onFocus: focus.request,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(Radii.card),
+                      onTap: onOpen,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 56),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            Space.sm,
+                            Space.xs,
+                            Space.xs,
+                            Space.xs,
+                          ),
+                          child: Row(
+                            children: [
+                              RoutePlate(line.routeId),
+                              const SizedBox(width: Space.sm),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
                                       TextSpan(
-                                        text: ' · $address',
+                                        text: '${l10n.atStopWord} ',
                                         style: TextStyle(
                                           color: tokens.mutedText,
                                         ),
                                       ),
-                                  ],
+                                      TextSpan(
+                                        text: line.stopCode,
+                                        style: monoStyle(
+                                          TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: tokens.strongText,
+                                          ),
+                                        ),
+                                      ),
+                                      if (address != null)
+                                        TextSpan(
+                                          text: ' · $address',
+                                          style: TextStyle(
+                                            color: tokens.mutedText,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1058,35 +1090,44 @@ class _SeenLineTile extends StatelessWidget {
         : (stops.length > 3
               ? l10n.seenAtStopsMore(stops.take(3).join(', '), stops.length - 3)
               : l10n.seenAtStops(stops.take(3).join(', ')));
-    return Semantics(
-      button: true,
-      label: l10n.seenLineSemantics(routeId, label, stops.first),
-      excludeSemantics: true,
-      child: Container(
-        decoration: BoxDecoration(
-          color: tokens.card,
-          borderRadius: BorderRadius.circular(Radii.card),
-          border: Border.all(color: tokens.hairline),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.card),
-          onTap: () => onOpen(stops.first),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.all(Space.sm),
-              child: Row(
-                children: [
-                  RoutePlate(routeId),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(color: tokens.mutedText),
+    return FocusLink(
+      onTap: () => onOpen(stops.first),
+      builder: (_, focus) => Semantics(
+        button: true,
+        label: l10n.seenLineSemantics(routeId, label, stops.first),
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: () => onOpen(stops.first),
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Container(
+          decoration: BoxDecoration(
+            color: tokens.card,
+            borderRadius: BorderRadius.circular(Radii.card),
+            border: Border.all(color: tokens.hairline),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.card),
+            onTap: () => onOpen(stops.first),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.all(Space.sm),
+                child: Row(
+                  children: [
+                    RoutePlate(routeId),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(color: tokens.mutedText),
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
+                  ],
+                ),
               ),
             ),
           ),

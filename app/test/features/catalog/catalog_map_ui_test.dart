@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:busaogyn/src/app.dart';
 import 'package:busaogyn/src/core/location/location_service.dart';
@@ -17,6 +18,7 @@ import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.d
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -157,6 +159,7 @@ Future<void> _pump(
   LocationService? location,
   SavedStopsStore? savedStopsStore,
   bool noCatalog = false,
+  DateTime Function()? clock,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -170,7 +173,7 @@ Future<void> _pump(
       arrivalsRefreshInterval: null,
       secondaryRefreshInterval: null,
       mapBuilder: (context, params) => const _CountingMap(),
-      clock: () => _now,
+      clock: clock ?? () => _now,
       catalog: noCatalog ? null : catalog ?? fixtureCatalog(),
       locationService: location ?? _FakeLocation.ok(),
       savedStopsStore: savedStopsStore,
@@ -229,6 +232,7 @@ Future<void> _settle(WidgetTester tester) async {
 void main() {
   _stageCTests();
   _accessibilityTests();
+  _lifecycleTests();
 
   testWidgets(
     'pontos sempre no mapa; ponto tocado abre o detalhe e é destacado',
@@ -1050,6 +1054,28 @@ void _stageCTests() {
 void _accessibilityTests() {
   group('acessibilidade (diretrizes)', () {
     Future<void> check(WidgetTester tester, String where) async {
+      // Todo botão tem a ação de toque e é focável: sem isso, leitor de tela
+      // e Tab no Web (com a árvore de acessibilidade) não o alcançam.
+      void visit(SemanticsNode node) {
+        final data = node.getSemanticsData();
+        if (data.flagsCollection.isButton &&
+            data.flagsCollection.isEnabled != ui.Tristate.isFalse &&
+            !node.isInvisible) {
+          final what = '$where: botão "${data.label}${data.tooltip}"';
+          expect(data.hasAction(SemanticsAction.tap), isTrue, reason: what);
+          expect(
+            data.flagsCollection.isFocused,
+            isNot(ui.Tristate.none),
+            reason: '$what não é focável',
+          );
+        }
+        node.visitChildren((child) {
+          visit(child);
+          return true;
+        });
+      }
+
+      visit(tester.getSemantics(find.byType(BusaoGynApp)));
       for (final guideline in [
         androidTapTargetGuideline,
         iOSTapTargetGuideline,
@@ -1076,6 +1102,49 @@ void _accessibilityTests() {
         await _settle(tester);
         await check(tester, tab);
       }
+      semantics.dispose();
+    });
+
+    testWidgets('leitor de tela: Ida/Volta mostram o trajeto (não voltam)', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, _Repository(routeName: null));
+      await tester.tap(_dock('Linhas'));
+      await _settle(tester);
+      await _tapKey(tester, 'catalog-line-001');
+      await tester.ensureVisible(find.byKey(const ValueKey(_volta)));
+      await _settle(tester);
+      tester.semantics.tap(
+        find.semantics.byLabel(
+          RegExp(r'^Mostrar no mapa o trajeto .*, Volta$'),
+        ),
+      );
+      await _settle(tester);
+      final active = _features(
+        _map(tester).network!.route,
+      ).where((f) => f['properties']['active'] == true);
+      expect(active.single['properties']['dir'], 'v');
+      expect(find.byKey(const ValueKey('catalog-line-detail-001')), findsOne);
+      semantics.dispose();
+    });
+
+    testWidgets('teclado: Tab chega ao dock, o nó fica focado e Enter abre', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, _Repository(routeName: null));
+      var reached = false;
+      for (var i = 0; i < 20 && !reached; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        final node = find.semantics.byLabel('Salvos').evaluate().single;
+        reached = node.flagsCollection.isFocused == ui.Tristate.isTrue;
+      }
+      expect(reached, isTrue, reason: 'o nó de Salvos reflete o foco');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await _settle(tester);
+      expect(find.text('Favoritos e recentes'), findsOneWidget);
       semantics.dispose();
     });
 
@@ -1127,5 +1196,53 @@ void _accessibilityTests() {
         semantics.dispose();
       });
     }
+  });
+}
+
+/// Polling do acompanhamento conforme o ciclo de vida: continua com a janela
+/// sem foco (ainda visível), para com o app/aba oculto e retoma uma vez ao
+/// voltar, sem consultas duplicadas.
+void _lifecycleTests() {
+  testWidgets('ciclo de vida: inativo continua, oculto pausa, volta retoma', (
+    tester,
+  ) async {
+    final repo = _Repository(routeName: null);
+    var now = _now;
+    // Relógio que anda junto com o tempo simulado do teste.
+    Future<void> wait(Duration d) async {
+      now = now.add(d);
+      await tester.pump(d);
+    }
+
+    await _pump(tester, repo, clock: () => now);
+    await _startTracking(tester);
+    final binding = tester.binding;
+
+    var before = repo._calls;
+    await wait(const Duration(seconds: 31));
+    expect(repo._calls - before, 2, reason: 'visível: a cada 15 s');
+
+    // Web: outra janela em foco; celular: central de controle.
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    before = repo._calls;
+    await wait(const Duration(seconds: 31));
+    expect(repo._calls - before, 2, reason: 'inativo ainda está à vista');
+
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    before = repo._calls;
+    await wait(const Duration(minutes: 3));
+    expect(repo._calls - before, 0, reason: 'oculto: nada de rede');
+
+    before = repo._calls;
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await wait(const Duration(milliseconds: 100));
+    expect(repo._calls - before, 1, reason: 'volta: uma consulta na hora');
+    await wait(const Duration(seconds: 16));
+    expect(repo._calls - before, 2, reason: 'e segue a cada 15 s');
+    expect(find.byKey(const ValueKey('tracking-bar')), findsOneWidget);
+
+    context(tester).read<StopArrivalsCubit>().stopTracking();
+    await _settle(tester);
   });
 }

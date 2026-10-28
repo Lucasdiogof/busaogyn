@@ -408,33 +408,44 @@ class VehicleTrackBox extends StatelessWidget {
       // O rótulo já está no nó do botão; sem isto o tooltip vaza para o nó
       // do cartão.
       excludeFromSemantics: true,
-      child: Semantics(
-        container: true,
-        button: true,
-        label: label,
-        excludeSemantics: true,
-        child: _frame(
-          tokens,
-          selected: phase != null,
-          // Já acompanhado: tocar de novo força uma nova consulta (sem trocar
-          // de ônibus), útil depois de uma falha.
+      child: FocusLink(
+        onTap: phase == TrackingPhase.searching ? null : () => onTrack(number),
+        builder: (_, focus) => Semantics(
+          container: true,
+          button: true,
+          label: label,
+          excludeSemantics: true,
+          // Toque e foco no próprio nó: o excludeSemantics esconde os do
+          // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
           onTap: phase == TrackingPhase.searching
               ? null
               : () => onTrack(number),
-          children: [
-            // O número é a identidade do ônibus: nunca quebra em duas linhas
-            // ("2052/9"); com fonte grande ele reduz para caber na caixa.
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                number,
-                maxLines: 1,
-                softWrap: false,
-                style: _numberStyle(tokens),
+          focusable: true,
+          focused: focus.focused,
+          onFocus: focus.request,
+          child: _frame(
+            tokens,
+            selected: phase != null,
+            // Já acompanhado: tocar de novo força uma nova consulta (sem trocar
+            // de ônibus), útil depois de uma falha.
+            onTap: phase == TrackingPhase.searching
+                ? null
+                : () => onTrack(number),
+            children: [
+              // O número é a identidade do ônibus: nunca quebra em duas linhas
+              // ("2052/9"); com fonte grande ele reduz para caber na caixa.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  number,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: _numberStyle(tokens),
+                ),
               ),
-            ),
-            icon,
-          ],
+              icon,
+            ],
+          ),
         ),
       ),
     );
