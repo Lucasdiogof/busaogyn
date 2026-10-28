@@ -173,61 +173,70 @@ class _TrackingBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Semantics(
-      container: true,
-      button: true,
-      label: l10n.trackingBannerSemantics(tracking.vehicleNumber),
-      excludeSemantics: true,
-      child: Material(
-        color: tokens.accentSoft,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.card),
-          side: BorderSide(color: tokens.accent),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(Space.sm, 10, Space.xs, 10),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.directions_bus_rounded,
-                  size: 20,
-                  color: tokens.accentText,
-                ),
-                const SizedBox(width: Space.xs),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(text: '${l10n.dockTracking} · '),
-                        TextSpan(
-                          text: tracking.vehicleNumber,
-                          style: monoStyle(
-                            const TextStyle(fontWeight: FontWeight.w700),
+    return FocusLink(
+      onTap: onOpen,
+      builder: (_, focus) => Semantics(
+        container: true,
+        button: true,
+        label: l10n.trackingBannerSemantics(tracking.vehicleNumber),
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: onOpen,
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Material(
+          color: tokens.accentSoft,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.card),
+            side: BorderSide(color: tokens.accent),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onOpen,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(Space.sm, 10, Space.xs, 10),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.directions_bus_rounded,
+                    size: 20,
+                    color: tokens.accentText,
+                  ),
+                  const SizedBox(width: Space.xs),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: '${l10n.dockTracking} · '),
+                          TextSpan(
+                            text: tracking.vehicleNumber,
+                            style: monoStyle(
+                              const TextStyle(fontWeight: FontWeight.w700),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        color: tokens.strongText,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    l10n.view,
                     style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: tokens.strongText,
                     ),
                   ),
-                ),
-                Text(
-                  l10n.view,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: tokens.strongText,
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: tokens.strongText),
-              ],
+                  Icon(Icons.chevron_right_rounded, color: tokens.strongText),
+                ],
+              ),
             ),
           ),
         ),
@@ -337,29 +346,38 @@ class _Intro extends StatelessWidget {
           body: context.catalog == null
               ? l10n.introBody
               : l10n.catalogIntroBody,
-          action: Semantics(
-            button: true,
-            label: l10n.exampleStopSemantics(exampleStopId),
-            excludeSemantics: true,
-            child: ActionChip(
-              onPressed: () => onExample(exampleStopId),
-              avatar: Icon(
-                Icons.north_east_rounded,
-                size: 16,
-                color: tokens.accentText,
-              ),
-              label: Text(
-                l10n.exampleStop(exampleStopId),
-                style: monoStyle(
-                  TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: tokens.strongText,
+          action: FocusLink(
+            onTap: () => onExample(exampleStopId),
+            builder: (_, focus) => Semantics(
+              button: true,
+              label: l10n.exampleStopSemantics(exampleStopId),
+              excludeSemantics: true,
+              // Toque e foco no próprio nó: o excludeSemantics esconde os do
+              // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+              onTap: () => onExample(exampleStopId),
+              focusable: true,
+              focused: focus.focused,
+              onFocus: focus.request,
+              child: ActionChip(
+                onPressed: () => onExample(exampleStopId),
+                avatar: Icon(
+                  Icons.north_east_rounded,
+                  size: 16,
+                  color: tokens.accentText,
+                ),
+                label: Text(
+                  l10n.exampleStop(exampleStopId),
+                  style: monoStyle(
+                    TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: tokens.strongText,
+                    ),
                   ),
                 ),
+                backgroundColor: tokens.card,
+                side: BorderSide(color: tokens.hairline),
+                shape: const StadiumBorder(),
               ),
-              backgroundColor: tokens.card,
-              side: BorderSide(color: tokens.hairline),
-              shape: const StadiumBorder(),
             ),
           ),
         ),

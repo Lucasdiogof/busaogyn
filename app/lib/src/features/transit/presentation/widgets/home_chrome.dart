@@ -64,33 +64,42 @@ class _DockItem extends StatelessWidget {
       ],
     );
     return Expanded(
-      child: Semantics(
-        container: true,
-        selected: selected,
-        button: true,
-        label: label,
-        excludeSemantics: true,
-        // Seleção sem depender só de cor: ícone preenchido, rótulo em negrito
-        // e fundo suave (sem borda extra).
-        child: AnimatedContainer(
-          duration: motion(context, const Duration(milliseconds: 200)),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: selected ? tokens.accentSoft : Colors.transparent,
-            borderRadius: radius,
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
+      child: FocusLink(
+        onTap: onTap,
+        builder: (_, focus) => Semantics(
+          container: true,
+          selected: selected,
+          button: true,
+          label: label,
+          excludeSemantics: true,
+          // Toque e foco no próprio nó: o excludeSemantics esconde os do
+          // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+          onTap: onTap,
+          focusable: true,
+          focused: focus.focused,
+          onFocus: focus.request,
+          // Seleção sem depender só de cor: ícone preenchido, rótulo em negrito
+          // e fundo suave (sem borda extra).
+          child: AnimatedContainer(
+            duration: motion(context, const Duration(milliseconds: 200)),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: selected ? tokens.accentSoft : Colors.transparent,
               borderRadius: radius,
-              onTap: onTap,
-              // O item inteiro continua sendo a área de toque; só o conteúdo
-              // encolhe, e só quando não cabe.
-              child: fitContent
-                  ? SizedBox.expand(
-                      child: FittedBox(fit: BoxFit.scaleDown, child: content),
-                    )
-                  : content,
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: radius,
+                onTap: onTap,
+                // O item inteiro continua sendo a área de toque; só o conteúdo
+                // encolhe, e só quando não cabe.
+                child: fitContent
+                    ? SizedBox.expand(
+                        child: FittedBox(fit: BoxFit.scaleDown, child: content),
+                      )
+                    : content,
+              ),
             ),
           ),
         ),
@@ -267,32 +276,41 @@ class _SettingsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Semantics(
-      container: true,
-      button: true,
-      selected: selected,
-      label: l10n.settings,
-      excludeSemantics: true,
-      child: Tooltip(
-        message: l10n.settings,
-        excludeFromSemantics: true,
-        child: SizedBox.square(
-          dimension: 48,
-          child: Center(
-            child: GlassSurface(
-              radius: Radii.pill,
-              borderColor: selected ? tokens.accent : null,
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onPressed,
-                  child: SizedBox.square(
-                    dimension: Chrome.pill,
-                    child: Icon(
-                      selected ? Icons.tune_rounded : Icons.tune_outlined,
-                      size: 22,
-                      color: selected ? tokens.accentText : tokens.strongText,
+    return FocusLink(
+      onTap: onPressed,
+      builder: (_, focus) => Semantics(
+        container: true,
+        button: true,
+        selected: selected,
+        label: l10n.settings,
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: onPressed,
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Tooltip(
+          message: l10n.settings,
+          excludeFromSemantics: true,
+          child: SizedBox.square(
+            dimension: 48,
+            child: Center(
+              child: GlassSurface(
+                radius: Radii.pill,
+                borderColor: selected ? tokens.accent : null,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onPressed,
+                    child: SizedBox.square(
+                      dimension: Chrome.pill,
+                      child: Icon(
+                        selected ? Icons.tune_rounded : Icons.tune_outlined,
+                        size: 22,
+                        color: selected ? tokens.accentText : tokens.strongText,
+                      ),
                     ),
                   ),
                 ),

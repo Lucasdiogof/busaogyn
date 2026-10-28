@@ -26,7 +26,7 @@ intacta) e com `-no-snapshot-save` (o estado do AVD não foi alterado).
 ## 2. Testes executados
 
 ### Automatizados
-- **Flutter:** 619 testes (eram 612), `flutter analyze` limpo, `dart format`
+- **Flutter:** 622 testes (eram 612), `flutter analyze` limpo, `dart format`
   sem mudanças.
 - **Python (pipeline):** 51 testes (`cd data/cmtc && python3 -I -m unittest
   discover -s pipeline/tests`).
@@ -48,7 +48,7 @@ intacta) e com `-no-snapshot-save` (o estado do AVD não foi alterado).
 | Sem internet, erro 500, JSON inválido, reconexão | — | — | ✓ produção | **QA-03** corrigido |
 | Acompanhamento: frequência, troca de aba, internet perdida, reconexão | — | — | ✓ produção (API real) | **QA-04** corrigido |
 | Idiomas pt/en (es por testes) | pt | en | pt | ok |
-| Teclado no Web (Tab e Enter) | — | — | ✓ produção | **QA-11** aberto |
+| Teclado no Web (Tab e Enter), com e sem leitor de tela | — | — | ✓ produção | **QA-11** corrigido |
 | Produção sem catálogo: abas e botões | — | ✓ | ✓ | **QA-05** corrigido |
 
 Dados: chegadas e posições vieram da API real (poucas consultas, um ponto,
@@ -79,8 +79,9 @@ simulados interceptando a rede no navegador.
 | QA-05 | P2 | Produção | Aba Linhas dizia "Em breve" | Texto antigo; a aba já lista as linhas dos pontos consultados | "Linhas dos pontos que você consultou" / "Nenhuma linha por aqui ainda" | `catalog_ui_test` (sem "breve") | Corrigido |
 | QA-06 | P2 | Dev (catálogo) | Buscar "jardim america" ou "setor bueno" não achava nada | Cadastro guarda "AMÉRICA", "BUENO" sem o tipo | Tipos de bairro (setor, jardim, vila, parque, residencial, bairro, conjunto) opcionais quando não casam; outra palavra precisa casar | `nearby_search_test` | Corrigido ("jardim america": 0 → 107) |
 | QA-07 | P2 | Android | "Buscar" (44 dp) e "Atualizar chegadas" (44 dp) abaixo do mínimo de 48 dp | Tamanho fixo de 44 | 48 dp | teste de diretrizes de acessibilidade | Corrigido |
-| QA-11 | P2 | Web | Teclado: o Tab do navegador alterna só mapa → campo → "Buscar" (repetido) → atribuição do mapa; dock, Ajustes e painel não recebem foco (Enter no campo funciona) | A ordem de foco do Flutter está correta (sonda com Tab em teste de widget: Ajustes → campo → Buscar → alça → painel → Pontos → Linhas → Salvos). O problema está na ponte do Flutter Web com o DOM do mapa MapLibre (visualização de plataforma com elementos focáveis próprios) | **Não corrigido** nesta etapa (exige mexer na integração do mapa no Web) | — | **Aberto**; recomendado para a Etapa E |
+| QA-11 | P2 | Web (e leitores de tela) | Com a árvore de acessibilidade ligada, o Tab do navegador ficava preso em "Buscar"; Ajustes, dock e botões do painel nunca recebiam foco. Sem leitor de tela o Tab funcionava | **Isolado:** com o mapa trocado por um painel vazio o defeito continuava (não é o MapLibre). No DOM, só os botões padrão tinham `tabindex`; os 15 botões desenhados à mão usavam `Semantics(excludeSemantics: true)` em volta de um `InkWell`, o que escondia a ação de toque e o foco: os nós não tinham ação de toque, não eram focáveis e não refletiam o foco do Flutter, então o motor devolvia o foco ao "Buscar". Na mesma revisão apareceu um defeito pior: os chips Ida/Volta do detalhe da linha, ativados por leitor de tela, chamavam "voltar às linhas" | Novo componente `FocusLink` (foco próprio ligado a `focused`/`onFocus` do nó, ação de toque, Enter/Espaço e anel de foco só no teclado) nos 15 botões; chips Ida/Volta com a ação certa | Diretriz "todo botão tem toque e é focável" nas telas principais (dev e produção); Tab chega a "Salvos", o nó fica focado e Enter abre; leitor de tela em "Volta" mostra o trajeto de volta. Verificado por mutação (os testes falham sem a correção) | Corrigido; no navegador o Tab percorre mapa → Ajustes → campo → Buscar → painel → Pontos → Linhas → Salvos e Enter abre a aba |
 | QA-09 | P3 | Local | Pastas `swiftpm/` vazias | `flutter clean` (28/10 10:42) apagou `Package.resolved` gerados por um build iOS de 27/10 (não eram do usuário) | Nenhuma necessária: o build iOS seguinte os recriou com o mesmo conteúdo (pin do `maplibre-gl-native-distribution` 6.28.0) | — | Resolvido |
+| QA-12 | P2 | Web | Com a janela do navegador sem foco (outra janela ou outro monitor), mas a aba **visível**, o acompanhamento parava (0 consultas em 31 s) | O Flutter Web transforma `blur` da janela em `inactive`, e a página pausava em `inactive` | Pausa só em `hidden`/`paused`/`detached`; `inactive` continua (no celular sempre passa por `hidden` antes de sair da tela) | `catalog_map_ui_test` "ciclo de vida": inativo continua (2 consultas em 31 s), oculto pausa (0 em 3 min), volta faz 1 consulta na hora e segue a cada 15 s | Corrigido |
 | QA-10 | P3 | Ferramenta | Build iOS de simulador com Flutter master falha ("não contém arm64 x86_64" embora contenha) | Bug do flutter_tools master | Contorno: `--config-only` + `xcodebuild ARCHS=arm64` | — | Contornado; não afeta o CI (3.38.5) |
 
 Notas que **não** são defeitos: a primeira negação no iOS já é definitiva
@@ -107,6 +108,22 @@ Auditoria de recursos: todos os timers são cancelados no `close()` dos cubits;
 o polling pausa fora do primeiro plano; controladores, listeners e observers
 são liberados no `dispose`; o mapa é criado uma vez (testes `created == 1`).
 
+### Polling com a aba oculta (Web, API simulada, dados fictícios)
+
+Medido no build de produção com a rede interceptada (respostas fictícias, um e
+cinco ônibus), simulando `blur`/`focus` e `visibilitychange`:
+
+| Fase | Antes da correção | Depois |
+|---|---|---|
+| Visível (31 s) | 2 consultas do ônibus acompanhado (a cada 15 s) | igual |
+| Janela sem foco, aba visível (31 s) | **0** (acompanhamento parado) | continua a cada 15 s (teste de widget) |
+| Aba oculta (46 s) | 0 do acompanhado; 2 dos ônibus próximos logo no início, vindas do retorno do `focus` imediatamente antes | 0 |
+| Aba de volta | 1 consulta imediata do acompanhado + os próximos, depois a cada 15 s; nenhuma duplicada (< 2 s) | igual |
+
+Ao voltar, a consulta imediata só acontece se a última tentativa tiver mais de
+10 s (evita rajada ao alternar janelas). Navegadores ainda limitam timers em
+abas ocultas; o app não depende disso porque pausa sozinho.
+
 ## 7. Regressões
 
 Nenhuma regressão encontrada nas funções das etapas anteriores. Os testes
@@ -118,10 +135,10 @@ assinatura de `sharePlatform`).
 
 | Build | Resultado | Verificador CMTC | Observação |
 |---|---|---|---|
-| Web produção (release, Flutter 3.38.5) | OK, `main.dart.js` 3.913.410 bytes | Ausente | — |
+| Web produção (release, Flutter 3.38.5) | OK, `main.dart.js` 3.918.746 bytes | Ausente | — |
 | Android produção (release APK) | OK, 86,7 MB | Ausente | 0 permissões de localização (`aapt`) |
-| Android dev (profile, catálogo) | OK, 151,4 MB | Presente (controle positivo: verificador falha) | — |
-| iOS produção (release, `--no-codesign`, Flutter master) | OK, 29,6 MB | Ausente | — |
+| Android dev (profile, catálogo) | OK, 151,5 MB | Presente (controle positivo: verificador falha) | — |
+| iOS produção (release, `--no-codesign`, Flutter master) | OK, 29,7 MB | Ausente | — |
 | iOS simulador dev (debug) | OK via `xcodebuild ARCHS=arm64` | — | ver QA-10 |
 | Android dev (debug) no emulador | OK | — | — |
 
@@ -149,7 +166,6 @@ assinatura de `sharePlatform`).
 - Abertura a frio de ~5 s no emulador (sem aceleração de GPU real); medir em
   aparelho antes de otimizar.
 - Build iOS de simulador depende de contorno no Flutter master local.
-- Navegação por Tab no Web (QA-11) aberta.
 
 ## 12. Recomendação para a Etapa E
 
@@ -159,6 +175,6 @@ assinatura de `sharePlatform`).
 3. Preparar lojas: ícones, capturas (Etapa F), formulários de privacidade a
    partir do `docs/PRIVACY.md`, política pública atualizada.
 4. Definir domínio/deploy para links compartilháveis e canal de suporte.
-5. Resolver QA-11 (teclado no Web) antes de divulgar a versão Web.
+5. Testar VoiceOver e TalkBack em aparelho (o QA-11 foi validado no Web e por testes).
 6. **Não** declarar o app pronto para publicação enquanto houver os
    bloqueadores acima.

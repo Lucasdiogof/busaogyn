@@ -116,96 +116,107 @@ class CatalogStopTile extends StatelessWidget {
     final tokens = context.tokens;
     final address = stop.address;
     final place = stop.place;
-    return Semantics(
-      button: true,
-      label: [
-        l10n.catalogOpenStop(stop.id, [?address, ?place].join(', ')),
-        ?detail,
-      ].join('. '),
-      excludeSemantics: true,
-      child: Material(
-        color: tokens.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.card),
-          side: BorderSide(color: tokens.hairline),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.card),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.all(Space.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(
-                      switch (stop.kind) {
-                        CatalogStopKind.station =>
-                          Icons.directions_transit_rounded,
-                        CatalogStopKind.terminal => Icons.hub_outlined,
-                        _ => Icons.location_on_outlined,
-                      },
-                      size: 20,
-                      color: tokens.accentText,
+    return FocusLink(
+      onTap: onTap,
+      builder: (_, focus) => Semantics(
+        button: true,
+        label: [
+          l10n.catalogOpenStop(stop.id, [?address, ?place].join(', ')),
+          ?detail,
+        ].join('. '),
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: onTap,
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Material(
+          color: tokens.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.card),
+            side: BorderSide(color: tokens.hairline),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.card),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.all(Space.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        switch (stop.kind) {
+                          CatalogStopKind.station =>
+                            Icons.directions_transit_rounded,
+                          CatalogStopKind.terminal => Icons.hub_outlined,
+                          _ => Icons.location_on_outlined,
+                        },
+                        size: 20,
+                        color: tokens.accentText,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          address ?? l10n.catalogStation,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: tokens.strongText,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: stopCode(stop, stop.id),
-                                style: monoStyle(
-                                  const TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                              if (place != null) TextSpan(text: ' · $place'),
-                            ],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: tokens.mutedText,
-                          ),
-                        ),
-                        if (detail != null) ...[
-                          const SizedBox(height: 2),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            detail!,
+                            address ?? l10n.catalogStation,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: tokens.accentText,
+                              color: tokens.strongText,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: stopCode(stop, stop.id),
+                                  style: monoStyle(
+                                    const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (place != null) TextSpan(text: ' · $place'),
+                              ],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: tokens.mutedText,
+                            ),
+                          ),
+                          if (detail != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              detail!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: tokens.accentText,
+                              ),
+                            ),
+                          ],
+                          if (stop.lineIds.isNotEmpty) ...[
+                            const SizedBox(height: Space.xs),
+                            _LinePlates(stop.lineIds, max: 8),
+                          ],
                         ],
-                        if (stop.lineIds.isNotEmpty) ...[
-                          const SizedBox(height: Space.xs),
-                          _LinePlates(stop.lineIds, max: 8),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
+                  ],
+                ),
               ),
             ),
           ),
@@ -710,58 +721,68 @@ class _LineTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final name = line.name ?? '';
-    return Semantics(
-      button: true,
-      label: l10n.catalogOpenLine(line.id, name),
-      excludeSemantics: true,
-      child: Material(
-        color: tokens.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.card),
-          side: BorderSide(color: tokens.hairline),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.card),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.all(Space.sm),
-              child: Row(
-                children: [
-                  RoutePlate(line.id),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: tokens.strongText,
+    return FocusLink(
+      onTap: onTap,
+      builder: (_, focus) => Semantics(
+        button: true,
+        label: l10n.catalogOpenLine(line.id, name),
+        excludeSemantics: true,
+        // Toque e foco no próprio nó: o excludeSemantics esconde os do
+        // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
+        onTap: onTap,
+        focusable: true,
+        focused: focus.focused,
+        onFocus: focus.request,
+        child: Material(
+          color: tokens.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.card),
+            side: BorderSide(color: tokens.hairline),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.card),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.all(Space.sm),
+                child: Row(
+                  children: [
+                    RoutePlate(line.id),
+                    const SizedBox(width: Space.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: tokens.strongText,
+                            ),
                           ),
-                        ),
-                        Text(
-                          [
-                            l10n.catalogVariantCount(variants),
-                            ?line.type,
-                            if (line.cities.isNotEmpty) line.cities.join(', '),
-                          ].join(' · '),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: tokens.mutedText,
+                          Text(
+                            [
+                              l10n.catalogVariantCount(variants),
+                              ?line.type,
+                              if (line.cities.isNotEmpty)
+                                line.cities.join(', '),
+                            ].join(' · '),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: tokens.mutedText,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: tokens.mutedText),
+                  ],
+                ),
               ),
             ),
           ),
@@ -808,25 +829,35 @@ class _LineDetail extends StatelessWidget {
         runSpacing: Space.xs,
         children: [
           for (final s in shapes)
-            Semantics(
-              button: true,
-              selected: s.id == activeShapeId,
-              label: l10n.catalogShowRouteSemantics(
-                directionLabel(s.direction),
-                variantId,
-              ),
-              excludeSemantics: true,
-              child: ChoiceChip(
-                key: ValueKey('catalog-shape-${s.id}'),
-                avatar: Icon(
-                  s.direction == 'v'
-                      ? Icons.u_turn_left_rounded
-                      : Icons.route_rounded,
-                  size: 18,
-                ),
-                label: Text(directionLabel(s.direction)),
+            FocusLink(
+              onTap: () => onShowRoute!(s.id),
+              radius: Radii.chip,
+              builder: (_, focus) => Semantics(
+                button: true,
                 selected: s.id == activeShapeId,
-                onSelected: (_) => onShowRoute!(s.id),
+                label: l10n.catalogShowRouteSemantics(
+                  directionLabel(s.direction),
+                  variantId,
+                ),
+                excludeSemantics: true,
+                // Toque e foco no próprio nó: o excludeSemantics esconde os
+                // do chip, e sem eles leitor de tela e Tab no Web não chegam.
+                onTap: () => onShowRoute!(s.id),
+                focusable: true,
+                focused: focus.focused,
+                onFocus: focus.request,
+                child: ChoiceChip(
+                  key: ValueKey('catalog-shape-${s.id}'),
+                  avatar: Icon(
+                    s.direction == 'v'
+                        ? Icons.u_turn_left_rounded
+                        : Icons.route_rounded,
+                    size: 18,
+                  ),
+                  label: Text(directionLabel(s.direction)),
+                  selected: s.id == activeShapeId,
+                  onSelected: (_) => onShowRoute!(s.id),
+                ),
               ),
             ),
         ],

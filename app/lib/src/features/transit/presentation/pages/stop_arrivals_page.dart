@@ -429,7 +429,11 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         cubit.resume();
         vehicles.resume();
         return;
+      // Inativo ainda está à vista: no Web é só a janela sem foco (outro
+      // monitor, outra janela); no celular é passageiro (central de
+      // controle) e sempre passa por "hidden" antes de sair da tela.
       case AppLifecycleState.inactive:
+        return;
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
@@ -1777,27 +1781,36 @@ class _SheetTop extends StatelessWidget {
         height: height,
         child: Column(
           children: [
-            Semantics(
-              button: true,
-              label: l10n.panelHandleLabel,
-              hint: collapsed ? l10n.sheetShowPanel : l10n.sheetHandleHint,
-              onIncrease: collapsed ? onToggle : null,
-              onDecrease: collapsed ? null : onShowMap,
-              excludeSemantics: true,
-              child: InkWell(
-                key: const ValueKey('sheet-handle'),
+            FocusLink(
+              onTap: onToggle,
+              builder: (_, focus) => Semantics(
+                button: true,
+                label: l10n.panelHandleLabel,
+                hint: collapsed ? l10n.sheetShowPanel : l10n.sheetHandleHint,
+                onIncrease: collapsed ? onToggle : null,
+                onDecrease: collapsed ? null : onShowMap,
+                excludeSemantics: true,
+                // Toque e foco no próprio nó: o excludeSemantics esconde os do
+                // InkWell, e sem eles leitor de tela e Tab no Web não alcançam o botão.
                 onTap: onToggle,
-                borderRadius: BorderRadius.circular(Radii.pill),
-                child: SizedBox(
-                  width: 72,
-                  height: 20,
-                  child: Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: tokens.strongText.withValues(alpha: 0.28),
-                        borderRadius: BorderRadius.circular(Radii.pill),
+                focusable: true,
+                focused: focus.focused,
+                onFocus: focus.request,
+                child: InkWell(
+                  key: const ValueKey('sheet-handle'),
+                  onTap: onToggle,
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  child: SizedBox(
+                    width: 72,
+                    height: 20,
+                    child: Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: tokens.strongText.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
                       ),
                     ),
                   ),

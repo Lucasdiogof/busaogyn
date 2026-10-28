@@ -41,12 +41,14 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   iOS, emulador Android e Web (sem aparelho físico). Corrigidos: "Ponto null"
   ao tocar no mapa (iOS/Android), compartilhamento no iOS 26, paisagem sob a
   ilha/notch, resumo do painel desatualizado, status cortado, "Em breve" na
-  aba Linhas de produção, busca por bairro com tipo omitido, alvos de 44 dp.
-  Aberto: Tab do teclado no Web (QA-11).
+  aba Linhas de produção, busca por bairro com tipo omitido, alvos de 44 dp,
+  Tab/leitor de tela no Web com os botões desenhados à mão (`FocusLink`;
+  QA-11) e acompanhamento que parava com a janela sem foco (QA-12).
+  Nenhum problema aberto da etapa.
 
 ## Testes e builds (último ciclo)
 
-- 619 testes Flutter (inclui diretrizes de acessibilidade), 51 Python,
+- 622 testes Flutter (inclui diretrizes de acessibilidade), 51 Python,
   `flutter analyze` limpo, formatação ok.
 - Builds produção web/APK/iOS sem dados CMTC (`app/scripts/check-no-official-catalog.sh <pasta>`);
   APK dev como controle positivo (verificador falha, como esperado).
@@ -54,7 +56,7 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
 ## Próxima ação (Etapa E — preparação para publicação)
 
 1. Testes em aparelhos físicos Android e iPhone (cenários da Etapa D).
-2. Corrigir QA-11 (Tab no Web).
+2. VoiceOver e TalkBack em aparelho (Web e testes já cobrem o QA-11).
 3. Decisões do usuário: licença CMTC, alertas com app aberto, canal de
    "Reportar problema", domínio/deploy para links.
 4. Lojas: privacidade, permissões, textos; capturas só na Etapa F.
@@ -86,6 +88,10 @@ escuro, HTML + ZIP).
 - Simulador iOS (Flutter master): `flutter build ios --simulator --config-only
   -t dev_catalog/main.dart` e depois `xcodebuild ... ARCHS=arm64` (bug de
   arquitetura do flutter_tools master).
+- Botão desenhado à mão (`Semantics(excludeSemantics: true)` + `InkWell`):
+  envolver em `FocusLink` (core/ui) e passar `onTap`, `focusable`,
+  `focused`/`onFocus` ao nó; o teste de diretrizes reprova botão sem toque
+  ou não focável.
 - Se o web acusar `MissingPluginException`, rode `flutter clean` (registro de
   plugins em cache).
 - Catálogo dev: `python3 -I data/cmtc/pipeline/export_catalog.py` →
