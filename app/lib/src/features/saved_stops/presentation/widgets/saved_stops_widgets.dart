@@ -109,12 +109,27 @@ class LineFavoriteButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(width: Space.xs),
-                    Icon(
-                      favorite
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      size: 20,
-                      color: favorite ? tokens.accentText : tokens.mutedText,
+                    // Feedback ao favoritar: a estrela troca com um leve salto.
+                    AnimatedSwitcher(
+                      duration: motion(
+                        context,
+                        const Duration(milliseconds: 220),
+                      ),
+                      transitionBuilder: (child, animation) => ScaleTransition(
+                        scale: CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutBack,
+                        ),
+                        child: child,
+                      ),
+                      child: Icon(
+                        favorite
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        key: ValueKey(favorite),
+                        size: 20,
+                        color: favorite ? tokens.accentText : tokens.mutedText,
+                      ),
                     ),
                     const SizedBox(width: Space.xs),
                     Flexible(

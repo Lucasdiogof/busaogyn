@@ -129,6 +129,9 @@ grupos (clusters) e controles mantidos; enquadramento usa sempre a área visíve
 - `BusaoLoader` em vez de spinner; estático com movimento reduzido; sem
   animações decorativas infinitas além do ponto "ao vivo" (indicador de estado).
 - Seleção do dock anima fundo/peso em 200 ms.
+- Estrela de favorito troca com leve salto (220 ms; sem animação com
+  movimento reduzido).
+- Painel do planejador sem repetir o título do cabeçalho (só "Limpar").
 
 ## 8. Validação visual (pontual, local — capturas não versionadas)
 
@@ -169,8 +172,6 @@ barra de acompanhamento e do topo da folha a 200% de fonte.
 
 ## 11. O que ainda precisa de refinamento
 
-- No desktop o painel do planejador repete o título "Planejar viagem" do
-  cabeçalho.
 - Largura das linhas fixa (não interpola com o zoom).
 - Entrega visual completa (5 tamanhos, claro/escuro, galeria HTML + ZIP) fica
   para o final do desenvolvimento, como combinado.
