@@ -196,6 +196,17 @@ void main() {
       expect(m.future.last.longitude, closeTo(-49.25, 1e-6));
     });
 
+    test('percorrido segue o trajeto oficial, da 1ª posição até a atual', () {
+      final m = match();
+      expect(m.traveled.first.longitude, closeTo(-49.290, 1e-4));
+      expect(m.traveled.last.longitude, closeTo(-49.282, 1e-4));
+      // Pontos sobre o trajeto (latitude dele), não a reta entre leituras.
+      for (final p in m.traveled) {
+        expect(p.latitude, closeTo(-16.68, 1e-3));
+      }
+      expect(match(trail: const []).traveled, isEmpty, reason: 'pendente');
+    });
+
     test('destino do outro extremo = volta', () {
       final m = match(
         destination: 'T FICTICIO NORTE',
