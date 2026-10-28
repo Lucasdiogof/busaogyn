@@ -22,6 +22,7 @@ class TrackingCard extends StatelessWidget {
     this.followController,
     this.detailsExpanded = false,
     this.onToggleDetails,
+    this.officialRouteShown = false,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class TrackingCard extends StatelessWidget {
   final MapFollowController? followController;
   final bool detailsExpanded;
   final VoidCallback? onToggleDetails;
+
+  /// O mapa desenha o trajeto oficial à frente (associação confirmada, só
+  /// com o catálogo): o aviso não pode dizer que não há percurso futuro.
+  final bool officialRouteShown;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +157,13 @@ class TrackingCard extends StatelessWidget {
           ),
         ],
         const SizedBox(height: Space.sm),
-        FootNote(child: Text(l10n.trackingFootnote)),
+        FootNote(
+          child: Text(
+            officialRouteShown
+                ? l10n.trackingFootnoteOfficialRoute
+                : l10n.trackingFootnote,
+          ),
+        ),
       ],
     );
   }

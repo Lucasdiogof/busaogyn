@@ -1034,6 +1034,12 @@ abstract class AppLocalizations {
   /// **'Posição informada pela RMTC, consultada a cada 15 s. Direção baseada no deslocamento observado; o rastro mostra só por onde o ônibus já passou. A fonte não informa o trajeto à frente nem a ordem dos próximos pontos, então o mapa não mostra percurso futuro.'**
   String get trackingFootnote;
 
+  /// No description provided for @trackingFootnoteOfficialRoute.
+  ///
+  /// In pt, this message translates to:
+  /// **'Posição informada pela RMTC, consultada a cada 15 s. O rastro mostra por onde o ônibus já passou; o trecho à frente vem do trajeto oficial e é estimado, sem previsão de horário por ponto.'**
+  String get trackingFootnoteOfficialRoute;
+
   /// No description provided for @noticeEtaStillAvailable.
   ///
   /// In pt, this message translates to:

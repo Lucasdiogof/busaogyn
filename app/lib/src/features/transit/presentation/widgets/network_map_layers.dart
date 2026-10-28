@@ -16,6 +16,7 @@ const netPlanSourceId = 'busao-net-plan';
 const netMeSourceId = 'busao-net-me';
 
 const netRouteFadedLayerId = 'busao-net-route-faded';
+const netRouteCasingLayerId = 'busao-net-route-casing';
 const netRouteOutboundLayerId = 'busao-net-route-ida';
 const netRouteInboundLayerId = 'busao-net-route-volta';
 const netRouteArrowsLayerId = 'busao-net-route-arrows';
@@ -28,6 +29,7 @@ const netStopsLayerId = 'busao-net-stops-layer';
 const netRouteEndsLayerId = 'busao-net-route-ends-layer';
 const netSelectedLayerId = 'busao-net-selected-layer';
 const netPlanWalkLayerId = 'busao-net-plan-walk';
+const netPlanLeg1CasingLayerId = 'busao-net-plan-leg1-casing';
 const netPlanLeg1LayerId = 'busao-net-plan-leg1';
 const netPlanLeg2LayerId = 'busao-net-plan-leg2';
 const netPlanArrowsLayerId = 'busao-net-plan-arrows';
@@ -47,6 +49,7 @@ const netSourceIds = {
 
 const netLayerIds = {
   netRouteFadedLayerId,
+  netRouteCasingLayerId,
   netRouteOutboundLayerId,
   netRouteInboundLayerId,
   netRouteArrowsLayerId,
@@ -59,6 +62,7 @@ const netLayerIds = {
   netRouteEndsLayerId,
   netSelectedLayerId,
   netPlanWalkLayerId,
+  netPlanLeg1CasingLayerId,
   netPlanLeg1LayerId,
   netPlanLeg2LayerId,
   netPlanArrowsLayerId,
@@ -88,6 +92,9 @@ Future<bool> addNetworkLayers({
   final neutral = _hex(tokens.scheduled);
   final panel = _hex(tokens.panel);
   final onAccent = _hex(tokens.onAccent);
+  // Contorno do âmbar: no tema claro, o amarelo sobre o mapa claro fica
+  // abaixo de 3:1; o âmbar escuro do texto dá o contraste.
+  final casing = dark ? panel : _hex(tokens.accentText);
   const isActive = [
     '==',
     ['get', 'active'],
@@ -138,6 +145,27 @@ Future<bool> addNetworkLayers({
         '==',
         ['get', 'active'],
         false,
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addLineLayer(
+      netRouteSourceId,
+      netRouteCasingLayerId,
+      LineLayerProperties(
+        lineColor: casing,
+        lineWidth: 7.5,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        'all',
+        isActive,
+        [
+          '!=',
+          ['get', 'dir'],
+          'v',
+        ],
       ],
       enableInteraction: false,
     ),
@@ -358,6 +386,26 @@ Future<bool> addNetworkLayers({
         '==',
         ['get', 'kind'],
         'walk',
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addLineLayer(
+      netPlanSourceId,
+      netPlanLeg1CasingLayerId,
+      LineLayerProperties(
+        lineColor: casing,
+        lineWidth: 9.5,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        'in',
+        ['get', 'kind'],
+        [
+          'literal',
+          ['leg1', 'leg3'],
+        ],
       ],
       enableInteraction: false,
     ),

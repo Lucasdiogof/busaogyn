@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' show Point;
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -22,6 +22,22 @@ import '../../domain/models/observed_movement.dart';
 import 'vehicle_map_data.dart';
 import 'vehicle_marker_image.dart';
 import 'vehicle_motion.dart';
+
+/// Distância da atribuição até a base do mapa. O MapLibre iOS já desloca os
+/// ornamentos pelo `contentInset` (o [cameraBottom] da câmera); somar o
+/// painel de novo jogava o botão para o topo, sob a barra de status.
+@visibleForTesting
+double attributionMarginBottom({
+  required double coveredBottom,
+  required double cameraBottom,
+  TargetPlatform? platform,
+  bool isWeb = kIsWeb,
+}) {
+  final ios =
+      !isWeb && (platform ?? defaultTargetPlatform) == TargetPlatform.iOS;
+  final covered = ios ? coveredBottom - cameraBottom : coveredBottom;
+  return (covered < 0 ? 0.0 : covered) + Space.xs;
+}
 
 /// Parâmetros que a superfície nativa do mapa precisa receber.
 class MapSurfaceParams {
@@ -152,8 +168,8 @@ class _TransitMapState extends State<TransitMap>
 
   /// Ônibus acompanhado maior que os demais; a frente gira conforme a
   /// direção observada.
-  static const _trackedIconSize = 0.30;
-  static const _secondaryIconSize = 0.20;
+  static const _trackedIconSize = 0.42;
+  static const _secondaryIconSize = 0.26;
 
   /// Intervalo mínimo entre envios ao mapa durante a transição (~28 fps).
   static const _pushInterval = Duration(milliseconds: 36);
@@ -338,6 +354,8 @@ class _TransitMapState extends State<TransitMap>
   }
 
   void _onUserPointer() {
+    // O passageiro mexeu no mapa: o enquadramento dele vale.
+    _recentBounds = null;
     if (_vehicleCenter == null) return;
     if (_follow.onUserInteraction()) _setFollowing(false);
   }
@@ -470,7 +488,7 @@ class _TransitMapState extends State<TransitMap>
               vehicleSourceId,
               vehicleHaloLayerId,
               CircleLayerProperties(
-                circleRadius: 30,
+                circleRadius: 40,
                 circleColor: _hex(tokens.accent),
                 circleOpacity: const [
                   'case',
@@ -537,6 +555,13 @@ class _TransitMapState extends State<TransitMap>
   int? _appliedFocus;
   MapFocus? _pendingFocus;
 
+  /// Último enquadramento de trajeto/viagem: se o painel mudar de altura logo
+  /// depois (teclado fechando, painel recolhendo), ele é refeito com os
+  /// insets novos. No iOS, trocar o contentInset interrompe a animação de
+  /// câmera em curso e o mapa parava perto de um dos extremos.
+  MapFocus? _recentBounds;
+  final _recentBoundsAge = Stopwatch();
+
   /// Reenvia ao nativo só as coleções que mudaram (mesma identidade = nada).
   void _syncNetwork(NetworkOverlay? previous, NetworkOverlay? next) {
     if (next == null) return;
@@ -577,6 +602,10 @@ class _TransitMapState extends State<TransitMap>
     final CameraUpdate update;
     final bounds = focus.bounds;
     final point = focus.point;
+    _recentBounds = bounds == null ? null : focus;
+    _recentBoundsAge
+      ..reset()
+      ..start();
     if (bounds != null) {
       // Centro + zoom calculados aqui: o fitBounds do Web, somado aos
       // insets do painel, deixava a câmera num estado inválido.
@@ -627,7 +656,13 @@ class _TransitMapState extends State<TransitMap>
   Future<void> _applyInsetsAndRefollow() async {
     await _applyInsets();
     if (!mounted || !_styleReady) return;
-    if (_follow.following && _vehicleCenter != null) await _centerOnVehicle();
+    if (_follow.following && _vehicleCenter != null) {
+      await _centerOnVehicle();
+    } else if (_recentBounds case final focus?
+        when _recentBoundsAge.elapsed < const Duration(seconds: 3)) {
+      _pendingFocus = focus;
+      _applyPendingFocus();
+    }
   }
 
   Future<void> _applyInsets() async {
@@ -847,7 +882,13 @@ class _TransitMapState extends State<TransitMap>
       trackCameraPosition: true,
       logoViewPosition: LogoViewPosition.topLeft,
       attributionButtonPosition: AttributionButtonPosition.bottomRight,
-      attributionButtonMargins: Point(Space.xs, _attributionBottom + Space.xs),
+      attributionButtonMargins: Point(
+        Space.xs,
+        attributionMarginBottom(
+          coveredBottom: _attributionBottom,
+          cameraBottom: widget.cameraPadding.bottom,
+        ),
+      ),
       onMapCreated: params.onMapCreated,
       onStyleLoadedCallback: params.onStyleLoaded,
       onCameraMove: params.onCameraMove,

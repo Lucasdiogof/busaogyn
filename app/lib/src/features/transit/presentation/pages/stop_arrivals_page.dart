@@ -91,7 +91,13 @@ class _Geometry {
     dockBottom = math.max(safe.bottom, Space.xs) + Space.xs;
     dockTop = size.height - dockBottom - dockLayout.height;
     barTop = trackingBar ? dockTop - Space.xs - Chrome.trackingBar : null;
-    panelBottom = size.height - (barTop ?? dockTop) + Space.xs;
+    // Celular com teclado aberto: o painel termina acima dele. Antes a lista
+    // seguia por baixo do teclado e o campo focado (planejador) sumia.
+    final keyboard = wide ? 0.0 : media.viewInsets.bottom + Space.xs;
+    panelBottom = math.max(
+      size.height - (barTop ?? dockTop) + Space.xs,
+      keyboard,
+    );
   }
 
   /// Faixa de mapa que sempre sobra sob o cabeçalho com o painel aberto.
@@ -253,8 +259,10 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         : null;
     _plannerEnds = ends;
     if (changed != null && option == null) _focusOnStop(changed);
+    final reframe = planner.selectionSerial != _planSelectionSerial;
+    _planSelectionSerial = planner.selectionSerial;
     setState(() {
-      if (!identical(option, _shownPlan)) {
+      if (!identical(option, _shownPlan) || (reframe && option != null)) {
         _shownPlan = option;
         if (option != null) {
           _routeLine = null;
@@ -688,8 +696,26 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
   /// Fração do painel recolhido (alça + resumo), conforme a tela atual.
   double _sheetMinSize = 0.12;
 
+  /// Teclado aberto no último build (celular).
+  bool _keyboardOpen = false;
+
+  /// Rolagem da lista do painel (a alça e o resumo ficam no topo dela).
+  ScrollController? _sheetScroll;
+
+  /// Último "Ver no mapa" já enquadrado.
+  int _planSelectionSerial = 0;
+
   void _animateSheet(double size) {
     if (!_sheetController.isAttached) return;
+    // Recolhido só mostra o começo da lista: volta ao topo para a alça e o
+    // resumo ficarem à vista (senão sobrava um pedaço cortado de um cartão).
+    final scroll = _sheetScroll;
+    if (size <= _sheetMinSize + 0.01 &&
+        scroll != null &&
+        scroll.hasClients &&
+        scroll.offset > 0) {
+      scroll.jumpTo(0);
+    }
     final duration = motion(context, const Duration(milliseconds: 280));
     // animateTo não aceita duração zero (movimento reduzido): salta direto.
     if (duration == Duration.zero) return _sheetController.jumpTo(size);
@@ -789,8 +815,20 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           (c.state as StopArrivalsLoaded).tracking != null,
     );
     final showBar = tracking && _tab != HomeTab.tracking;
+    final media = MediaQuery.of(context);
+    // Ao abrir o teclado num campo do painel (celular), o painel vai à altura
+    // máxima: acima do teclado cabem o campo e as primeiras sugestões.
+    final keyboardOpen = media.viewInsets.bottom > 0;
+    if (keyboardOpen != _keyboardOpen) {
+      _keyboardOpen = keyboardOpen;
+      if (keyboardOpen && _sheetExtent.value < _sheetMax - 0.01) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _keyboardOpen) _animateSheet(_sheetMax);
+        });
+      }
+    }
     final geometry = _Geometry(
-      MediaQuery.of(context),
+      media,
       dockItems: _catalog == null ? 3 : 4,
       trackingBar: showBar,
     );
@@ -869,7 +907,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                       snap: true,
                       snapSizes: const [_sheetMid],
                       builder: (context, scroll) => _SheetSurface(
-                        scrollController: scroll,
+                        scrollController: _sheetScroll = scroll,
                         // O resumo acompanha o estado das chegadas (carregando,
                         // erro, carregado) sem depender de outro rebuild.
                         top: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
@@ -1428,6 +1466,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                   detailsExpanded: _vehicleDetails,
                   onToggleDetails: () =>
                       setState(() => _vehicleDetails = !_vehicleDetails),
+                  officialRouteShown: _routeMatch(state)?.confirmed ?? false,
                 ),
                 if (_routeMatch(state) case final match?) ...[
                   const SizedBox(height: Space.sm),
@@ -1737,13 +1776,8 @@ class _SheetSurface extends StatelessWidget {
         ),
         child: ListView(
           controller: scrollController,
-          // Com teclado aberto, o fim da lista sobe acima dele.
-          padding: EdgeInsets.fromLTRB(
-            12,
-            0,
-            12,
-            Space.md + MediaQuery.viewInsetsOf(context).bottom,
-          ),
+          // O teclado já empurra o painel inteiro (`_Geometry.panelBottom`).
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, Space.md),
           children: [top, child],
         ),
       ),

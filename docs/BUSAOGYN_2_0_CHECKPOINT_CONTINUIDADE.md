@@ -1,6 +1,6 @@
 # BusãoGyn 2.0 — Checkpoint de continuidade
 
-Atualizado em 2026-10-28 (Etapa E). Serve para qualquer sessão retomar sem reconstruir o
+Atualizado em 2026-10-28 (Etapa F). Serve para qualquer sessão retomar sem reconstruir o
 histórico. Não contém dados oficiais nem pessoais.
 
 ## Estado do Git
@@ -70,9 +70,21 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
     parado num ponto, com o app voltando à consulta por ônibus enquanto o
     Worker publicado não tiver o lote. **Worker não publicado.**
 
-## Testes e builds (último ciclo, Etapa E)
+- Etapa F (`docs/BUSAOGYN_2_0_ETAPA_F_AUDITORIA_VISUAL.md`): capturas reais
+  (Web em 5 tamanhos × claro/escuro; app nativo no simulador iOS), galeria,
+  miniaturas, antes/depois e ZIP em `artifacts/` (local, fora do Git). Corrigidos:
+  - F-1 nome acessível do campo Destino;
+  - F-2 aviso do acompanhamento contradizia o mapa;
+  - F-3 contraste do trajeto no tema claro;
+  - F-4 atribuição do mapa sob a barra de status (iOS);
+  - F-5 teclado cobria o planejador;
+  - F-6 viagem enquadrada pela metade (iOS);
+  - F-7 painel recolhido sem alça;
+  - F-8 ônibus maior no mapa.
 
-- 631 testes Flutter (inclui diretrizes de acessibilidade), 52 Python, 30 do
+## Testes e builds (último ciclo, Etapa F)
+
+- 641 testes Flutter (inclui diretrizes de acessibilidade), 52 Python, 30 do
   Worker, `flutter analyze` limpo, formatação ok.
 - Builds de produção (Web, APK, AAB, iOS release) sem dados da CMTC
   (`app/scripts/check-no-official-catalog.sh <artefatos>`); Web e APK de
@@ -91,9 +103,8 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
 3. Lojas: formulários com as respostas da Etapa E, ficha com a declaração de
    independência, build numbers acima dos últimos envios.
 
-Depois: F (entrega visual completa — 375×812, 390×844, 768×1024,
-1024×1366, 1440×900, claro e escuro, HTML + ZIP). As capturas de iOS
-saem só de build iOS.
+Capturas de loja: refazer a partir dos builds nativos da versão pública (sem
+catálogo), nos tamanhos exigidos; nunca usar as capturas Web como iOS.
 
 ## Restrições e riscos
 

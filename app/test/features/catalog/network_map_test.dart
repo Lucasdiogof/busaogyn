@@ -2,6 +2,7 @@ import 'dart:math' show Point;
 import 'dart:typed_data';
 
 import 'package:busaogyn/src/core/theme/app_theme.dart';
+import 'package:busaogyn/src/core/theme/busao_tokens.dart';
 import 'package:busaogyn/src/features/catalog/domain/network_geojson.dart';
 import 'package:busaogyn/src/features/catalog/domain/route_geometry.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
@@ -20,6 +21,7 @@ import 'catalog_fixture.dart';
 class _FakeController extends Fake implements MapLibreMapController {
   final sources = <String>{};
   final layers = <String>{};
+  final lineColors = <String, Object?>{};
   final pushed = <String>[];
   final cameras = <CameraUpdate>[];
   bool styleLoaded = true;
@@ -100,7 +102,10 @@ class _FakeController extends Fake implements MapLibreMapController {
     double? maxzoom,
     dynamic filter,
     bool enableInteraction = true,
-  }) => _addLayer(sourceId, layerId);
+  }) {
+    lineColors[layerId] = properties.lineColor;
+    return _addLayer(sourceId, layerId);
+  }
 
   @override
   Future<void> addSymbolLayer(
@@ -162,6 +167,7 @@ void main() {
     ValueChanged<String>? onStopTap,
     String? vehicle,
     GeoPosition? position,
+    EdgeInsets cameraPadding = EdgeInsets.zero,
   }) => MaterialApp(
     theme: theme ?? AppTheme.light(),
     home: TransitMap(
@@ -172,6 +178,7 @@ void main() {
       fallbackStyleString: 'fallback',
       network: network,
       onStopTap: onStopTap,
+      cameraPadding: cameraPadding,
       mapBuilder: (context, surface) {
         params = surface;
         return const SizedBox.expand();
@@ -195,6 +202,30 @@ void main() {
     await loadStyle(tester, controller);
     expect(controller.layers, {..._baseLayers, ...netLayerIds});
     expect(controller.sources, containsAll(netSourceIds));
+  });
+
+  testWidgets('trajeto e 1º trecho da viagem com contorno escuro por baixo', (
+    tester,
+  ) async {
+    final builder = NetworkOverlayBuilder(catalog);
+    await tester.pumpWidget(map(network: builder.build()));
+    final controller = _FakeController();
+    params.onMapCreated(controller);
+    await loadStyle(tester, controller);
+    final order = controller.layers.toList();
+    expect(
+      order.indexOf(netRouteCasingLayerId),
+      lessThan(order.indexOf(netRouteOutboundLayerId)),
+    );
+    expect(
+      order.indexOf(netPlanLeg1CasingLayerId),
+      lessThan(order.indexOf(netPlanLeg1LayerId)),
+    );
+    // Tema claro: âmbar escuro (contraste do amarelo sobre o mapa claro).
+    final hex = (BusaoTokens.light.accentText.toARGB32() & 0xFFFFFF)
+        .toRadixString(16)
+        .padLeft(6, '0');
+    expect(controller.lineColors[netRouteCasingLayerId], '#$hex');
   });
 
   testWidgets('sem a rede (produção): só as camadas de sempre', (tester) async {
@@ -296,6 +327,35 @@ void main() {
       GeoBounds.of(catalog.shapesOf('001').first.points),
     );
     await tester.pumpWidget(map(network: builder.build(focus: bounds)));
+    await tester.pump();
+    expect(controller.cameras, hasLength(2));
+  });
+
+  testWidgets('painel muda logo depois de enquadrar: refaz o enquadramento', (
+    tester,
+  ) async {
+    final builder = NetworkOverlayBuilder(catalog);
+    await tester.pumpWidget(map(network: builder.build()));
+    final controller = _FakeController();
+    params.onMapCreated(controller);
+    await loadStyle(tester, controller);
+    controller.cameras.clear();
+    final bounds = MapFocus.bounds(
+      1,
+      GeoBounds.of(catalog.shapesOf('001').first.points),
+    );
+    final framed = builder.build(focus: bounds);
+    await tester.pumpWidget(
+      map(network: framed, cameraPadding: const EdgeInsets.only(bottom: 400)),
+    );
+    await tester.pump();
+    expect(controller.cameras, hasLength(1));
+    // Teclado fecha / painel recolhe: insets novos refazem o enquadramento
+    // (no iOS a troca de inset interrompia a animação no meio).
+    await tester.pumpWidget(
+      map(network: framed, cameraPadding: const EdgeInsets.only(bottom: 120)),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.pump();
     expect(controller.cameras, hasLength(2));
   });
