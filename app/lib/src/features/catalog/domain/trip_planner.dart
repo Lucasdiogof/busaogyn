@@ -15,9 +15,10 @@ import 'transit_catalog.dart';
 /// `partial`/`none` não entram: pertencer a uma linha não prova ordem.
 /// Embarque e desembarque só valem na ordem do trajeto (índice crescente).
 ///
-/// Baldeação (no máximo uma): no MESMO ponto, ou a pé até
-/// [plannerMaxWalkM] em linha reta, sempre com aviso (travessia, calçada e
-/// acessibilidade não são conhecidas). Nunca entre variantes da mesma linha.
+/// Baldeação: no MESMO ponto, ou a pé até [plannerMaxWalkM] em linha reta,
+/// sempre com aviso (travessia, calçada e acessibilidade não são conhecidas).
+/// Nunca entre variantes da mesma linha. Duas baldeações só quando não há
+/// viagem direta nem com uma baldeação, e só no mesmo ponto (sem caminhada).
 
 /// Caminhada máxima numa baldeação (linha reta entre os pontos).
 const plannerMaxWalkM = 150.0;
@@ -51,6 +52,15 @@ enum TripCaution {
 
   /// Baldeação a pé: travessia, calçada e acessibilidade não verificadas.
   walkUnverified,
+
+  /// Embarque, desembarque ou baldeação em estação de corredor ou terminal:
+  /// associação à linha inferida (não há relação oficial ponto-linha).
+  inferredHub,
+
+  /// Troca entre plataformas da mesma estação de corredor (mesmo nome na
+  /// pasta oficial do corredor); qual plataforma atende cada sentido não é
+  /// informado.
+  sameStation,
 }
 
 enum TripPlanStatus {
@@ -65,12 +75,21 @@ enum TripPlanStatus {
 /// Um trecho de ônibus: embarque e desembarque num trajeto.
 @immutable
 class TripLeg {
-  const TripLeg(this.shape, this.sequence, this.boardIndex, this.alightIndex);
+  const TripLeg(
+    this.shape,
+    this.sequence,
+    this.boardIndex,
+    this.alightIndex, {
+    this.hub = false,
+  });
 
   final CatalogShape shape;
   final StopSequence sequence;
   final int boardIndex;
   final int alightIndex;
+
+  /// Embarque ou desembarque em estação/terminal (associação inferida).
+  final bool hub;
 
   SequenceEntry get board => sequence.entries[boardIndex];
   SequenceEntry get alight => sequence.entries[alightIndex];
@@ -87,6 +106,7 @@ class TripLeg {
       TripCaution.uncertainStop,
     if (_repeated(board.stopId) || _repeated(alight.stopId))
       TripCaution.repeatedPass,
+    if (hub) TripCaution.inferredHub,
   ];
 
   bool _repeated(String stopId) =>
@@ -99,8 +119,11 @@ class TripLeg {
 
 @immutable
 class TripOption {
-  TripOption(this.legs, {this.walkM = 0})
-    : assert(legs.length == 1 || legs.length == 2);
+  TripOption(this.legs, {this.walkM = 0, this.sameStation = false})
+    : assert(legs.isNotEmpty && legs.length <= 3);
+
+  /// Baldeação entre plataformas da mesma estação de corredor.
+  final bool sameStation;
 
   final List<TripLeg> legs;
 
@@ -112,7 +135,10 @@ class TripOption {
 
   late final List<TripCaution> cautions = {
     for (final l in legs) ...l.cautions,
-    if (walkM > 0) TripCaution.walkUnverified,
+    if (sameStation)
+      TripCaution.sameStation
+    else if (walkM > 0)
+      TripCaution.walkUnverified,
   }.toList();
 
   TripReliability get reliability =>
@@ -162,9 +188,7 @@ class TripPlanner {
   TripPlanner(this.catalog) {
     for (final seq in catalog.sequences) {
       final shape = catalog.shape(seq.shapeId);
-      if (shape == null ||
-          shape.direction == null ||
-          seq.status != SequenceStatus.estimated) {
+      if (shape == null || shape.direction == null || !seq.ordered) {
         continue;
       }
       final s = _routes.length;
@@ -245,8 +269,16 @@ class TripPlanner {
       }
     }
 
-    TripLeg leg(int s, int i, int j) =>
-        TripLeg(_routes[s].$1, _routes[s].$2, i, j);
+    TripLeg leg(int s, int i, int j) {
+      final entries = _routes[s].$2.entries;
+      return TripLeg(
+        _routes[s].$1,
+        _routes[s].$2,
+        i,
+        j,
+        hub: _isHub(entries[i].stopId) || _isHub(entries[j].stopId),
+      );
+    }
 
     // Diretas: destino depois do embarque, no mesmo trajeto.
     for (final (s, i) in fromO) {
@@ -279,10 +311,19 @@ class TripPlanner {
             if (line2 == line1 || directLines.contains(line2)) continue;
             final j = firstAfter(s2, m);
             if (j == null) continue;
-            offer(TripOption([leg(s1, i, k), leg(s2, m, j)], walkM: walk));
+            offer(
+              TripOption(
+                [leg(s1, i, k), leg(s2, m, j)],
+                walkM: walk,
+                sameStation: walk > 0 && _sameStation(t1, t2),
+              ),
+            );
           }
         }
       }
+    }
+    if (best.isEmpty && !truncated) {
+      truncated = _twoTransfers(fromO, toD, d, leg, offer);
     }
     final options = best.values.toList()..sort(TripOption.compare);
     if (options.isEmpty) {
@@ -293,6 +334,62 @@ class TripPlanner {
       List.unmodifiable(options.take(plannerMaxOptions)),
       truncated,
     );
+  }
+
+  /// Duas baldeações no mesmo ponto. Devolve `true` se parou no limite.
+  bool _twoTransfers(
+    List<(int, int)> fromO,
+    List<(int, int)> toD,
+    String d,
+    TripLeg Function(int, int, int) leg,
+    void Function(TripOption) offer,
+  ) {
+    // Para cada ponto, os embarques que levam ao destino: (trajeto, i, j).
+    final toDest = <String, List<(int, int, int)>>{};
+    for (final (s3, j) in toD) {
+      final entries = _routes[s3].$2.entries;
+      for (var m = 0; m < j; m++) {
+        toDest.putIfAbsent(entries[m].stopId, () => []).add((s3, m, j));
+      }
+    }
+    var expansions = 0;
+    for (final (s1, i) in fromO) {
+      final line1 = _routes[s1].$1.lineId;
+      final e1 = _routes[s1].$2.entries;
+      for (var k = i + 1; k < e1.length; k++) {
+        final t1 = e1[k].stopId;
+        if (t1 == d) break;
+        for (final (s2, m2) in _occurrences[t1] ?? const <(int, int)>[]) {
+          final line2 = _routes[s2].$1.lineId;
+          if (line2 == line1) continue;
+          final e2 = _routes[s2].$2.entries;
+          for (var k2 = m2 + 1; k2 < e2.length; k2++) {
+            final t2 = e2[k2].stopId;
+            if (t2 == d) break;
+            for (final (s3, m3, j3)
+                in toDest[t2] ?? const <(int, int, int)>[]) {
+              if (++expansions > plannerMaxExpansions) return true;
+              final line3 = _routes[s3].$1.lineId;
+              if (line3 == line1 || line3 == line2) continue;
+              offer(
+                TripOption([leg(s1, i, k), leg(s2, m2, k2), leg(s3, m3, j3)]),
+              );
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _isHub(String stopId) {
+    final kind = catalog.stop(stopId)?.kind;
+    return kind == CatalogStopKind.station || kind == CatalogStopKind.terminal;
+  }
+
+  bool _sameStation(String a, String b) {
+    final ga = catalog.stop(a)?.group;
+    return ga != null && ga == catalog.stop(b)?.group;
   }
 
   /// Pontos do grafo a até [plannerMaxWalkM] (linha reta), sem o próprio.

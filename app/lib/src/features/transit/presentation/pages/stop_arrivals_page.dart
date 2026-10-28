@@ -908,9 +908,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         ValueKey('header-preview-$preview'),
         ContextHeader(
           leading: const HeaderTile(Icons.location_on_outlined),
-          title: l10n.catalogStopTitle(preview),
+          title: stop?.kind == CatalogStopKind.terminal
+              ? stop!.address ?? preview
+              : l10n.catalogStopTitle(preview),
           subtitle: Text(
-            stop?.place ?? stop?.address ?? l10n.catalogStopNotFound,
+            stop?.kind == CatalogStopKind.terminal
+                ? l10n.catalogTerminalTag
+                : stop?.place ?? stop?.address ?? l10n.catalogStopNotFound,
           ),
           action: IconButton(
             tooltip: l10n.catalogPreviewClose,

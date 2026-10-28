@@ -34,7 +34,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from cmtc.geo import Polyline, haversine_m  # noqa: E402
 from cmtc.sequence import Params  # noqa: E402
-from cmtc.sources import read_lines, read_shapes, read_stops  # noqa: E402
+from cmtc.sources import read_lines, read_shapes, read_stop_points, read_stops  # noqa: E402
+from cmtc.stations import corridor_lines, find_terminals, read_stations  # noqa: E402
 from cmtc.stop_sequences import sequence_shapes  # noqa: E402
 from cmtc.tracking import Shape, match_tracked_route, next_stops  # noqa: E402
 
@@ -138,7 +139,9 @@ def from_probe(probe):
 def evaluate(data):
     lines, _ = read_lines(os.path.join(ROOT, LINES_XLSX))
     bases = {v['routeId'] for v in data['vehicles'].values()}
-    raw_shapes = [s for s in read_shapes(os.path.join(ROOT, SHAPES_KMZ)) if s.code and s.code.base in bases]
+    all_shapes = read_shapes(os.path.join(ROOT, SHAPES_KMZ))
+    raw_shapes = [s for s in all_shapes if s.code and s.code.base in bases]
+    names = {l.code.variant_key: l.name for l in lines}
     stops, _ = read_stops(os.path.join(ROOT, STOPS_XLSX))
     members = collections.defaultdict(list)
     for s in stops:
@@ -148,7 +151,11 @@ def evaluate(data):
                     members[b].append((s.stop_id, s.lon, s.lat))
     seqs = {r.shape_id: r for r in sequence_shapes(
         raw_shapes, members, {l.code.variant_key: (l.streets_outbound, l.streets_inbound) for l in lines},
-        {s.stop_id: s.street for s in stops}, Params())}
+        {s.stop_id: s.street for s in stops}, Params(),
+        # Mesmas regras do catálogo do app (fase 6).
+        stations=read_stations(read_stop_points(os.path.join(ROOT, 'raw/PED_S MUNICIPIO.kmz'))),
+        corridor=corridor_lines(lines, os.path.join(ROOT, 'raw/Planilhas Horárias por Terminal da RMTC _ 28-10-2026')),
+        terminals=find_terminals(all_shapes, names), variant_names=names)}
 
     results = {}
     for alias, v in data['vehicles'].items():

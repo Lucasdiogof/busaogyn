@@ -124,15 +124,14 @@ Map<String, dynamic> planCollection(
     return stop == null ? null : stopPosition(stop);
   }
 
-  final points = [
-    (legs.first.board.stopId, 'origin'),
-    if (legs.length == 2) ...[
-      (legs.first.alight.stopId, 'transfer'),
-      if (legs.last.board.stopId != legs.first.alight.stopId)
-        (legs.last.board.stopId, 'transfer'),
-    ],
-    (legs.last.alight.stopId, 'destination'),
-  ];
+  final points = <(String, String)>[(legs.first.board.stopId, 'origin')];
+  for (var i = 1; i < legs.length; i++) {
+    points.add((legs[i - 1].alight.stopId, 'transfer'));
+    if (legs[i].board.stopId != legs[i - 1].alight.stopId) {
+      points.add((legs[i].board.stopId, 'transfer'));
+    }
+  }
+  points.add((legs.last.alight.stopId, 'destination'));
   final walkFrom = legs.length == 2 ? at(legs.first.alight.stopId) : null;
   final walkTo = legs.length == 2 ? at(legs.last.board.stopId) : null;
   return featureCollection([

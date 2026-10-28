@@ -2248,7 +2248,7 @@ abstract class AppLocalizations {
   /// No description provided for @plannerIntro.
   ///
   /// In pt, this message translates to:
-  /// **'De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.'**
+  /// **'De ponto a ponto, com até duas baldeações. Funciona sem internet: usa só o catálogo do aparelho.'**
   String get plannerIntro;
 
   /// No description provided for @plannerOrigin.
@@ -2338,7 +2338,7 @@ abstract class AppLocalizations {
   /// No description provided for @plannerNoRoute.
   ///
   /// In pt, this message translates to:
-  /// **'Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.'**
+  /// **'Não há viagem com evidência suficiente com até duas baldeações. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.'**
   String get plannerNoRoute;
 
   /// No description provided for @plannerTruncated.
@@ -2454,6 +2454,42 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Baldeação a pé: travessia, calçada e acessibilidade não verificadas.'**
   String get plannerCautionWalk;
+
+  /// No description provided for @plannerCautionHub.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estação ou terminal: a ligação com a linha é inferida (não há cadastro oficial ponto-linha).'**
+  String get plannerCautionHub;
+
+  /// No description provided for @plannerCautionSameStation.
+  ///
+  /// In pt, this message translates to:
+  /// **'Troca de plataforma na mesma estação; qual plataforma atende cada sentido não é informado.'**
+  String get plannerCautionSameStation;
+
+  /// No description provided for @sequenceOrderedNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Lista incompleta: a ordem foi conferida (logradouros oficiais ou estações do corredor), mas alguns pontos ficaram de fora.'**
+  String get sequenceOrderedNote;
+
+  /// No description provided for @catalogTerminalNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Terminal identificado pelos nomes oficiais das linhas e pelo fim dos trajetos oficiais (inferido). Não tem código para consulta de chegadas.'**
+  String get catalogTerminalNote;
+
+  /// No description provided for @catalogStationNote.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estação de corredor (pasta oficial do KMZ). As linhas que param aqui são inferidas pelo corredor; veja \"No itinerário\".'**
+  String get catalogStationNote;
+
+  /// No description provided for @catalogTerminalTag.
+  ///
+  /// In pt, this message translates to:
+  /// **'terminal (inferido)'**
+  String get catalogTerminalTag;
 }
 
 class _AppLocalizationsDelegate

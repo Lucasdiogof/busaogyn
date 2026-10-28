@@ -8,6 +8,10 @@ enum SequenceStatus {
   /// Ordem utilizável, exibida como estimativa.
   estimated,
 
+  /// Ordem utilizável, mas lista incompleta (pontos ambíguos fora): serve ao
+  /// planejador e ao contexto do ponto, não à lista de próximos pontos.
+  ordered,
+
   /// Só pertencimento (pontos perto do trajeto), sem ordem confirmada.
   partial,
 
@@ -38,7 +42,16 @@ class StopSequence {
     this.circular = false,
     this.ambiguous = const [],
     this.streetRho,
+    this.evidence,
   }) : _encoded = encoded;
+
+  /// De onde vem a confiança na ordem: 'geometria', 'geometria+logradouros',
+  /// 'logradouros' (recuperado) ou 'corredor' (estações do corredor).
+  final String? evidence;
+
+  /// Tem ordem utilizável (completa ou não).
+  bool get ordered =>
+      status == SequenceStatus.estimated || status == SequenceStatus.ordered;
 
   /// Concordância (Spearman) da ordem estimada com a lista OFICIAL de
   /// logradouros do sentido; `null` quando não há logradouros suficientes.

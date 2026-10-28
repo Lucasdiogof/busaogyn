@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:busaogyn/src/app.dart';
+import 'package:busaogyn/src/features/catalog/data/catalog_codec.dart';
+import 'package:busaogyn/src/features/catalog/domain/transit_catalog.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/arrival.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
 import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dart';
@@ -115,6 +119,7 @@ Future<void> _pump(
   WidgetTester tester,
   _Repository repo, {
   Size size = const Size(390, 844),
+  TransitCatalog? catalog,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -129,7 +134,7 @@ Future<void> _pump(
       secondaryRefreshInterval: null,
       mapBuilder: (context, params) => const _CountingMap(),
       clock: () => _now,
-      catalog: fixtureCatalog(),
+      catalog: catalog ?? fixtureCatalog(),
     ),
   );
   await tester.pumpAndSettle();
@@ -641,6 +646,47 @@ void main() {
     await _tapKey(tester, 'planner-search');
     expect(find.text('1 ônibus · direto'), findsOneWidget);
     expect(_map(tester).vehicleNumber, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('terminal inferido: sem chegadas nem favorito, com aviso', (
+    tester,
+  ) async {
+    final catalog = decodeCatalog(
+      jsonEncode(
+        fixtureCatalogMap(
+          extraStops: [
+            [
+              'T-FICTICIO',
+              'terminal',
+              null,
+              null,
+              null,
+              null,
+              null,
+              -16.69,
+              -49.28,
+              [],
+              'T. Fictício',
+              null,
+            ],
+          ],
+        ),
+      ),
+    );
+    await _pump(tester, _Repository(routeName: null), catalog: catalog);
+    _map(tester).onStopTap!('T-FICTICIO');
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('catalog-stop-facts-T-FICTICIO')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('hub-note-terminal')), findsOneWidget);
+    expect(find.byKey(const ValueKey('catalog-see-arrivals')), findsNothing);
+    expect(find.textContaining('inferido'), findsWidgets);
+    // O id interno 'T-…' nunca aparece como se fosse código de ponto.
+    expect(find.textContaining('T-FICTICIO'), findsNothing);
+    expect(find.text('T. Fictício'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

@@ -253,7 +253,7 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
                   ),
                   Text(
                     [
-                      id,
+                      stopCode(stop, id),
                       ?stop?.place,
                       if (!covered) l10n.plannerNotCovered,
                     ].join(' · '),
@@ -339,7 +339,7 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
                     child: Text(
                       [
                         stop.address ?? l10n.catalogStation,
-                        stop.id,
+                        stopCode(stop, stop.id),
                         if (!_c.planner.covers(stop.id)) l10n.plannerNotCovered,
                       ].join(' · '),
                       maxLines: 2,
@@ -418,6 +418,8 @@ class _OptionCard extends StatelessWidget {
     TripCaution.uncertainStop => l10n.plannerCautionUncertain,
     TripCaution.repeatedPass => l10n.plannerCautionRepeated,
     TripCaution.walkUnverified => l10n.plannerCautionWalk,
+    TripCaution.inferredHub => l10n.plannerCautionHub,
+    TripCaution.sameStation => l10n.plannerCautionSameStation,
   };
 
   @override
@@ -431,6 +433,12 @@ class _OptionCard extends StatelessWidget {
       String? extra,
     }) {
       final stop = catalog.stop(stopId);
+      // Estação e terminal com ícone próprio (associação inferida).
+      final shown = switch (stop?.kind) {
+        CatalogStopKind.station => Icons.directions_transit_rounded,
+        CatalogStopKind.terminal => Icons.hub_outlined,
+        _ => icon,
+      };
       return InkWell(
         onTap: () => onOpenStop(stopId),
         child: Padding(
@@ -438,7 +446,7 @@ class _OptionCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 18, color: tokens.accentText),
+              Icon(shown, size: 18, color: tokens.accentText),
               const SizedBox(width: Space.xs),
               Expanded(
                 child: Text.rich(
@@ -455,7 +463,7 @@ class _OptionCard extends StatelessWidget {
                           color: tokens.strongText,
                         ),
                       ),
-                      TextSpan(text: ' · $stopId'),
+                      TextSpan(text: ' · ${stopCode(stop, stopId)}'),
                       if (extra != null) TextSpan(text: ' · $extra'),
                     ],
                   ),
@@ -576,22 +584,22 @@ class _OptionCard extends StatelessWidget {
                 legs.first.board.stopId,
               ),
               legLine(legs.first),
-              if (legs.length == 2) ...[
+              for (var i = 1; i < legs.length; i++) ...[
                 stopLine(
                   Icons.transfer_within_a_station_rounded,
                   l10n.plannerTransfer,
-                  legs.first.alight.stopId,
+                  legs[i - 1].alight.stopId,
                   extra: option.walkM > 0
                       ? l10n.plannerWalk(option.walkM)
                       : null,
                 ),
-                if (option.walkM > 0)
+                if (legs[i].board.stopId != legs[i - 1].alight.stopId)
                   stopLine(
                     Icons.directions_bus_outlined,
                     l10n.plannerBoard,
-                    legs.last.board.stopId,
+                    legs[i].board.stopId,
                   ),
-                legLine(legs.last),
+                legLine(legs[i]),
               ],
               stopLine(
                 Icons.place_rounded,

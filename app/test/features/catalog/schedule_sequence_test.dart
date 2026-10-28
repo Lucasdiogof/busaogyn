@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:busaogyn/src/features/catalog/data/catalog_codec.dart';
 import 'package:busaogyn/src/features/catalog/domain/route_match.dart';
 import 'package:busaogyn/src/features/catalog/domain/stop_sequence.dart';
 import 'package:busaogyn/src/features/catalog/domain/timetable.dart';
@@ -106,6 +109,42 @@ void main() {
       expect(catalog.itineraryOf('1203').single.$2, 3);
       expect(catalog.itineraryOf('40999'), isEmpty); // ambíguo não entra
     });
+  });
+
+  test('terminal inferido: só com id T-… e tipo terminal', () {
+    final map = fixtureCatalogMap(
+      extraStops: [
+        [
+          'T-ALFA',
+          'terminal',
+          null,
+          null,
+          null,
+          null,
+          null,
+          -16.7,
+          -49.3,
+          [],
+          'T. Alfa',
+          null,
+        ],
+        ['T-BETA', 'ped', null, null, null, null, null, -16.7, -49.3, [], 'x'],
+        ['T-alfa', 'terminal', null, null, null, null, null, -16.7, -49.3, []],
+      ],
+    );
+    final c = decodeCatalog(jsonEncode(map));
+    final t = c.stop('T-ALFA')!;
+    expect(
+      (t.kind, t.hasArrivals, t.label),
+      (CatalogStopKind.terminal, false, 'T. Alfa'),
+    );
+    expect(c.stop('T-BETA'), isNull); // ponto comum precisa de código numérico
+    expect(c.stop('T-alfa'), isNull);
+    expect(c.stop('1201')!.hasArrivals, isTrue);
+    // Busca: "terminal" + nome completo acha o terminal primeiro.
+    expect(c.searchStops('terminal alfa').first.id, 'T-ALFA');
+    expect(c.searchStops('alfa').first.id, 'T-ALFA');
+    expect(c.searchStops('terminal'), [c.stop('T-ALFA')]);
   });
 
   group('próximos pontos', () {

@@ -13,6 +13,11 @@ import '../domain/transit_catalog.dart';
 import 'catalog_access.dart';
 import 'catalog_schedule_widgets.dart';
 
+/// Código para mostrar ao passageiro: terminal inferido não tem código de
+/// ponto (o id 'T-…' é interno).
+String stopCode(CatalogStop? stop, String id) =>
+    stop?.kind == CatalogStopKind.terminal ? l10n.catalogTerminalTag : id;
+
 /// Quantos resultados de ponto aparecem de uma vez.
 const catalogStopResultsLimit = 40;
 
@@ -124,9 +129,12 @@ class CatalogStopTile extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Icon(
-                      stop.kind == CatalogStopKind.station
-                          ? Icons.directions_transit_rounded
-                          : Icons.location_on_outlined,
+                      switch (stop.kind) {
+                        CatalogStopKind.station =>
+                          Icons.directions_transit_rounded,
+                        CatalogStopKind.terminal => Icons.hub_outlined,
+                        _ => Icons.location_on_outlined,
+                      },
                       size: 20,
                       color: tokens.accentText,
                     ),
@@ -150,7 +158,7 @@ class CatalogStopTile extends StatelessWidget {
                           TextSpan(
                             children: [
                               TextSpan(
-                                text: stop.id,
+                                text: stopCode(stop, stop.id),
                                 style: monoStyle(
                                   const TextStyle(fontWeight: FontWeight.w700),
                                 ),
@@ -425,29 +433,44 @@ class StopPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kind = catalog.stop(stopId)?.kind;
+    final hasArrivals = catalog.stop(stopId)?.hasArrivals ?? true;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         CatalogStopFacts(catalog: catalog, stopId: stopId),
+        if (kind == CatalogStopKind.terminal ||
+            kind == CatalogStopKind.station) ...[
+          const SizedBox(height: Space.xs),
+          FootNote(
+            key: ValueKey('hub-note-${kind!.name}'),
+            child: Text(
+              kind == CatalogStopKind.terminal
+                  ? l10n.catalogTerminalNote
+                  : l10n.catalogStationNote,
+            ),
+          ),
+        ],
         const SizedBox(height: Space.sm),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                key: const ValueKey('catalog-see-arrivals'),
-                onPressed: onSeeArrivals,
-                icon: const Icon(Icons.schedule_rounded, size: 20),
-                label: Text(l10n.catalogSeeArrivals),
+        if (hasArrivals)
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const ValueKey('catalog-see-arrivals'),
+                  onPressed: onSeeArrivals,
+                  icon: const Icon(Icons.schedule_rounded, size: 20),
+                  label: Text(l10n.catalogSeeArrivals),
+                ),
               ),
-            ),
-            const SizedBox(width: Space.xs),
-            FavoriteToggleButton(
-              code: stopId,
-              enabled: true,
-              onPressed: () => _toggleFavorite(context),
-            ),
-          ],
-        ),
+              const SizedBox(width: Space.xs),
+              FavoriteToggleButton(
+                code: stopId,
+                enabled: true,
+                onPressed: () => _toggleFavorite(context),
+              ),
+            ],
+          ),
         if (onOpenRoute case final open?) ...[
           const SizedBox(height: Space.sm),
           StopItinerary(catalog: catalog, stopId: stopId, onOpenRoute: open),

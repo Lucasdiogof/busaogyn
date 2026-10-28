@@ -1393,7 +1393,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plannerIntro =>
-      'Stop to stop, with up to one transfer. Works offline: uses only the catalog on this device.';
+      'Stop to stop, with up to two transfers. Works offline: uses only the catalog on this device.';
 
   @override
   String get plannerOrigin => 'From';
@@ -1443,7 +1443,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plannerNoRoute =>
-      'No trip with enough evidence and up to one transfer. That does not mean there is no bus, only that current data cannot confirm one.';
+      'No trip with enough evidence and up to two transfers. That does not mean there is no bus, only that current data cannot confirm one.';
 
   @override
   String get plannerTruncated =>
@@ -1538,4 +1538,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get plannerCautionWalk =>
       'Walking transfer: crossing, sidewalk and accessibility not verified.';
+
+  @override
+  String get plannerCautionHub =>
+      'Station or terminal: its link to the line is inferred (no official stop-line record).';
+
+  @override
+  String get plannerCautionSameStation =>
+      'Platform change within the same station; which platform serves each direction is not stated.';
+
+  @override
+  String get sequenceOrderedNote =>
+      'Incomplete list: the order was cross-checked (official streets or corridor stations), but some stops were left out.';
+
+  @override
+  String get catalogTerminalNote =>
+      'Terminal identified from official line names and the ends of official routes (inferred). It has no code for arrival lookups.';
+
+  @override
+  String get catalogStationNote =>
+      'Corridor station (official KMZ folder). Lines stopping here are inferred from the corridor; see \"On the route\".';
+
+  @override
+  String get catalogTerminalTag => 'terminal (inferred)';
 }

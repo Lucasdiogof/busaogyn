@@ -30,8 +30,10 @@ from cmtc.geo import encode_polyline, length_m, simplify  # noqa: E402
 from cmtc.schedules import parse_sheet  # noqa: E402
 from cmtc.sequence import Params  # noqa: E402
 from cmtc.sources import read_lines, read_shapes, read_stop_points, read_stops  # noqa: E402
+from cmtc.stations import (STATION_MAX_M, TERMINAL_MAX_M, TERMINAL_MIN_SUPPORT, corridor_lines,  # noqa: E402
+                           find_terminals, read_stations)
 from cmtc.stop_sequences import (MAX_AMBIGUOUS_SHARE, METHOD, MIN_ENTRIES, MIN_HIGH_SHARE,  # noqa: E402
-                                 MIN_STREET_RHO, sequence_shapes)
+                                 MIN_STREET_RHO, RECOVER_STREET_RHO, sequence_shapes)
 from cmtc.timetables import build_timetables, delivered_date  # noqa: E402
 from cmtc.xlsx import read_workbook  # noqa: E402
 
@@ -83,6 +85,7 @@ def build_catalog():
         for l in lines
     ]
 
+    stations = {st.stop_id: st for st in read_stations(points)}
     stop_rows = []
     seen = set()
     for s in stops:
@@ -90,7 +93,7 @@ def build_catalog():
         stop_rows.append([
             s.stop_id, 'ped', _txt(s.kind), _txt(s.street), _txt(s.reference), _txt(s.district), _txt(s.city),
             None if s.lat is None else round(s.lat, 6), None if s.lon is None else round(s.lon, 6),
-            s.lines, None,
+            s.lines, None, None,
         ])
     # Estações (40000+) e PEDs que só existem no KMZ: sem endereço e sem
     # linhas no cadastro; entram para a busca por código e o nome do KMZ.
@@ -101,6 +104,7 @@ def build_catalog():
         stop_rows.append([
             p.stop_id, 'estacao' if int(p.stop_id) >= 40000 else 'ped_kmz', None, None, None, None, None,
             round(p.lat, 6), round(p.lon, 6), [], p.label,
+            stations[p.stop_id].group if p.stop_id in stations else None,
         ])
 
     shapes = read_shapes(os.path.join(RAW, SHAPES_KMZ))
@@ -143,14 +147,22 @@ def build_catalog():
             for b in s.lines:
                 members[b].append((s.stop_id, s.lon, s.lat))
     params = Params()
+    variant_names = {l.code.variant_key: l.name for l in lines}
+    terminals = find_terminals(shapes, variant_names)
+    # Terminais (inferidos): nós do planejador, sem consulta de chegadas.
+    for t in sorted(terminals.values(), key=lambda t: t.id):
+        stop_rows.append([t.id, 'terminal', None, None, None, None, None, round(t.lat, 6), round(t.lon, 6), [],
+                          t.name, None])
     sequences = sequence_shapes(
         shapes, members, {l.code.variant_key: (l.streets_outbound, l.streets_inbound) for l in lines},
-        {s.stop_id: s.street for s in stops}, params)
+        {s.stop_id: s.street for s in stops}, params,
+        stations=list(stations.values()), corridor=corridor_lines(lines, folder),
+        terminals=terminals, variant_names=variant_names)
     level_code = {'high': 'h', 'medium': 'm'}
     sequence_rows = [
         [r.shape_id, r.status, r.circular,
          ';'.join(f'{e.stop_id},{round(e.along_m)},{level_code[e.level]}' for e in r.entries),
-         sorted({sid for sid, _ in r.ambiguous}, key=int), r.street_rho]
+         sorted({sid for sid, _ in r.ambiguous}, key=int), r.street_rho, r.evidence]
         for r in sequences
     ]
 
@@ -172,7 +184,9 @@ def build_catalog():
                 'id': METHOD, 'official': False, 'toleranceM': params.tolerance_m,
                 'minConfidence': params.min_confidence, 'minEntries': MIN_ENTRIES,
                 'minHighShare': MIN_HIGH_SHARE, 'maxAmbiguousShare': MAX_AMBIGUOUS_SHARE,
-                'minStreetRho': MIN_STREET_RHO,
+                'minStreetRho': MIN_STREET_RHO, 'recoverStreetRho': RECOVER_STREET_RHO,
+                'stationMaxM': STATION_MAX_M, 'terminalMaxM': TERMINAL_MAX_M,
+                'terminalMinSupport': TERMINAL_MIN_SUPPORT,
             },
             'files': {
                 SHAPES_KMZ: _sha(os.path.join(RAW, SHAPES_KMZ)),
@@ -212,12 +226,16 @@ def build_catalog():
         'sequences': {
             # streetRho: concordância (Spearman) da ordem estimada com a lista
             # oficial de logradouros do sentido; null = não verificável.
-            'fields': ['shape', 'status', 'circular', 'entries', 'ambiguous', 'streetRho'],
+            # status: estimated | ordered (lista incompleta) | partial | none;
+            # evidence: geometria | geometria+logradouros | logradouros | corredor.
+            'fields': ['shape', 'status', 'circular', 'entries', 'ambiguous', 'streetRho', 'evidence'],
             'rows': sequence_rows,
         },
         'stops': {
+            # kind: ped | estacao | ped_kmz | terminal (inferido, id 'T-…');
+            # group: plataformas da mesma estação de corredor.
             'fields': ['id', 'kind', 'streetType', 'street', 'reference', 'district', 'city', 'lat', 'lon',
-                       'lines', 'label'],
+                       'lines', 'label', 'group'],
             'rows': stop_rows,
         },
     }

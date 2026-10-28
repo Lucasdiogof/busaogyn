@@ -108,6 +108,10 @@ enum CatalogStopKind {
 
   /// Ponto que só existe no KMZ de pontos.
   kmzOnly,
+
+  /// Terminal (INFERIDO: nome na denominação oficial das variantes + extremo
+  /// dos trajetos). Código 'T-…', sem consulta de chegadas.
+  terminal,
 }
 
 /// Ponto de parada (PED). [id] é o mesmo código da consulta de chegadas.
@@ -125,7 +129,14 @@ class CatalogStop {
     this.longitude,
     this.lineIds = const [],
     this.label,
+    this.group,
   });
+
+  /// Plataformas da mesma estação de corredor ('eixo:PLATAFORMA PALMITO').
+  final String? group;
+
+  /// Código que a consulta de chegadas aceita (terminais não têm).
+  bool get hasArrivals => kind != CatalogStopKind.terminal;
 
   final String id;
   final CatalogStopKind kind;
@@ -292,7 +303,7 @@ class TransitCatalog {
       final out = <String, List<(CatalogShape, int)>>{};
       for (final seq in sequences) {
         final shape = _shapeById[seq.shapeId];
-        if (shape == null || seq.status != SequenceStatus.estimated) continue;
+        if (shape == null || !seq.ordered) continue;
         for (var i = 0; i < seq.entries.length; i++) {
           out.putIfAbsent(seq.entries[i].stopId, () => []).add((shape, i + 1));
         }
@@ -406,6 +417,18 @@ class _StopEntry {
   _StopEntry(this.stop, this.fields);
 
   factory _StopEntry.of(CatalogStop stop) => _StopEntry(stop, [
+    // Terminal e estação: acham-se por "terminal"/"estação" + nome completo
+    // ('T-PADRE-PELAGIO' -> 'padre pelagio'), acima das ruas homônimas.
+    if (stop.kind == CatalogStopKind.terminal)
+      (
+        searchTokens(
+          'terminal ${stop.id.substring(2).replaceAll('-', ' ')} '
+          '${stop.label ?? ''}',
+        ),
+        6,
+      ),
+    if (stop.kind == CatalogStopKind.station)
+      (searchTokens('estacao plataforma ${stop.label ?? ''}'), 5),
     (
       searchTokens(
         '${stop.streetType ?? ''} ${stop.street ?? ''} ${stop.label ?? ''}',
