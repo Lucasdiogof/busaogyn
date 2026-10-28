@@ -35,9 +35,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsClose => 'Close settings';
 
   @override
-  String get comingSoon => 'Coming soon';
-
-  @override
   String get loading => 'Loading…';
 
   @override
@@ -852,12 +849,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String lineSemantics(String route, String minutes, String quality) {
     return 'Line $route, $minutes, $quality';
   }
-
-  @override
-  String get linesSoonTitle => 'Lines will be available soon.';
-
-  @override
-  String get linesSoonBody => 'For now, check arrivals by the stop code.';
 
   @override
   String get seenLinesSection => 'Lines seen';
@@ -1772,4 +1763,14 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return 'Near you · $_temp0';
   }
+
+  @override
+  String get seenLinesHeader => 'Lines at the stops you checked';
+
+  @override
+  String get seenLinesEmptyTitle => 'No lines here yet.';
+
+  @override
+  String get seenLinesEmptyBody =>
+      'Check a stop: the lines that serve it show up here, with the next arrivals.';
 }

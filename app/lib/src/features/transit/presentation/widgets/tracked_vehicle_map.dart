@@ -781,7 +781,8 @@ class _TransitMapState extends State<TransitMap>
     if (layerId == netStopsLayerId ||
         layerId == netRouteStopsLayerId ||
         layerId == netPlanPointsLayerId) {
-      widget.onStopTap?.call(id);
+      // Feição sem identificador (o plugin manda "null") não abre ponto.
+      if (id.isNotEmpty && id != 'null') widget.onStopTap?.call(id);
     }
     if (layerId == netClusterLayerId) unawaited(_zoomInto(coordinates));
   }

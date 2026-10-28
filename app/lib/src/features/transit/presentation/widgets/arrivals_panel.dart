@@ -88,8 +88,9 @@ class ArrivalsPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Space.xxs),
+            // 48 dp: alvo mínimo de toque do Android.
             SizedBox.square(
-              dimension: 44,
+              dimension: 48,
               child: IconButton(
                 onPressed: state.refreshing ? null : onRefresh,
                 tooltip: l10n.refreshArrivals,

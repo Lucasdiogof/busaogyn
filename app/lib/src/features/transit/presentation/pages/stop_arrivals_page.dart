@@ -71,11 +71,14 @@ class _Geometry {
     : size = media.size,
       safe = media.padding,
       wide = media.size.width >= Breakpoints.panel {
+    // Margens laterais seguras: em paisagem, o recorte da câmera (notch/ilha)
+    // fica de um dos lados e cobriria o painel.
+    final usable = size.width - safe.left - safe.right - Chrome.gutter * 2;
     final columnWidth = wide
         ? (size.width * 0.38).clamp(Chrome.sidePanelMin, Chrome.sidePanelMax)
-        : size.width - Chrome.gutter * 2;
-    left = Chrome.gutter;
-    width = math.min(columnWidth, size.width - Chrome.gutter * 2);
+        : usable;
+    left = Chrome.gutter + safe.left;
+    width = math.min(columnWidth, usable);
     top = safe.top + Space.sm;
     headerHeight = Chrome.headerHeight(media.textScaler);
     dockLayout = Chrome.dockLayout(
@@ -863,14 +866,19 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                       snapSizes: const [_sheetMid],
                       builder: (context, scroll) => _SheetSurface(
                         scrollController: scroll,
-                        top: ValueListenableBuilder<double>(
-                          valueListenable: _sheetExtent,
-                          builder: (context, extent, _) => _SheetTop(
-                            summary: _sheetSummary(),
-                            collapsed: extent <= _sheetMinSize + 0.02,
-                            onToggle: _toggleSheet,
-                            onShowMap: () => _toggleSheet(toMap: true),
-                          ),
+                        // O resumo acompanha o estado das chegadas (carregando,
+                        // erro, carregado) sem depender de outro rebuild.
+                        top: BlocBuilder<StopArrivalsCubit, StopArrivalsState>(
+                          builder: (context, _) =>
+                              ValueListenableBuilder<double>(
+                                valueListenable: _sheetExtent,
+                                builder: (context, extent, _) => _SheetTop(
+                                  summary: _sheetSummary(),
+                                  collapsed: extent <= _sheetMinSize + 0.02,
+                                  onToggle: _toggleSheet,
+                                  onShowMap: () => _toggleSheet(toMap: true),
+                                ),
+                              ),
                         ),
                         child: _panelContent(),
                       ),
@@ -911,6 +919,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                         geometry.size.width -
                             geometry.left -
                             geometry.width -
+                            geometry.safe.right -
                             Chrome.gutter * 2,
                       )
                     : geometry.width,
@@ -1015,10 +1024,13 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         cameraPadding: EdgeInsets.fromLTRB(
           panelRight,
           g.top,
-          Chrome.gutter,
+          Chrome.gutter + g.safe.right,
           Chrome.gutter,
         ),
-        controlsPadding: EdgeInsets.only(top: g.top, right: Chrome.gutter),
+        controlsPadding: EdgeInsets.only(
+          top: g.top,
+          right: Chrome.gutter + g.safe.right,
+        ),
         attributionBottom: 0,
         showControls: true,
       );
@@ -1037,7 +1049,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
       // À direita, sob o cabeçalho.
       controlsPadding: EdgeInsets.only(
         top: mapTop + Space.sm,
-        right: Chrome.gutter,
+        right: Chrome.gutter + g.safe.right,
       ),
       attributionBottom: coveredBottom,
       // Sem faixa de mapa suficiente o botão cobriria a atribuição; o
@@ -1065,7 +1077,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               title: l10n.dockLines,
               subtitle: Text(
                 _catalog == null
-                    ? l10n.comingSoon
+                    ? l10n.seenLinesHeader
                     : l10n.catalogLinesHeaderSubtitle(_catalog!.lines.length),
               ),
             ),
@@ -1243,14 +1255,16 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               enabled: state is StopArrivalsLoaded,
               onPressed: () => _toggleFavorite(stopId),
             ),
-            IconButton(
-              key: const ValueKey('share-stop'),
-              tooltip: l10n.shareStopAction,
-              onPressed: () => shareText(
-                context,
-                stopShareText(stopId, stop: catalog?.stop(stopId)),
+            Builder(
+              builder: (button) => IconButton(
+                key: const ValueKey('share-stop'),
+                tooltip: l10n.shareStopAction,
+                onPressed: () => shareText(
+                  button,
+                  stopShareText(stopId, stop: catalog?.stop(stopId)),
+                ),
+                icon: const Icon(Icons.ios_share_rounded),
               ),
-              icon: const Icon(Icons.ios_share_rounded),
             ),
             searchButton,
           ],

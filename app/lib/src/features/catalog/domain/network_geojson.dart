@@ -20,8 +20,12 @@ const emptyCollection = <String, dynamic>{
 
 List<double> _lonLat(GeoPosition p) => [p.longitude, p.latitude];
 
+/// O código do ponto vai também no `id` da feição: no Android e no iOS o
+/// toque devolve esse identificador nativo (o `promoteId` só vale no Web) e,
+/// sem ele, chegava a string "null".
 Map<String, dynamic> _point(GeoPosition p, Map<String, dynamic> props) => {
   'type': 'Feature',
+  if (props['id'] case final String id) 'id': id,
   'properties': props,
   'geometry': {'type': 'Point', 'coordinates': _lonLat(p)},
 };

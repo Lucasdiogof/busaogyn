@@ -43,6 +43,17 @@ void main() {
       expect([for (final x in r.results) x.item.id], contains('00294'));
     });
 
+    test('tipo de bairro que o cadastro omite não impede achar', () {
+      // A fixture tem "JARDIM SIMULADO"; o passageiro escreve "setor".
+      expect([
+        for (final r in catalog.findStops('setor simulado').results) r.item.id,
+      ], contains('1201'));
+      // Só o tipo, sem nome nem casamento real, não lista a cidade inteira.
+      expect(catalog.findStops('bairro').results, isEmpty);
+      // Quando o tipo existe no cadastro, continua casando normalmente.
+      expect(catalog.findStops('jardim').results, isNotEmpty);
+    });
+
     test('palavra curta, código e dois erros não são aproximados', () {
       expect(catalog.findStops('exm').results, isEmpty);
       expect(catalog.findStops('99999').results, isEmpty);

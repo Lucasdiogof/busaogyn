@@ -6,10 +6,12 @@ import '../l10n/l10n.dart';
 
 /// Compartilhamento da plataforma; os testes trocam por um registro.
 @visibleForTesting
-Future<void> Function(String text) sharePlatform = _platformShare;
+Future<void> Function(String text, Rect? origin) sharePlatform = _platformShare;
 
-Future<void> _platformShare(String text) async {
-  final result = await SharePlus.instance.share(ShareParams(text: text));
+Future<void> _platformShare(String text, Rect? origin) async {
+  final result = await SharePlus.instance.share(
+    ShareParams(text: text, sharePositionOrigin: origin),
+  );
   if (result.status == ShareResultStatus.unavailable) {
     throw StateError('compartilhamento indisponível');
   }
@@ -18,11 +20,20 @@ Future<void> _platformShare(String text) async {
 /// Abre o compartilhamento do sistema (Android, iOS, Web Share). Onde não
 /// existe (navegador de desktop, por exemplo), copia o texto e avisa. Só o
 /// texto mostrado é enviado; nunca a posição do passageiro.
+///
+/// [context] deve ser o do botão tocado: o iOS (iPhone desde o 26 e iPad)
+/// exige a área de origem da folha e recusa o compartilhamento sem ela.
 Future<void> shareText(BuildContext context, String text) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
+  final box = context.findRenderObject();
+  final origin = box is RenderBox && box.hasSize
+      ? box.localToGlobal(Offset.zero) & box.size
+      : null;
   try {
-    await sharePlatform(text);
-  } catch (_) {
+    await sharePlatform(text, origin);
+  } catch (error) {
+    // Só o tipo/mensagem do erro, nunca o texto compartilhado.
+    debugPrint('Compartilhamento indisponível: $error');
     await Clipboard.setData(ClipboardData(text: text));
     messenger
       ?..hideCurrentSnackBar()

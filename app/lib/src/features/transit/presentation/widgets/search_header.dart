@@ -156,8 +156,9 @@ class _SearchHeaderState extends State<SearchHeader> {
               ),
             Padding(
               padding: const EdgeInsets.only(right: Space.xs),
+              // 48 dp: alvo mínimo de toque do Android (o iOS pede 44 pt).
               child: SizedBox.square(
-                dimension: 44,
+                dimension: 48,
                 child: Tooltip(
                   message: l10n.search,
                   excludeFromSemantics: true,
@@ -165,7 +166,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                     onPressed: widget.onSearch,
                     style: FilledButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      minimumSize: const Size.square(44),
+                      minimumSize: const Size.square(48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.plate),
                       ),
@@ -259,7 +260,7 @@ class SearchErrorNote extends StatelessWidget {
                 TextButton(
                   onPressed: onRetry,
                   style: TextButton.styleFrom(
-                    minimumSize: const Size(44, 44),
+                    minimumSize: const Size(48, 48),
                     padding: const EdgeInsets.symmetric(horizontal: Space.xs),
                   ),
                   child: Text(l10n.retry),

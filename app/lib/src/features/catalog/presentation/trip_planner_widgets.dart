@@ -424,12 +424,14 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
       if (_c.selectedOption case final option?)
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            key: const ValueKey('planner-share'),
-            onPressed: () =>
-                shareText(context, tripShareText(_c.catalog, option)),
-            icon: const Icon(Icons.ios_share_rounded),
-            label: Text(l10n.shareTripAction),
+          child: Builder(
+            builder: (button) => TextButton.icon(
+              key: const ValueKey('planner-share'),
+              onPressed: () =>
+                  shareText(button, tripShareText(_c.catalog, option)),
+              icon: const Icon(Icons.ios_share_rounded),
+              label: Text(l10n.shareTripAction),
+            ),
           ),
         ),
       if (plan.truncated) FootNote(child: Text(l10n.plannerTruncated)),

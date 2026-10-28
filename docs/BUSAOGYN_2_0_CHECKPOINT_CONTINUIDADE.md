@@ -1,6 +1,6 @@
 # BusãoGyn 2.0 — Checkpoint de continuidade
 
-Atualizado em 2026-10-28 (Etapa C). Serve para qualquer sessão retomar sem reconstruir o
+Atualizado em 2026-10-28 (Etapa D). Serve para qualquer sessão retomar sem reconstruir o
 histórico. Não contém dados oficiais nem pessoais.
 
 ## Estado do Git
@@ -37,22 +37,29 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   digitação, avisos acima do dock; estudos de alertas e de "reportar
   problema" (não implementados, dependem de decisão).
 
+- Etapa D (`docs/BUSAOGYN_2_0_ETAPA_D_QA_ESTABILIDADE.md`): QA em simulador
+  iOS, emulador Android e Web (sem aparelho físico). Corrigidos: "Ponto null"
+  ao tocar no mapa (iOS/Android), compartilhamento no iOS 26, paisagem sob a
+  ilha/notch, resumo do painel desatualizado, status cortado, "Em breve" na
+  aba Linhas de produção, busca por bairro com tipo omitido, alvos de 44 dp.
+  Aberto: Tab do teclado no Web (QA-11).
+
 ## Testes e builds (último ciclo)
 
-- 612 testes Flutter, `flutter analyze` limpo, formatação ok.
+- 619 testes Flutter (inclui diretrizes de acessibilidade), 51 Python,
+  `flutter analyze` limpo, formatação ok.
 - Builds produção web/APK/iOS sem dados CMTC (`app/scripts/check-no-official-catalog.sh <pasta>`);
   APK dev como controle positivo (verificador falha, como esperado).
 
-## Próxima ação (Etapa D — qualidade e estabilidade)
+## Próxima ação (Etapa E — preparação para publicação)
 
-1. Testar Perto de mim, viagens salvas e compartilhar em aparelho físico
-   (Android e iPhone) e no navegador do celular.
-2. QA real: chegadas, seguir ônibus, GPS antigo, API fora, reconexão,
-   foreground/background, offline, desempenho.
-3. Decisões pendentes do usuário: alertas só com o app aberto; canal de
-   "Reportar problema"; links compartilháveis (domínio + deploy).
+1. Testes em aparelhos físicos Android e iPhone (cenários da Etapa D).
+2. Corrigir QA-11 (Tab no Web).
+3. Decisões do usuário: licença CMTC, alertas com app aberto, canal de
+   "Reportar problema", domínio/deploy para links.
+4. Lojas: privacidade, permissões, textos; capturas só na Etapa F.
 
-Depois: E (publicação), F (entrega
+Depois: F (entrega
 visual completa — 375×812, 390×844, 768×1024, 1024×1366, 1440×900, claro e
 escuro, HTML + ZIP).
 
@@ -73,6 +80,12 @@ escuro, HTML + ZIP).
 - Após cada comando Flutter, restaurar os lockfiles locais do usuário. O
   `pubspec.lock` versionado é o do CI (3.38.5); o local do usuário = versionado
   + o diff do SDK dele (Flutter master).
+- Emulador Android: o shell define `ANDROID_AVD_HOME=/Volumes/DevSSD/Android/avd`
+  (vazio); use `ANDROID_AVD_HOME=$HOME/.android/avd ANDROID_SDK_ROOT=$HOME/Library/Android/sdk`
+  só no comando, com `-no-snapshot-save`.
+- Simulador iOS (Flutter master): `flutter build ios --simulator --config-only
+  -t dev_catalog/main.dart` e depois `xcodebuild ... ARCHS=arm64` (bug de
+  arquitetura do flutter_tools master).
 - Se o web acusar `MissingPluginException`, rode `flutter clean` (registro de
   plugins em cache).
 - Catálogo dev: `python3 -I data/cmtc/pipeline/export_catalog.py` →

@@ -228,6 +228,7 @@ Future<void> _settle(WidgetTester tester) async {
 
 void main() {
   _stageCTests();
+  _accessibilityTests();
 
   testWidgets(
     'pontos sempre no mapa; ponto tocado abre o detalhe e é destacado',
@@ -952,7 +953,12 @@ void _stageCTests() {
       final original = sharePlatform;
       setUp(() {
         shared = [];
-        sharePlatform = (text) async => shared.add(text);
+        sharePlatform = (text, origin) async {
+          // O iOS exige a área do botão tocado.
+          expect(origin, isNotNull);
+          expect(origin!.isEmpty, isFalse);
+          shared.add(text);
+        };
       });
       tearDown(() => sharePlatform = original);
 
@@ -991,7 +997,7 @@ void _stageCTests() {
       testWidgets('sem compartilhamento do sistema, copia e avisa', (
         tester,
       ) async {
-        sharePlatform = (_) async => throw StateError('indisponível');
+        sharePlatform = (_, _) async => throw StateError('indisponível');
         String? copied;
         tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
           SystemChannels.platform,
@@ -1035,5 +1041,91 @@ void _stageCTests() {
         findsOneWidget,
       );
     });
+  });
+}
+
+/// Diretrizes de acessibilidade do Flutter (alvos de toque Android 48 dp e
+/// iOS 44 pt, alvo tocável com rótulo, contraste de texto) nas telas
+/// principais, nos dois temas.
+void _accessibilityTests() {
+  group('acessibilidade (diretrizes)', () {
+    Future<void> check(WidgetTester tester, String where) async {
+      for (final guideline in [
+        androidTapTargetGuideline,
+        iOSTapTargetGuideline,
+        labeledTapTargetGuideline,
+        textContrastGuideline,
+      ]) {
+        final result = await guideline.evaluate(tester);
+        expect(result.passed, isTrue, reason: '$where: ${result.reason}');
+      }
+    }
+
+    testWidgets('produção (sem catálogo): Pontos, Linhas e Salvos', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, _Repository(routeName: null), noCatalog: true);
+      await check(tester, 'Pontos');
+      final context = tester.element(find.byType(NavDock));
+      await context.read<StopArrivalsCubit>().load('00294');
+      await _settle(tester);
+      await check(tester, 'chegadas');
+      for (final tab in ['Linhas', 'Salvos']) {
+        await tester.tap(_dock(tab));
+        await _settle(tester);
+        await check(tester, tab);
+      }
+      semantics.dispose();
+    });
+
+    for (final dark in [false, true]) {
+      testWidgets('telas principais (${dark ? 'escuro' : 'claro'})', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        tester.platformDispatcher.platformBrightnessTestValue = dark
+            ? Brightness.dark
+            : Brightness.light;
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        await _pump(tester, _Repository(routeName: null));
+        await check(tester, 'Pontos');
+        await _tapKey(tester, 'nearby-locate');
+        await check(tester, 'Perto de mim');
+
+        final context = tester.element(find.byType(NavDock));
+        await context.read<StopArrivalsCubit>().load('00294');
+        await _settle(tester);
+        await check(tester, 'chegadas');
+
+        await tester.tap(_dock('Linhas'));
+        await _settle(tester);
+        await check(tester, 'Linhas');
+        await _tapKey(tester, 'catalog-line-001');
+        await check(tester, 'linha aberta');
+
+        await _tapKey(tester, 'dock-plan');
+        await _tapKey(tester, 'planner-pick-origin');
+        _map(tester).onStopTap!('1202');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-pick-destination');
+        _map(tester).onStopTap!('1201');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-search');
+        await check(tester, 'Planejar');
+
+        await tester.tap(_dock('Salvos'));
+        await _settle(tester);
+        await check(tester, 'Salvos');
+
+        await tester.tap(_dock('Pontos'));
+        await _settle(tester);
+        await _startTracking(tester);
+        await check(tester, 'acompanhando');
+        context.read<StopArrivalsCubit>().stopTracking();
+        await _settle(tester);
+        semantics.dispose();
+      });
+    }
   });
 }
