@@ -62,9 +62,10 @@ void main() {
     final b = seq.entries[5].stopId;
     final forward = planner.plan(a, b);
     expect(forward.status, TripPlanStatus.ok);
+    // Direta pela mesma linha (a deduplicação pode preferir outra variante).
     expect(
       forward.options.any(
-        (o) => o.transfers == 0 && o.legs.single.shape.id == shape.id,
+        (o) => o.transfers == 0 && o.legs.single.shape.lineId == shape.lineId,
       ),
       isTrue,
     );
@@ -81,17 +82,47 @@ void main() {
       for (final s in catalog.stops)
         if (planner.covers(s.id)) s.id,
     ]..sort();
+    // Mesmo conjunto da fase 5: pontos de trajetos 'estimated' com evidência
+    // só de geometria (sem recuperação, estações nem terminais).
+    final phase5 = <String>{
+      for (final seq in catalog.sequences)
+        if (seq.status == SequenceStatus.estimated &&
+            (seq.evidence == 'geometria' ||
+                seq.evidence == 'geometria+logradouros'))
+          for (final e in seq.entries)
+            if (RegExp(r'^\d+$').hasMatch(e.stopId) &&
+                int.parse(e.stopId) < 40000)
+              e.stopId,
+    }.toList()..sort();
+    // Mesmo universo da fase 5: códigos numéricos com coordenada.
     final allStops = [
       for (final s in catalog.stops)
-        if (s.latitude != null) s.id,
+        if (s.latitude != null && RegExp(r'^\d+$').hasMatch(s.id)) s.id,
     ]..sort();
+    final hubs = {
+      for (final s in catalog.stops)
+        if (planner.covers(s.id) &&
+            (s.kind == CatalogStopKind.station ||
+                s.kind == CatalogStopKind.terminal))
+          s.kind.name: 0,
+    };
+    for (final s in catalog.stops) {
+      if (planner.covers(s.id) && hubs.containsKey(s.kind.name)) {
+        hubs[s.kind.name] = hubs[s.kind.name]! + 1;
+      }
+    }
+    // ignore: avoid_print
+    print(
+      'pool fase 5=${phase5.length} grafo atual=${graphStops.length} hubs=$hubs',
+    );
     // ignore: avoid_print
     print(
       'baldeações possíveis: mesmo ponto=${planner.sameStopTransferPoints} '
       'a pé (pares <= ${plannerMaxWalkM.toInt()} m)=${planner.walkTransferPairs}',
     );
     for (final (name, pool) in [
-      ('pontos do grafo', graphStops),
+      ('pontos do grafo da fase 5', phase5),
+      ('pontos do grafo atual', graphStops),
       ('todos os pontos', allStops),
     ]) {
       final rnd = math.Random(42);

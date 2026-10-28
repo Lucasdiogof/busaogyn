@@ -422,7 +422,11 @@ class _StopRow extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        [stopId, ?stop?.place, ...tags].join(' · '),
+                        [
+                          stopCode(stop, stopId),
+                          ?stop?.place,
+                          ...tags,
+                        ].join(' · '),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12, color: tokens.mutedText),
@@ -479,7 +483,8 @@ class _ShapeStopsSectionState extends State<ShapeStopsSection> {
         child: Text(l10n.sequenceNone),
       );
     }
-    final estimated = seq.status == SequenceStatus.estimated;
+    // Ordem utilizável (completa ou não): lista numerada, sempre estimativa.
+    final estimated = seq.ordered;
     final count = estimated ? seq.entries.length : seq.stopIds.length;
     final shown = _all ? count : count.clamp(0, sequencePreview);
     final repeated = <String>{};
@@ -505,6 +510,11 @@ class _ShapeStopsSectionState extends State<ShapeStopsSection> {
             estimated ? l10n.sequenceEstimatedNote : l10n.sequencePartialNote,
           ),
         ),
+        if (seq.status == SequenceStatus.ordered)
+          FootNote(
+            key: const ValueKey('sequence-incomplete'),
+            child: Text(l10n.sequenceOrderedNote),
+          ),
         const SizedBox(height: Space.xs),
         for (var i = 0; i < shown; i++) ...[
           if (estimated)

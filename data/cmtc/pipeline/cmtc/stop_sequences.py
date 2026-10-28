@@ -12,7 +12,14 @@ acrescenta:
 - ponto atribuído ao sentido oposto da mesma variante sai da sequência e
   fica registrado em `other_direction`;
 - status do trajeto: 'estimated' (ordem utilizável, sempre rotulada como
-  estimativa), 'partial' (só pertencimento, sem ordem) ou 'none';
+  estimativa), 'ordered' (ordem utilizável, mas lista incompleta: serve ao
+  planejador, não à lista de próximos pontos), 'partial' (só pertencimento,
+  sem ordem) ou 'none';
+- evidência do status (`evidence`): 'geometria', 'geometria+logradouros',
+  'logradouros' (recuperado: ordem concorda fortemente com a lista oficial de
+  logradouros) ou 'corredor' (estações do corredor oficial, ver stations.py);
+- estações de corredor e terminais entram como entradas de nível médio,
+  sempre inferidas;
 - proveniência: método, parâmetros e evidência de cada entrada.
 """
 
@@ -23,8 +30,9 @@ from dataclasses import dataclass, field
 
 from .geo import Polyline, haversine_m
 from .sequence import Params, assign_direction, score, street_hint, street_key
+from .stations import STATION_MAX_M, TERMINAL_MAX_M, shape_terminals
 
-METHOD = 'projecao-kmz-v2'
+METHOD = 'projecao-kmz-v3'
 
 # Limiares do status 'estimated' (calibrados em out/2026; ver doc da fase 4 §4).
 MIN_ENTRIES = 5
@@ -32,6 +40,8 @@ MIN_HIGH_SHARE = 0.7
 MAX_AMBIGUOUS_SHARE = 0.15
 MIN_STREET_RHO = 0.5
 CIRCULAR_GAP_M = 300.0
+# Recuperação de trajetos 'partial' pela lista oficial de logradouros.
+RECOVER_STREET_RHO = 0.7
 
 
 @dataclass
@@ -59,6 +69,9 @@ class ShapeStops:
     status: str = 'none'
     status_reason: str = ''
     street_rho: float | None = None
+    evidence: str | None = None
+    stations: int = 0  # entradas de estação de corredor
+    terminals: int = 0  # entradas de terminal
 
 
 def _spearman(a, b):
@@ -101,8 +114,32 @@ def classify_status(s: ShapeStops) -> tuple[str, str]:
     return 'estimated', f'{n} pontos, {high:.0%} alta, {amb:.0%} ambíguos, rho {s.street_rho}'
 
 
+def recover(s: ShapeStops) -> None:
+    """Evidência do status e recuperação de 'partial' com ordem que concorda
+    fortemente com os logradouros oficiais (não é sequência oficial)."""
+    if s.status == 'estimated':
+        s.evidence = 'geometria+logradouros' if (s.street_rho or -1) >= MIN_STREET_RHO else 'geometria'
+        return
+    n = len(s.entries)
+    if s.status != 'partial' or n < MIN_ENTRIES or s.street_rho is None or s.street_rho < RECOVER_STREET_RHO:
+        return
+    amb = len(s.ambiguous) / (n + len(s.ambiguous))
+    s.evidence = 'logradouros'
+    if amb <= MAX_AMBIGUOUS_SHARE:
+        s.status = 'estimated'
+        s.status_reason = f'recuperado: ordem concorda com os logradouros oficiais (rho {s.street_rho}), {amb:.0%} ambíguos'
+    else:
+        s.status = 'ordered'
+        s.status_reason = (f'ordem concorda com os logradouros oficiais (rho {s.street_rho}), '
+                           f'mas {amb:.0%} ambíguos: lista incompleta')
+
+
 def sequence_shapes(shapes, members: dict[str, list[tuple[str, float, float]]], streets_of: dict[str, tuple[list, list]],
-                    street_of: dict[str, str], params: Params = Params()) -> list[ShapeStops]:
+                    street_of: dict[str, str], params: Params = Params(), *, stations=None, corridor=None,
+                    terminals=None, variant_names=None, recover_by_streets: bool = True) -> list[ShapeStops]:
+    """`stations`/`corridor` (stations.py): estações de corredor para as linhas
+    do corredor que param nelas. `terminals`/`variant_names`: terminais nos
+    extremos do trajeto. Todos opcionais (sem eles, comportamento da fase 4)."""
     """`shapes`: objetos com shape_id, code (base, variant_key), direction, coords.
     `members`: base da linha -> (stop_id, lon, lat) do cadastro de pontos.
     `streets_of`: variant_key -> (logradouros de ida, de volta) do cadastro de linhas.
@@ -161,5 +198,34 @@ def sequence_shapes(shapes, members: dict[str, list[tuple[str, float, float]]], 
         streets = outbound if d == 'i' else inbound
         res.street_rho = street_rho(res.entries, streets, street_of) if streets else None
         res.status, res.status_reason = classify_status(res)
+        if recover_by_streets:
+            recover(res)
+        elif res.status == 'estimated':
+            res.evidence = 'geometria+logradouros' if (res.street_rho or -1) >= MIN_STREET_RHO else 'geometria'
+        line = (corridor or {}).get(sh.code.base)
+        if stations and line is not None and line.stops_at_stations:
+            found = []
+            for st in stations:
+                if st.corridor != line.corridor:
+                    continue
+                for p in polys[sh.shape_id].project_all(st.lon, st.lat, STATION_MAX_M):
+                    found.append(Entry(st.stop_id, round(p.along_m, 1), round(p.distance_m, 1), 'medium',
+                                       ['estação do corredor (inferida: pasta oficial + linha do corredor + geometria)']))
+            if len(found) >= MIN_ENTRIES and res.status not in ('estimated', 'ordered'):
+                res.status, res.evidence = 'ordered', 'corredor'
+                res.status_reason = f'{len(found)} estações do corredor {line.corridor} ao longo do trajeto oficial'
+            if res.status in ('estimated', 'ordered'):
+                res.entries += found
+                res.stations = len(found)
+        if terminals and variant_names and res.status in ('estimated', 'ordered'):
+            start, end = shape_terminals(variant_names.get(vk), d)
+            ends = ((start, sh.coords[0], 0.0), (end, sh.coords[-1], polys[sh.shape_id].length))
+            for key, point, along in ends:
+                t = terminals.get(key) if key else None
+                if t is not None and haversine_m(point, (t.lon, t.lat)) <= TERMINAL_MAX_M:
+                    res.entries.append(Entry(t.id, round(along, 1), round(haversine_m(point, (t.lon, t.lat)), 1),
+                                             'medium', ['terminal (inferido: denominação oficial + extremo do trajeto)']))
+                    res.terminals += 1
+        res.entries.sort(key=lambda e: e.along_m)
         out.append(res)
     return out

@@ -343,10 +343,14 @@ Future<bool> addNetworkLayers({
         lineCap: 'round',
         lineJoin: 'round',
       ),
+      // 1º e 3º ônibus no mesmo estilo; o 2º contrasta entre eles.
       filter: [
-        '==',
+        'in',
         ['get', 'kind'],
-        'leg1',
+        [
+          'literal',
+          ['leg1', 'leg3'],
+        ],
       ],
       enableInteraction: false,
     ),
@@ -388,7 +392,7 @@ Future<bool> addNetworkLayers({
         ['get', 'kind'],
         [
           'literal',
-          ['leg1', 'leg2'],
+          ['leg1', 'leg2', 'leg3'],
         ],
       ],
       enableInteraction: false,

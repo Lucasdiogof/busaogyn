@@ -109,6 +109,7 @@ TransitCatalog decodeCatalog(String json) {
       final shape = _str(r('shape'));
       final status = switch (r('status')) {
         'estimated' => SequenceStatus.estimated,
+        'ordered' => SequenceStatus.ordered,
         'partial' => SequenceStatus.partial,
         'none' => SequenceStatus.none,
         _ => null,
@@ -123,6 +124,7 @@ TransitCatalog decodeCatalog(String json) {
         streetRho: r('streetRho') is num
             ? (r('streetRho')! as num).toDouble()
             : null,
+        evidence: _str(r('evidence')),
       );
     }),
     lines: _table(root['lines'], (r) {
@@ -178,7 +180,13 @@ TransitCatalog decodeCatalog(String json) {
     }),
     stops: _table(root['stops'], (r) {
       final id = _code(r('id'));
-      if (id == null || !RegExp(r'^\d+$').hasMatch(id)) return null;
+      // Código de ponto é só dígitos; terminal inferido usa 'T-…'.
+      final valid =
+          id != null &&
+          (RegExp(r'^\d+$').hasMatch(id) ||
+              (r('kind') == 'terminal' &&
+                  RegExp(r'^T-[A-Z0-9-]+$').hasMatch(id)));
+      if (!valid) return null;
       final lat = r('lat');
       final lon = r('lon');
       return CatalogStop(
@@ -186,6 +194,7 @@ TransitCatalog decodeCatalog(String json) {
         kind: switch (r('kind')) {
           'estacao' => CatalogStopKind.station,
           'ped_kmz' => CatalogStopKind.kmzOnly,
+          'terminal' => CatalogStopKind.terminal,
           _ => CatalogStopKind.ped,
         },
         streetType: _str(r('streetType')),
@@ -200,6 +209,7 @@ TransitCatalog decodeCatalog(String json) {
             if (_code(v) case final code?) normalizeLineId(code),
         ],
         label: _str(r('label')),
+        group: _str(r('group')),
       );
     }),
   );

@@ -356,7 +356,7 @@
   "trackReasonRepeatedSection": "the route passes this section twice",
   "plannerOpen": "Plan a trip",
   "plannerTitle": "Plan a trip",
-  "plannerIntro": "Stop to stop, with up to one transfer. Works offline: uses only the catalog on this device.",
+  "plannerIntro": "Stop to stop, with up to two transfers. Works offline: uses only the catalog on this device.",
   "plannerOrigin": "From",
   "plannerDestination": "To",
   "plannerSearchHint": "Code, street, district or city",
@@ -371,7 +371,7 @@
   "plannerUnknownStop": "Stop not found in the catalog.",
   "plannerNoCoverageOrigin": "The origin is not yet on any route with a reliable stop order. Try a nearby stop.",
   "plannerNoCoverageDestination": "The destination is not yet on any route with a reliable stop order. Try a nearby stop.",
-  "plannerNoRoute": "No trip with enough evidence and up to one transfer. That does not mean there is no bus, only that current data cannot confirm one.",
+  "plannerNoRoute": "No trip with enough evidence and up to two transfers. That does not mean there is no bus, only that current data cannot confirm one.",
   "plannerTruncated": "The search stopped at its processing limit; there may be other options.",
   "plannerResultsTitle": "{count, plural, =0{No options} =1{1 option} other{{count} options}}",
   "plannerReliable": "Reliable",
@@ -390,5 +390,11 @@
   "plannerCautionOrder": "Stop order not cross-checked with the official street list.",
   "plannerCautionUncertain": "Uncertain position of a boarding or alighting stop.",
   "plannerCautionRepeated": "The bus passes one of the stops more than once.",
-  "plannerCautionWalk": "Walking transfer: crossing, sidewalk and accessibility not verified."
+  "plannerCautionWalk": "Walking transfer: crossing, sidewalk and accessibility not verified.",
+  "plannerCautionHub": "Station or terminal: its link to the line is inferred (no official stop-line record).",
+  "plannerCautionSameStation": "Platform change within the same station; which platform serves each direction is not stated.",
+  "sequenceOrderedNote": "Incomplete list: the order was cross-checked (official streets or corridor stations), but some stops were left out.",
+  "catalogTerminalNote": "Terminal identified from official line names and the ends of official routes (inferred). It has no code for arrival lookups.",
+  "catalogStationNote": "Corridor station (official KMZ folder). Lines stopping here are inferred from the corridor; see \"On the route\".",
+  "catalogTerminalTag": "terminal (inferred)"
 }

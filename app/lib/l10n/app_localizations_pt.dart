@@ -1397,7 +1397,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get plannerIntro =>
-      'De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.';
+      'De ponto a ponto, com até duas baldeações. Funciona sem internet: usa só o catálogo do aparelho.';
 
   @override
   String get plannerOrigin => 'Origem';
@@ -1447,7 +1447,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get plannerNoRoute =>
-      'Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.';
+      'Não há viagem com evidência suficiente com até duas baldeações. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.';
 
   @override
   String get plannerTruncated =>
@@ -1542,4 +1542,27 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get plannerCautionWalk =>
       'Baldeação a pé: travessia, calçada e acessibilidade não verificadas.';
+
+  @override
+  String get plannerCautionHub =>
+      'Estação ou terminal: a ligação com a linha é inferida (não há cadastro oficial ponto-linha).';
+
+  @override
+  String get plannerCautionSameStation =>
+      'Troca de plataforma na mesma estação; qual plataforma atende cada sentido não é informado.';
+
+  @override
+  String get sequenceOrderedNote =>
+      'Lista incompleta: a ordem foi conferida (logradouros oficiais ou estações do corredor), mas alguns pontos ficaram de fora.';
+
+  @override
+  String get catalogTerminalNote =>
+      'Terminal identificado pelos nomes oficiais das linhas e pelo fim dos trajetos oficiais (inferido). Não tem código para consulta de chegadas.';
+
+  @override
+  String get catalogStationNote =>
+      'Estação de corredor (pasta oficial do KMZ). As linhas que param aqui são inferidas pelo corredor; veja \"No itinerário\".';
+
+  @override
+  String get catalogTerminalTag => 'terminal (inferido)';
 }

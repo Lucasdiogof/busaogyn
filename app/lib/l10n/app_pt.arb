@@ -1259,7 +1259,7 @@
   "trackReasonRepeatedSection": "o trajeto passa duas vezes por este trecho",
   "plannerOpen": "Planejar viagem",
   "plannerTitle": "Planejar viagem",
-  "plannerIntro": "De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.",
+  "plannerIntro": "De ponto a ponto, com até duas baldeações. Funciona sem internet: usa só o catálogo do aparelho.",
   "plannerOrigin": "Origem",
   "plannerDestination": "Destino",
   "plannerSearchHint": "Código, rua, bairro ou cidade",
@@ -1281,7 +1281,7 @@
   "plannerUnknownStop": "Ponto não encontrado no catálogo.",
   "plannerNoCoverageOrigin": "A origem ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.",
   "plannerNoCoverageDestination": "O destino ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.",
-  "plannerNoRoute": "Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.",
+  "plannerNoRoute": "Não há viagem com evidência suficiente com até duas baldeações. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.",
   "plannerTruncated": "A busca parou no limite de processamento; pode haver outras opções.",
   "plannerResultsTitle": "{count, plural, =0{Nenhuma alternativa} =1{1 alternativa} other{{count} alternativas}}",
   "@plannerResultsTitle": {
@@ -1344,5 +1344,11 @@
   "plannerCautionOrder": "Ordem das paradas não conferida com os logradouros oficiais.",
   "plannerCautionUncertain": "Posição incerta de um ponto de embarque ou desembarque.",
   "plannerCautionRepeated": "O ônibus passa mais de uma vez por um dos pontos.",
-  "plannerCautionWalk": "Baldeação a pé: travessia, calçada e acessibilidade não verificadas."
+  "plannerCautionWalk": "Baldeação a pé: travessia, calçada e acessibilidade não verificadas.",
+  "plannerCautionHub": "Estação ou terminal: a ligação com a linha é inferida (não há cadastro oficial ponto-linha).",
+  "plannerCautionSameStation": "Troca de plataforma na mesma estação; qual plataforma atende cada sentido não é informado.",
+  "sequenceOrderedNote": "Lista incompleta: a ordem foi conferida (logradouros oficiais ou estações do corredor), mas alguns pontos ficaram de fora.",
+  "catalogTerminalNote": "Terminal identificado pelos nomes oficiais das linhas e pelo fim dos trajetos oficiais (inferido). Não tem código para consulta de chegadas.",
+  "catalogStationNote": "Estação de corredor (pasta oficial do KMZ). As linhas que param aqui são inferidas pelo corredor; veja \"No itinerário\".",
+  "catalogTerminalTag": "terminal (inferido)"
 }

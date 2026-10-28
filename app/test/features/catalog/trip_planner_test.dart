@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:busaogyn/src/features/catalog/domain/route_match.dart';
 import 'package:busaogyn/src/features/catalog/domain/stop_sequence.dart';
 import 'package:busaogyn/src/features/catalog/domain/transit_catalog.dart';
 import 'package:busaogyn/src/features/catalog/domain/trip_planner.dart';
@@ -31,7 +32,14 @@ const _pos = <String, (double, double)>{
   'L': (7000, 0),
   'M': (8000, 0),
   'Z': (9000, 9000),
+  'N': (5000, 1000),
+  'P1': (3000, -2000),
+  'P2': (3050, -2000),
+  'Q': (3050, -3000),
 };
+
+/// Plataformas da mesma estação de corredor (P1, P2) e um terminal (TA).
+const _kinds = {'P1': CatalogStopKind.station, 'P2': CatalogStopKind.station};
 
 (double, double) _ll(String id) {
   final (x, y) = _pos[id]!;
@@ -48,6 +56,7 @@ TransitCatalog _network() {
     SequenceStatus status = SequenceStatus.estimated,
     double? rho = 0.9,
     Set<String> medium = const {},
+    String? evidence,
   }) {
     final id = '$variant$dir';
     shapes.add(
@@ -77,6 +86,7 @@ TransitCatalog _network() {
         status: status,
         encoded: parts.join(';'),
         streetRho: rho,
+        evidence: evidence,
       ),
     );
   }
@@ -90,6 +100,18 @@ TransitCatalog _network() {
   route('500-1', 'i', ['C', 'J'], status: SequenceStatus.partial);
   route('600-1', 'i', ['K', 'L', 'K', 'M']);
   route('700-1', 'i', ['A', 'E'], medium: {'A'});
+  // Só alcançável com duas baldeações a partir de B (ver testes).
+  route('800-1', 'i', ['E', 'N']);
+  // Ordem conferida, mas lista incompleta ('ordered'): o planejador usa.
+  route(
+    '950-1',
+    'i',
+    ['D', 'P1'],
+    status: SequenceStatus.ordered,
+    evidence: 'corredor',
+    medium: {'P1'},
+  );
+  route('960-1', 'i', ['P2', 'Q'], medium: {'P2'});
 
   final base = fixtureCatalog();
   return TransitCatalog(
@@ -100,9 +122,10 @@ TransitCatalog _network() {
       for (final MapEntry(key: id, value: _) in _pos.entries)
         CatalogStop(
           id: id,
-          kind: CatalogStopKind.ped,
+          kind: _kinds[id] ?? CatalogStopKind.ped,
           latitude: _ll(id).$1,
           longitude: _ll(id).$2,
+          group: _kinds.containsKey(id) ? 'eixo:ESTACAO X' : null,
         ),
     ],
     shapes: shapes,
@@ -116,10 +139,13 @@ void main() {
   List<String> keys(TripPlan p) => [for (final o in p.options) o.key];
 
   test('grafo: só sequências estimated entram', () {
-    expect(planner.routeCount, 8); // 500-1i (partial) fora
+    expect(
+      planner.routeCount,
+      11,
+    ); // 500-1i (partial) fora; 950 (ordered) entra
     expect(planner.covers('J'), isFalse);
     expect(planner.covers('C'), isTrue);
-    expect(planner.lineCount, 6); // 500 (partial) fora
+    expect(planner.lineCount, 9); // 500 (partial) fora
   });
 
   test('origem = destino, ponto inexistente e sem cobertura', () {
@@ -194,6 +220,43 @@ void main() {
     expect(p.options.single.cautions, contains(TripCaution.repeatedPass));
     // L→K: K depois de L, na mesma volta.
     expect(planner.plan('L', 'K').options.single.legs.single.stops, 1);
+  });
+
+  test('duas baldeações só quando não há opção mais simples', () {
+    // B→N: nenhuma direta nem com 1 baldeação; com 2, no mesmo ponto.
+    final p = planner.plan('B', 'N');
+    expect(keys(p), ['100>200>800', '100>700>800']);
+    final best = p.options.first;
+    expect((best.transfers, best.walkM), (2, 0));
+    expect(best.reliability, TripReliability.reliable);
+    expect(best.legs.map((l) => l.board.stopId), ['B', 'C', 'E']);
+    // A→N tem opção com 1 baldeação: não oferece 2.
+    expect(
+      planner.plan('A', 'N').options.every((o) => o.transfers <= 1),
+      isTrue,
+    );
+  });
+
+  test('estação: mesma estação e associação inferida sempre sinalizadas', () {
+    final o = planner.plan('D', 'Q').options.single;
+    expect(o.key, '950>960');
+    expect(o.walkM, closeTo(50, 3));
+    expect(o.cautions, contains(TripCaution.sameStation));
+    expect(o.cautions, contains(TripCaution.inferredHub));
+    expect(o.cautions, isNot(contains(TripCaution.walkUnverified)));
+    expect(o.reliability, TripReliability.estimated);
+  });
+
+  test('ordered entra no planejador, não nos próximos pontos', () {
+    final seq = _network().sequenceOf('950-1i')!;
+    expect(seq.ordered, isTrue);
+    expect(seq.evidence, 'corredor');
+    final match = RouteMatch(
+      RouteMatchLevel.confirmed,
+      RouteMatchReason.confirmed,
+      alongM: 0,
+    );
+    expect(nextStopsFor(match, seq).reason, NextStopsReason.sequenceUnreliable);
   });
 
   test('desempenho: rede sintética grande dentro do limite', () {

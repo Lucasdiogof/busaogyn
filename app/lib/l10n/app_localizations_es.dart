@@ -1399,7 +1399,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get plannerIntro =>
-      'De parada a parada, con hasta un transbordo. Funciona sin internet: usa solo el catálogo del dispositivo.';
+      'De parada a parada, con hasta dos transbordos. Funciona sin internet: usa solo el catálogo del dispositivo.';
 
   @override
   String get plannerOrigin => 'Origen';
@@ -1449,7 +1449,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get plannerNoRoute =>
-      'No hay viaje con evidencia suficiente y hasta un transbordo. No significa que no haya ómnibus, solo que los datos actuales no lo confirman.';
+      'No hay viaje con evidencia suficiente y hasta dos transbordos. No significa que no haya ómnibus, solo que los datos actuales no lo confirman.';
 
   @override
   String get plannerTruncated =>
@@ -1544,4 +1544,27 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get plannerCautionWalk =>
       'Transbordo a pie: cruce, vereda y accesibilidad no verificados.';
+
+  @override
+  String get plannerCautionHub =>
+      'Estación o terminal: la relación con la línea es inferida (no hay registro oficial parada-línea).';
+
+  @override
+  String get plannerCautionSameStation =>
+      'Cambio de plataforma en la misma estación; no se informa qué plataforma atiende cada sentido.';
+
+  @override
+  String get sequenceOrderedNote =>
+      'Lista incompleta: el orden fue verificado (calles oficiales o estaciones del corredor), pero algunas paradas quedaron fuera.';
+
+  @override
+  String get catalogTerminalNote =>
+      'Terminal identificado por los nombres oficiales de las líneas y el final de los trayectos oficiales (inferido). No tiene código para consultar llegadas.';
+
+  @override
+  String get catalogStationNote =>
+      'Estación de corredor (carpeta oficial del KMZ). Las líneas que paran aquí se infieren por el corredor; vea \"En el itinerario\".';
+
+  @override
+  String get catalogTerminalTag => 'terminal (inferido)';
 }
