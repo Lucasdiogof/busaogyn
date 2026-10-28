@@ -344,6 +344,10 @@ void main() {
 
     // Uma amostra só: variante achada, sentido ainda não confirmado.
     expect(find.byKey(const ValueKey('route-match-pending')), findsOneWidget);
+    expect(
+      find.textContaining('o mapa não mostra percurso futuro'),
+      findsOneWidget,
+    );
     expect(_features(_map(tester).network!.trackRoute), isEmpty);
     expect(find.byKey(const ValueKey('next-stops')), findsNothing);
 
@@ -356,6 +360,15 @@ void main() {
     final track = _features(_map(tester).network!.trackRoute);
     expect(track.map((f) => f['properties']['kind']), ['official', 'future']);
     expect(find.textContaining('Sem previsão de horário'), findsOneWidget);
+    // O aviso do cartão acompanha o que o mapa desenha (Etapa F, F-2).
+    expect(
+      find.textContaining('o mapa não mostra percurso futuro'),
+      findsNothing,
+    );
+    expect(
+      find.textContaining('vem do trajeto oficial e é estimado'),
+      findsOneWidget,
+    );
     // Sequência estimada confiável: próximos pontos, o 1º em destaque
     // (1202, a 500 m, já ficou para trás).
     expect(find.byKey(const ValueKey('next-stops')), findsOneWidget);
@@ -694,6 +707,175 @@ void main() {
     expect(find.text('1 ônibus · direto'), findsOneWidget);
     expect(_map(tester).vehicleNumber, isNull);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'planejador: campo Destino tem nome próprio com a origem escolhida',
+    (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, _OfflineRepository());
+      await _tapKey(tester, 'dock-plan');
+      await _tapKey(tester, 'planner-pick-origin');
+      _map(tester).onStopTap!('1202');
+      await tester.pumpAndSettle();
+      final field = find.byKey(const ValueKey('planner-input-destination'));
+      await tester.ensureVisible(field);
+      await tester.pumpAndSettle();
+      final node = tester.getSemantics(
+        find.descendant(of: field, matching: find.byType(EditableText)),
+      );
+      // Leitor de tela: só o nome do campo, não o aviso nem o cartão da origem.
+      expect(node.label, isNot(contains('baldeações')));
+      expect(node.label, isNot(contains('Origem')));
+      handle.dispose();
+    },
+  );
+
+  testWidgets('teclado aberto no celular: o campo do planejador fica à vista', (
+    tester,
+  ) async {
+    await _pump(tester, _OfflineRepository());
+    await _tapKey(tester, 'dock-plan');
+    await tester.tap(find.byKey(const ValueKey('planner-input-origin')));
+    // Teclado do iPhone: ~ 336 pt.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 336);
+    await tester.pumpAndSettle();
+    final field = tester.getRect(
+      find.byKey(const ValueKey('planner-input-origin')),
+    );
+    expect(field.bottom, lessThanOrEqualTo(844 - 336), reason: '$field');
+    expect(field.top, greaterThanOrEqualTo(0));
+    // Painel na altura máxima: cabe ao menos uma sugestão abaixo do campo.
+    expect(844 - 336 - field.bottom, greaterThan(48), reason: '$field');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'teclado aberto no Destino: o campo sobe e sobra espaço para sugestões',
+    (tester) async {
+      await _pump(tester, _OfflineRepository());
+      await _tapKey(tester, 'dock-plan');
+      await _tapKey(tester, 'planner-pick-origin');
+      _map(tester).onStopTap!('1202');
+      await tester.pumpAndSettle();
+      final input = find.byKey(const ValueKey('planner-input-destination'));
+      // Foca sem rolar: o teste mede só o que o app faz ao focar.
+      await tester.showKeyboard(input);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 336);
+      await tester.pumpAndSettle();
+      await tester.enterText(input, 'rua');
+      await tester.pumpAndSettle();
+      final field = tester.getRect(input);
+      const keyboardTop = 844 - 336;
+      expect(field.bottom, lessThanOrEqualTo(keyboardTop), reason: '$field');
+      // A 1ª sugestão fica inteira acima do teclado.
+      final first = tester.getRect(
+        find
+            .byWidgetPredicate(
+              (w) =>
+                  w.key is ValueKey<String> &&
+                  (w.key! as ValueKey<String>).value.startsWith(
+                    'planner-result-destination-',
+                  ),
+            )
+            .first,
+      );
+      expect(first.bottom, lessThanOrEqualTo(keyboardTop), reason: '$first');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'trajeto escolhido recolhe o painel com a alça e o resumo à vista',
+    (tester) async {
+      await _pump(tester, _Repository(routeName: null));
+      await tester.tap(_dock('Linhas'));
+      await _settle(tester);
+      await _tapKey(tester, 'catalog-line-001');
+      // O chip Volta fica mais abaixo: tocar nele rola a lista e recolhe.
+      await _tapKey(tester, _volta);
+      final sheet = tester.getRect(find.byKey(const ValueKey('sheet')));
+      final handle = tester.getRect(find.byKey(const ValueKey('sheet-handle')));
+      final summary = tester.getRect(
+        find.byKey(const ValueKey('sheet-summary')),
+      );
+      expect(
+        handle.top,
+        greaterThanOrEqualTo(sheet.top - 1),
+        reason: '$handle $sheet',
+      );
+      expect(
+        summary.bottom,
+        lessThanOrEqualTo(sheet.bottom),
+        reason: '$summary $sheet',
+      );
+    },
+  );
+
+  testWidgets('Ver no mapa de novo na mesma alternativa reenquadra', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    await _tapKey(tester, 'dock-plan');
+    await _tapKey(tester, 'planner-pick-origin');
+    _map(tester).onStopTap!('1202');
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-pick-destination');
+    _map(tester).onStopTap!('1201');
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-search');
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    final first = _map(tester).network!.focus!;
+    expect(first.bounds, isNotNull);
+    final show = find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('planner-show-'),
+    );
+    await tester.ensureVisible(show.first);
+    await tester.pumpAndSettle();
+    await tester.tap(show.first);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    final again = _map(tester).network!.focus!;
+    expect(again.bounds, isNotNull);
+    expect(again.serial, greaterThan(first.serial));
+  });
+
+  testWidgets('planejador: Tab do Inverter chega ao campo Destino', (
+    tester,
+  ) async {
+    await _pump(tester, _OfflineRepository());
+    await _tapKey(tester, 'dock-plan');
+    await _tapKey(tester, 'planner-pick-origin');
+    _map(tester).onStopTap!('1202');
+    await tester.pumpAndSettle();
+    final swap = find.byKey(const ValueKey('planner-swap'));
+    await tester.ensureVisible(swap);
+    await tester.pumpAndSettle();
+    Focus.of(
+      tester.element(find.descendant(of: swap, matching: find.byType(Icon))),
+    ).requestFocus();
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    final focused = FocusManager.instance.primaryFocus?.context;
+    expect(
+      focused == null
+          ? null
+          : find
+                .ancestor(
+                  of: find.byWidget(focused.widget),
+                  matching: find.byKey(
+                    const ValueKey('planner-input-destination'),
+                  ),
+                )
+                .evaluate()
+                .isNotEmpty,
+      isTrue,
+      reason: 'foco em ${focused?.widget}',
+    );
   });
 
   testWidgets('terminal inferido: sem chegadas nem favorito, com aviso', (

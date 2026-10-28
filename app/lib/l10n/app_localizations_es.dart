@@ -592,6 +592,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Posición informada por la RMTC, consultada cada 15 s. La dirección se basa en el desplazamiento observado; el rastro muestra solo por dónde ya pasó el autobús. La fuente no informa el trayecto por delante ni el orden de las próximas paradas, así que el mapa no muestra recorrido futuro.';
 
   @override
+  String get trackingFootnoteOfficialRoute =>
+      'Posición informada por la RMTC, consultada cada 15 s. El rastro muestra por dónde ya pasó el autobús; el tramo siguiente viene del trayecto oficial y es estimado, sin horario por parada.';
+
+  @override
   String get noticeEtaStillAvailable =>
       'La estimación de llegada sigue disponible.';
 

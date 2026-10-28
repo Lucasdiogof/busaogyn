@@ -587,6 +587,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Position reported by RMTC, checked every 15 s. Direction is based on the observed movement; the trail shows only where the bus has already been. The source does not report the route ahead or the order of the next stops, so the map shows no future path.';
 
   @override
+  String get trackingFootnoteOfficialRoute =>
+      'Position reported by RMTC, checked every 15 s. The trail shows where the bus has already been; the path ahead comes from the official route and is estimated, with no time per stop.';
+
+  @override
   String get noticeEtaStillAvailable =>
       'The arrival estimate is still available.';
 

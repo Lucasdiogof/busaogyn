@@ -113,9 +113,14 @@ class TripPlannerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Conta os toques em "Ver no mapa": tocar de novo na alternativa já
+  /// mostrada reenquadra (o passageiro pode ter movido o mapa).
+  int selectionSerial = 0;
+
   void select(int index) {
     selected = index;
     selectionByUser = true;
+    selectionSerial++;
     notifyListeners();
   }
 }
@@ -207,7 +212,14 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
                   ),
                 ],
               ),
-            FootNote(child: Text(l10n.plannerIntro)),
+            // Contêiner próprio (e o do cartão em `_field`): sem eles, o leitor
+            // de tela juntava o aviso e o cartão da origem ao nome do campo
+            // Destino. O TextField fica de fora: envolvê-lo quebra a edição no
+            // Web.
+            Semantics(
+              container: true,
+              child: FootNote(child: Text(l10n.plannerIntro)),
+            ),
             const SizedBox(height: Space.sm),
             _field(context, PlannerField.origin),
             Align(
@@ -247,58 +259,61 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
     if (id != null) {
       final stop = _c.catalog.stop(id);
       final covered = _c.planner.covers(id);
-      return Container(
-        key: ValueKey('planner-${field.name}-$id'),
-        padding: const EdgeInsets.fromLTRB(Space.sm, Space.xs, 0, Space.xs),
-        decoration: BoxDecoration(
-          color: tokens.card,
-          borderRadius: BorderRadius.circular(Radii.field),
-          border: Border.all(color: tokens.hairline),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              field == PlannerField.origin
-                  ? Icons.trip_origin_rounded
-                  : Icons.place_rounded,
-              color: tokens.accentText,
-            ),
-            const SizedBox(width: Space.xs),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(fontSize: 12, color: tokens.mutedText),
-                  ),
-                  Text(
-                    stop?.address ?? l10n.catalogStation,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: tokens.strongText,
-                    ),
-                  ),
-                  Text(
-                    [
-                      stopCode(stop, id),
-                      ?stop?.place,
-                      if (!covered) l10n.plannerNotCovered,
-                    ].join(' · '),
-                    style: TextStyle(fontSize: 12, color: tokens.mutedText),
-                  ),
-                ],
+      return Semantics(
+        container: true,
+        child: Container(
+          key: ValueKey('planner-${field.name}-$id'),
+          padding: const EdgeInsets.fromLTRB(Space.sm, Space.xs, 0, Space.xs),
+          decoration: BoxDecoration(
+            color: tokens.card,
+            borderRadius: BorderRadius.circular(Radii.field),
+            border: Border.all(color: tokens.hairline),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                field == PlannerField.origin
+                    ? Icons.trip_origin_rounded
+                    : Icons.place_rounded,
+                color: tokens.accentText,
               ),
-            ),
-            IconButton(
-              key: ValueKey('planner-clear-${field.name}'),
-              tooltip: l10n.clearCode,
-              onPressed: () => _c.set(field, null),
-              icon: const Icon(Icons.close_rounded),
-            ),
-          ],
+              const SizedBox(width: Space.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(fontSize: 12, color: tokens.mutedText),
+                    ),
+                    Text(
+                      stop?.address ?? l10n.catalogStation,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: tokens.strongText,
+                      ),
+                    ),
+                    Text(
+                      [
+                        stopCode(stop, id),
+                        ?stop?.place,
+                        if (!covered) l10n.plannerNotCovered,
+                      ].join(' · '),
+                      style: TextStyle(fontSize: 12, color: tokens.mutedText),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                key: ValueKey('planner-clear-${field.name}'),
+                tooltip: l10n.clearCode,
+                onPressed: () => _c.set(field, null),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -306,6 +321,30 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
     final results = query.text.trim().isEmpty
         ? const <CatalogStop>[]
         : _c.catalog.searchStops(query.text, limit: 5);
+    // Ao digitar, o campo sobe para o topo do painel: as sugestões aparecem
+    // logo abaixo, acima do teclado (no celular o painel já se expande).
+    return Builder(
+      builder: (fieldContext) => _fieldInput(
+        fieldContext,
+        field,
+        label,
+        picking,
+        query,
+        results,
+        tokens,
+      ),
+    );
+  }
+
+  Widget _fieldInput(
+    BuildContext fieldContext,
+    PlannerField field,
+    String label,
+    bool picking,
+    TextEditingController query,
+    List<CatalogStop> results,
+    BusaoTokens tokens,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -313,7 +352,23 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
           key: ValueKey('planner-input-${field.name}'),
           controller: query,
           textInputAction: TextInputAction.search,
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) {
+            setState(() {});
+            // Depois do ajuste do cursor do próprio TextField, que
+            // cancelaria a rolagem se viesse antes.
+            Future<void>.delayed(const Duration(milliseconds: 250), () {
+              if (!fieldContext.mounted) return;
+              Scrollable.ensureVisible(
+                fieldContext,
+                // Folga para o rótulo flutuante do campo.
+                alignment: 0.04,
+                duration: motion(
+                  fieldContext,
+                  const Duration(milliseconds: 200),
+                ),
+              );
+            });
+          },
           decoration: InputDecoration(
             labelText: label,
             hintText: l10n.plannerSearchHint,
