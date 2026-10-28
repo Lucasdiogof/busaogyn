@@ -1623,4 +1623,159 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get sheetSummaryTracking => 'Acompanhamento do ônibus';
+
+  @override
+  String get nearbyButton => 'Perto de mim';
+
+  @override
+  String get nearbyLocating => 'Procurando sua posição…';
+
+  @override
+  String get nearbyHint =>
+      'Usa sua localização só agora, no aparelho: ela não é guardada nem enviada.';
+
+  @override
+  String get nearbyTitle => 'Perto de você';
+
+  @override
+  String get nearbyRefresh => 'Atualizar';
+
+  @override
+  String nearbyImprecise(int meters) {
+    return 'Posição aproximada (± $meters m). Confira no mapa.';
+  }
+
+  @override
+  String get nearbyEmpty => 'Nenhum ponto do cadastro a até 1 km de você.';
+
+  @override
+  String nearbyDistance(int meters) {
+    return '$meters m em linha reta';
+  }
+
+  @override
+  String get nearbyStraightLine =>
+      'Distâncias em linha reta: o caminho a pé pode ser maior.';
+
+  @override
+  String get nearbyDenied =>
+      'Sem permissão de localização. Você pode buscar o ponto pelo código, rua ou bairro.';
+
+  @override
+  String get nearbyDeniedForever =>
+      'A localização está bloqueada para o BusãoGyn. Para usar, libere nos ajustes do aparelho.';
+
+  @override
+  String get nearbyServiceOff => 'A localização do aparelho está desligada.';
+
+  @override
+  String get nearbyTimeout =>
+      'Não deu para obter sua posição a tempo. Tente de novo, de preferência em local aberto.';
+
+  @override
+  String get nearbyUnavailable =>
+      'Localização indisponível neste aparelho ou navegador.';
+
+  @override
+  String get nearbyOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get shareCopied => 'Texto copiado para compartilhar.';
+
+  @override
+  String shareStop(String code) {
+    return 'Ponto de ônibus $code';
+  }
+
+  @override
+  String get shareFooter =>
+      'Enviado pelo BusãoGyn (app independente, não oficial).';
+
+  @override
+  String shareLine(String line, String name) {
+    return 'Linha $line — $name';
+  }
+
+  @override
+  String get shareCatalogNote =>
+      'Dados de cadastro; confira horários e itinerário antes de sair.';
+
+  @override
+  String shareTripTitle(String from, String to) {
+    return 'Viagem de ônibus (estimativa): $from → $to';
+  }
+
+  @override
+  String shareTripLeg(int step, String line, String from, String to) {
+    return '$step. Linha $line: embarque em $from, desça em $to';
+  }
+
+  @override
+  String get shareTripNote =>
+      'Estimativa a partir do cadastro, não é itinerário oficial. Confira antes de sair.';
+
+  @override
+  String get shareStopAction => 'Compartilhar ponto';
+
+  @override
+  String get shareLineAction => 'Compartilhar linha';
+
+  @override
+  String get shareTripAction => 'Compartilhar viagem';
+
+  @override
+  String get tripSave => 'Salvar viagem';
+
+  @override
+  String get tripSaved => 'Viagem salva';
+
+  @override
+  String get tripSavedNotice => 'Viagem salva em Salvos.';
+
+  @override
+  String tripsLimit(int count) {
+    return 'Você já tem $count viagens salvas. Remova uma para salvar outra.';
+  }
+
+  @override
+  String get tripMissingStop =>
+      'Um ponto desta viagem não está no cadastro atual.';
+
+  @override
+  String get savedTripsTitle => 'Viagens';
+
+  @override
+  String get tripRenameTitle => 'Nome da viagem';
+
+  @override
+  String get tripRenameSave => 'Salvar';
+
+  @override
+  String get tripMenu => 'Opções da viagem';
+
+  @override
+  String get tripRename => 'Renomear';
+
+  @override
+  String get tripRemove => 'Remover';
+
+  @override
+  String get catalogSearchApproximate =>
+      'Nada exato: mostrando nomes parecidos (um erro de digitação).';
+
+  @override
+  String get nearbyDeniedBrowser =>
+      'A localização está bloqueada para este site. Libere nas permissões do navegador.';
+
+  @override
+  String nearbySummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pontos',
+      one: '1 ponto',
+      zero: 'nenhum ponto',
+    );
+    return 'Perto de você · $_temp0';
+  }
 }

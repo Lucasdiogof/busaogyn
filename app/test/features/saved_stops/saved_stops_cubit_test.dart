@@ -43,6 +43,62 @@ Future<SavedStopsCubit> _readyWithLineLimit(FakeStore store, int limit) async {
 }
 
 void main() {
+  group('viagens salvas', () {
+    test(
+      'salva sem repetir, renomeia, remove e grava; preserva o resto',
+      () async {
+        final store = FakeStore(
+          initial: SavedStopsData(
+            favorites: [SavedStop(code: '1201', at: DateTime.utc(2026))],
+          ),
+        );
+        final cubit = await _ready(store);
+
+        expect(await cubit.saveTrip('1201', 'T-ALFA'), TripSaveResult.saved);
+        expect(
+          await cubit.saveTrip('1201', 'T-ALFA'),
+          TripSaveResult.alreadySaved,
+        );
+        expect(await cubit.saveTrip('1201', '1201'), TripSaveResult.invalid);
+        expect(await cubit.saveTrip(null, '1201'), TripSaveResult.invalid);
+        expect(cubit.state.isSavedTrip('1201', 'T-ALFA'), isTrue);
+        // Sentido importa: a volta é outra viagem.
+        expect(cubit.state.isSavedTrip('T-ALFA', '1201'), isFalse);
+
+        await cubit.renameTrip('1201', 'T-ALFA', '  Trabalho  ');
+        expect(cubit.state.trips.single.name, 'Trabalho');
+        await cubit.renameTrip('1201', 'T-ALFA', '   ');
+        expect(cubit.state.trips.single.name, isNull);
+
+        await cubit.whenSaved();
+        expect(store.data.trips.single.from, '1201');
+        expect(store.data.favorites.single.code, '1201');
+
+        await cubit.removeTrip('1201', 'T-ALFA');
+        await cubit.whenSaved();
+        expect(cubit.state.trips, isEmpty);
+        expect(store.data.trips, isEmpty);
+        expect(store.data.favorites, hasLength(1));
+        await cubit.close();
+      },
+    );
+
+    test('limite: não remove nada sozinho', () async {
+      final store = FakeStore();
+      final cubit = SavedStopsCubit(
+        store,
+        tripLimit: 2,
+        clock: TickClock().call,
+      );
+      await cubit.stream.firstWhere((s) => !s.loading);
+      expect(await cubit.saveTrip('1', '2'), TripSaveResult.saved);
+      expect(await cubit.saveTrip('1', '3'), TripSaveResult.saved);
+      expect(await cubit.saveTrip('1', '4'), TripSaveResult.limitReached);
+      expect(cubit.state.trips, hasLength(2));
+      await cubit.close();
+    });
+  });
+
   group('linhas favoritas', () {
     test('favorita, desfavorita e grava só o par', () async {
       final store = FakeStore();

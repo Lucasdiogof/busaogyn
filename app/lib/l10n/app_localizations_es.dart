@@ -1625,4 +1625,160 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sheetSummaryTracking => 'Seguimiento del autobús';
+
+  @override
+  String get nearbyButton => 'Cerca de mí';
+
+  @override
+  String get nearbyLocating => 'Buscando tu ubicación…';
+
+  @override
+  String get nearbyHint =>
+      'Usa tu ubicación solo ahora, en el dispositivo: no se guarda ni se envía.';
+
+  @override
+  String get nearbyTitle => 'Cerca de ti';
+
+  @override
+  String get nearbyRefresh => 'Actualizar';
+
+  @override
+  String nearbyImprecise(int meters) {
+    return 'Ubicación aproximada (± $meters m). Revisa el mapa.';
+  }
+
+  @override
+  String get nearbyEmpty => 'Ninguna parada registrada a menos de 1 km.';
+
+  @override
+  String nearbyDistance(int meters) {
+    return '$meters m en línea recta';
+  }
+
+  @override
+  String get nearbyStraightLine =>
+      'Distancias en línea recta: el camino a pie puede ser más largo.';
+
+  @override
+  String get nearbyDenied =>
+      'Sin permiso de ubicación. Puedes buscar la parada por código, calle o barrio.';
+
+  @override
+  String get nearbyDeniedForever =>
+      'La ubicación está bloqueada para BusãoGyn. Para usarla, permítela en los ajustes del dispositivo.';
+
+  @override
+  String get nearbyServiceOff =>
+      'La ubicación del dispositivo está desactivada.';
+
+  @override
+  String get nearbyTimeout =>
+      'No se pudo obtener tu ubicación a tiempo. Inténtalo de nuevo, mejor al aire libre.';
+
+  @override
+  String get nearbyUnavailable =>
+      'Ubicación no disponible en este dispositivo o navegador.';
+
+  @override
+  String get nearbyOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get shareCopied => 'Texto copiado para compartir.';
+
+  @override
+  String shareStop(String code) {
+    return 'Parada de autobús $code';
+  }
+
+  @override
+  String get shareFooter =>
+      'Enviado desde BusãoGyn (app independiente, no oficial).';
+
+  @override
+  String shareLine(String line, String name) {
+    return 'Línea $line — $name';
+  }
+
+  @override
+  String get shareCatalogNote =>
+      'Datos de registro; revisa horarios y recorrido antes de salir.';
+
+  @override
+  String shareTripTitle(String from, String to) {
+    return 'Viaje en autobús (estimación): $from → $to';
+  }
+
+  @override
+  String shareTripLeg(int step, String line, String from, String to) {
+    return '$step. Línea $line: sube en $from, baja en $to';
+  }
+
+  @override
+  String get shareTripNote =>
+      'Estimación a partir del registro, no es un recorrido oficial. Revisa antes de salir.';
+
+  @override
+  String get shareStopAction => 'Compartir parada';
+
+  @override
+  String get shareLineAction => 'Compartir línea';
+
+  @override
+  String get shareTripAction => 'Compartir viaje';
+
+  @override
+  String get tripSave => 'Guardar viaje';
+
+  @override
+  String get tripSaved => 'Viaje guardado';
+
+  @override
+  String get tripSavedNotice => 'Viaje guardado en Guardados.';
+
+  @override
+  String tripsLimit(int count) {
+    return 'Ya tienes $count viajes guardados. Quita uno para guardar otro.';
+  }
+
+  @override
+  String get tripMissingStop =>
+      'Una parada de este viaje no está en el registro actual.';
+
+  @override
+  String get savedTripsTitle => 'Viajes';
+
+  @override
+  String get tripRenameTitle => 'Nombre del viaje';
+
+  @override
+  String get tripRenameSave => 'Guardar';
+
+  @override
+  String get tripMenu => 'Opciones del viaje';
+
+  @override
+  String get tripRename => 'Renombrar';
+
+  @override
+  String get tripRemove => 'Quitar';
+
+  @override
+  String get catalogSearchApproximate =>
+      'Nada exacto: mostrando nombres parecidos (un error de escritura).';
+
+  @override
+  String get nearbyDeniedBrowser =>
+      'La ubicación está bloqueada para este sitio. Permítela en los permisos del navegador.';
+
+  @override
+  String nearbySummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas',
+      one: '1 parada',
+      zero: 'ninguna parada',
+    );
+    return 'Cerca de ti · $_temp0';
+  }
 }

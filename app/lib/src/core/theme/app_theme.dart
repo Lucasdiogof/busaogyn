@@ -184,6 +184,13 @@ abstract final class AppTheme {
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        // Acima do dock flutuante: o aviso não cobre a navegação.
+        insetPadding: EdgeInsets.fromLTRB(
+          Space.md,
+          Space.xs,
+          Space.md,
+          Chrome.dock + Space.lg,
+        ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

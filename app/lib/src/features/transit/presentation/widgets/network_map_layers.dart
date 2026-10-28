@@ -13,6 +13,7 @@ const netStopsSourceId = 'busao-net-stops';
 const netSelectedSourceId = 'busao-net-selected';
 const netTrackSourceId = 'busao-net-track';
 const netPlanSourceId = 'busao-net-plan';
+const netMeSourceId = 'busao-net-me';
 
 const netRouteFadedLayerId = 'busao-net-route-faded';
 const netRouteOutboundLayerId = 'busao-net-route-ida';
@@ -31,6 +32,7 @@ const netPlanLeg1LayerId = 'busao-net-plan-leg1';
 const netPlanLeg2LayerId = 'busao-net-plan-leg2';
 const netPlanArrowsLayerId = 'busao-net-plan-arrows';
 const netPlanPointsLayerId = 'busao-net-plan-points';
+const netMeLayerId = 'busao-net-me-layer';
 
 const netSourceIds = {
   netRouteSourceId,
@@ -40,6 +42,7 @@ const netSourceIds = {
   netSelectedSourceId,
   netTrackSourceId,
   netPlanSourceId,
+  netMeSourceId,
 };
 
 const netLayerIds = {
@@ -60,6 +63,7 @@ const netLayerIds = {
   netPlanLeg2LayerId,
   netPlanArrowsLayerId,
   netPlanPointsLayerId,
+  netMeLayerId,
 };
 
 /// Acima deste zoom os pontos aparecem um a um; abaixo, agrupados.
@@ -116,6 +120,7 @@ Future<bool> addNetworkLayers({
       overlay.plan,
       promoteId: 'id',
     ),
+    () => controller.addGeoJsonSource(netMeSourceId, overlay.me),
 
     // Trajetos: outras variantes/sentidos esmaecidos; ida em âmbar contínuo,
     // volta em traço tracejado da cor do texto (forma, não só cor).
@@ -464,6 +469,19 @@ Future<bool> addNetworkLayers({
         circleColor: accent,
         circleOpacity: 0.28,
         circleStrokeColor: accent,
+        circleStrokeWidth: 3,
+      ),
+      enableInteraction: false,
+    ),
+    // Você ("Perto de mim"): disco na cor do texto com borda do painel e
+    // forma diferente dos pontos (anéis) e das paradas da viagem.
+    () => controller.addCircleLayer(
+      netMeSourceId,
+      netMeLayerId,
+      CircleLayerProperties(
+        circleRadius: 7,
+        circleColor: strong,
+        circleStrokeColor: panel,
         circleStrokeWidth: 3,
       ),
       enableInteraction: false,

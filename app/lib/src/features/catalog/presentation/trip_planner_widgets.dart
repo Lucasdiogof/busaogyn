@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/l10n/l10n.dart';
+import '../../../core/share/share_text.dart';
 import '../../../core/theme/busao_tokens.dart';
 import '../../../core/ui/busao_components.dart';
+import '../../saved_stops/domain/saved_stop.dart';
+import '../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
 import '../domain/route_geometry.dart';
 import '../domain/transit_catalog.dart';
 import '../domain/trip_planner.dart';
 import 'catalog_widgets.dart';
+import 'share_texts.dart';
 
 enum PlannerField { origin, destination }
 
@@ -129,11 +134,19 @@ class TripPlannerPanel extends StatefulWidget {
   const TripPlannerPanel({
     required this.controller,
     required this.onOpenStop,
+    this.saved = false,
+    this.onToggleSave,
     super.key,
   });
 
   final TripPlannerController controller;
   final ValueChanged<String> onOpenStop;
+
+  /// Origem → destino atuais já estão nas viagens salvas.
+  final bool saved;
+
+  /// Salvar/remover o par atual; `null` esconde o botão.
+  final VoidCallback? onToggleSave;
 
   @override
   State<TripPlannerPanel> createState() => _TripPlannerPanelState();
@@ -165,15 +178,34 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
           key: const ValueKey('trip-planner'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // O título fica no cabeçalho da tela; aqui só a ação de limpar.
+            // O título fica no cabeçalho da tela; aqui só salvar e limpar.
             if (_c.origin != null || _c.destination != null)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  key: const ValueKey('planner-clear'),
-                  onPressed: _c.clear,
-                  child: Text(l10n.plannerClear),
-                ),
+              // Wrap: com fonte grande os botões descem em vez de transbordar.
+              Wrap(
+                alignment: _c.canSearch && widget.onToggleSave != null
+                    ? WrapAlignment.spaceBetween
+                    : WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (_c.canSearch && widget.onToggleSave != null)
+                    TextButton.icon(
+                      key: const ValueKey('planner-save'),
+                      onPressed: widget.onToggleSave,
+                      icon: Icon(
+                        widget.saved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_add_outlined,
+                      ),
+                      label: Text(
+                        widget.saved ? l10n.tripSaved : l10n.tripSave,
+                      ),
+                    ),
+                  TextButton(
+                    key: const ValueKey('planner-clear'),
+                    onPressed: _c.clear,
+                    child: Text(l10n.plannerClear),
+                  ),
+                ],
               ),
             FootNote(child: Text(l10n.plannerIntro)),
             const SizedBox(height: Space.sm),
@@ -389,6 +421,17 @@ class _TripPlannerPanelState extends State<TripPlannerPanel> {
         ),
         const SizedBox(height: Space.xs),
       ],
+      if (_c.selectedOption case final option?)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('planner-share'),
+            onPressed: () =>
+                shareText(context, tripShareText(_c.catalog, option)),
+            icon: const Icon(Icons.ios_share_rounded),
+            label: Text(l10n.shareTripAction),
+          ),
+        ),
       if (plan.truncated) FootNote(child: Text(l10n.plannerTruncated)),
       FootNote(child: Text(l10n.plannerNoTimes)),
     ];
@@ -632,4 +675,216 @@ class _OptionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Viagens salvas (aba Salvos). Tocar recalcula o itinerário agora; o
+/// menu renomeia ou remove. Ponto que não está mais no catálogo é avisado.
+class SavedTripsSection extends StatelessWidget {
+  const SavedTripsSection({
+    required this.catalog,
+    required this.onOpen,
+    super.key,
+  });
+
+  final TransitCatalog catalog;
+  final ValueChanged<SavedTrip> onOpen;
+
+  String _end(String id) {
+    final stop = catalog.stop(id);
+    return stop?.address ?? stopCode(stop, id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<SavedStopsCubit, SavedStopsState, List<SavedTrip>>(
+      selector: (state) => state.trips,
+      builder: (context, trips) {
+        if (trips.isEmpty) return const SizedBox.shrink();
+        final tokens = context.tokens;
+        return Column(
+          key: const ValueKey('saved-trips'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SectionLabel(
+              icon: Icons.alt_route_rounded,
+              label: l10n.savedTripsTitle,
+              trailing: Text(
+                '${trips.length}',
+                style: monoStyle(
+                  TextStyle(fontSize: 12, color: tokens.mutedText),
+                ),
+              ),
+            ),
+            const SizedBox(height: Space.xs),
+            for (final trip in trips) ...[
+              _SavedTripTile(
+                key: ValueKey('saved-trip-${trip.from}-${trip.to}'),
+                trip: trip,
+                route: '${_end(trip.from)} → ${_end(trip.to)}',
+                missing:
+                    catalog.stop(trip.from) == null ||
+                    catalog.stop(trip.to) == null,
+                onOpen: () => onOpen(trip),
+              ),
+              const SizedBox(height: Space.xs),
+            ],
+            const SizedBox(height: Space.sm),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _TripAction { rename, remove }
+
+class _SavedTripTile extends StatelessWidget {
+  const _SavedTripTile({
+    required this.trip,
+    required this.route,
+    required this.missing,
+    required this.onOpen,
+    super.key,
+  });
+
+  final SavedTrip trip;
+  final String route;
+  final bool missing;
+  final VoidCallback onOpen;
+
+  Future<void> _rename(BuildContext context) async {
+    final cubit = context.read<SavedStopsCubit>();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => _RenameTripDialog(initial: trip.name, hint: route),
+    );
+    if (name != null) await cubit.renameTrip(trip.from, trip.to, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final title = trip.name ?? route;
+    return Material(
+      color: tokens.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: tokens.hairline),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.card),
+        onTap: onOpen,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(Space.sm, Space.xs, 0, Space.xs),
+            child: Row(
+              children: [
+                Icon(Icons.alt_route_rounded, color: tokens.accentText),
+                const SizedBox(width: Space.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: tokens.strongText,
+                        ),
+                      ),
+                      if (trip.name != null || missing) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          missing ? l10n.tripMissingStop : route,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: missing
+                                ? tokens.unconfirmed
+                                : tokens.mutedText,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuButton<_TripAction>(
+                  key: ValueKey('saved-trip-menu-${trip.from}-${trip.to}'),
+                  tooltip: l10n.tripMenu,
+                  onSelected: (action) => switch (action) {
+                    _TripAction.rename => _rename(context),
+                    _TripAction.remove =>
+                      context.read<SavedStopsCubit>().removeTrip(
+                        trip.from,
+                        trip.to,
+                      ),
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: _TripAction.rename,
+                      child: Text(l10n.tripRename),
+                    ),
+                    PopupMenuItem(
+                      value: _TripAction.remove,
+                      child: Text(l10n.tripRemove),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// O diálogo é dono do campo: o controlador só é descartado quando o diálogo
+/// termina de sair (descartar logo após o `pop` quebra a animação de saída).
+class _RenameTripDialog extends StatefulWidget {
+  const _RenameTripDialog({required this.initial, required this.hint});
+
+  final String? initial;
+  final String hint;
+
+  @override
+  State<_RenameTripDialog> createState() => _RenameTripDialogState();
+}
+
+class _RenameTripDialogState extends State<_RenameTripDialog> {
+  late final _field = TextEditingController(text: widget.initial ?? '');
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(l10n.tripRenameTitle),
+    content: TextField(
+      key: const ValueKey('trip-name-field'),
+      controller: _field,
+      autofocus: true,
+      maxLength: maxTripNameLength,
+      decoration: InputDecoration(hintText: widget.hint),
+      onSubmitted: (value) => Navigator.pop(context, value),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(l10n.cancel),
+      ),
+      FilledButton(
+        key: const ValueKey('trip-name-save'),
+        onPressed: () => Navigator.pop(context, _field.text),
+        child: Text(l10n.tripRenameSave),
+      ),
+    ],
+  );
 }

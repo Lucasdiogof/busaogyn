@@ -1394,5 +1394,116 @@
     }
   },
   "sheetSummarySaved": "Favoritos e recentes",
-  "sheetSummaryTracking": "Acompanhamento do ônibus"
+  "sheetSummaryTracking": "Acompanhamento do ônibus",
+  "nearbyButton": "Perto de mim",
+  "nearbyLocating": "Procurando sua posição…",
+  "nearbyHint": "Usa sua localização só agora, no aparelho: ela não é guardada nem enviada.",
+  "nearbyTitle": "Perto de você",
+  "nearbyRefresh": "Atualizar",
+  "nearbyImprecise": "Posição aproximada (± {meters} m). Confira no mapa.",
+  "@nearbyImprecise": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyEmpty": "Nenhum ponto do cadastro a até 1 km de você.",
+  "nearbyDistance": "{meters} m em linha reta",
+  "@nearbyDistance": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyStraightLine": "Distâncias em linha reta: o caminho a pé pode ser maior.",
+  "nearbyDenied": "Sem permissão de localização. Você pode buscar o ponto pelo código, rua ou bairro.",
+  "nearbyDeniedForever": "A localização está bloqueada para o BusãoGyn. Para usar, libere nos ajustes do aparelho.",
+  "nearbyServiceOff": "A localização do aparelho está desligada.",
+  "nearbyTimeout": "Não deu para obter sua posição a tempo. Tente de novo, de preferência em local aberto.",
+  "nearbyUnavailable": "Localização indisponível neste aparelho ou navegador.",
+  "nearbyOpenSettings": "Abrir ajustes",
+  "shareCopied": "Texto copiado para compartilhar.",
+  "shareStop": "Ponto de ônibus {code}",
+  "@shareStop": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "shareFooter": "Enviado pelo BusãoGyn (app independente, não oficial).",
+  "shareLine": "Linha {line} — {name}",
+  "@shareLine": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCatalogNote": "Dados de cadastro; confira horários e itinerário antes de sair.",
+  "shareTripTitle": "Viagem de ônibus (estimativa): {from} → {to}",
+  "@shareTripTitle": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripLeg": "{step}. Linha {line}: embarque em {from}, desça em {to}",
+  "@shareTripLeg": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "line": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripNote": "Estimativa a partir do cadastro, não é itinerário oficial. Confira antes de sair.",
+  "shareStopAction": "Compartilhar ponto",
+  "shareLineAction": "Compartilhar linha",
+  "shareTripAction": "Compartilhar viagem",
+  "tripSave": "Salvar viagem",
+  "tripSaved": "Viagem salva",
+  "tripSavedNotice": "Viagem salva em Salvos.",
+  "tripsLimit": "Você já tem {count} viagens salvas. Remova uma para salvar outra.",
+  "@tripsLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripMissingStop": "Um ponto desta viagem não está no cadastro atual.",
+  "savedTripsTitle": "Viagens",
+  "tripRenameTitle": "Nome da viagem",
+  "tripRenameSave": "Salvar",
+  "tripMenu": "Opções da viagem",
+  "tripRename": "Renomear",
+  "tripRemove": "Remover",
+  "catalogSearchApproximate": "Nada exato: mostrando nomes parecidos (um erro de digitação).",
+  "nearbyDeniedBrowser": "A localização está bloqueada para este site. Libere nas permissões do navegador.",
+  "nearbySummary": "Perto de você · {count, plural, =0{nenhum ponto} =1{1 ponto} other{{count} pontos}}",
+  "@nearbySummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

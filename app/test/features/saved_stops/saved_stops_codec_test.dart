@@ -42,7 +42,13 @@ void main() {
     final json =
         jsonDecode(encodeSavedStops(SavedStopsData(favorites: [stop('1')])))
             as Map;
-    expect(json.keys.toSet(), {'schema', 'favorites', 'recents', 'lines'});
+    expect(json.keys.toSet(), {
+      'schema',
+      'favorites',
+      'recents',
+      'lines',
+      'trips',
+    });
     expect((json['favorites'] as List).single.keys.toSet(), {
       'code',
       'name',
@@ -60,7 +66,7 @@ void main() {
       '123',
       'null',
       '{"favorites": []}', // sem schema
-      '{"schema": 3, "favorites": [], "recents": []}', // formato novo
+      '{"schema": 4, "favorites": [], "recents": []}', // formato novo
       '{"schema": "1"}',
     ]) {
       test(raw.isEmpty ? 'texto vazio' : raw, () {
@@ -229,5 +235,74 @@ void main() {
     expect(byCode['3']!.name, isNull);
     expect(byCode['4']!.at.millisecondsSinceEpoch, 0);
     expect(byCode['5']!.at.millisecondsSinceEpoch, 0);
+  });
+
+  group('viagens salvas (schema 3)', () {
+    final at = DateTime.utc(2026, 10, 28, 9);
+
+    test('ida e volta: só códigos, nome e hora; sem itinerário', () {
+      final data = SavedStopsData(
+        trips: [
+          SavedTrip(from: '1201', to: 'T-PADRE-PELAGIO', at: at, name: 'Casa'),
+          SavedTrip(from: '30402', to: '1201', at: at),
+        ],
+      );
+      final raw = encodeSavedStops(data);
+      final json = jsonDecode(raw) as Map;
+      expect(json['schema'], 3);
+      expect((json['trips'] as List).first.keys.toSet(), {
+        'from',
+        'to',
+        'name',
+        'at',
+      });
+      expect((json['trips'] as List).last.keys.toSet(), {'from', 'to', 'at'});
+      expect(decodeSavedStops(raw).data.trips, data.trips);
+    });
+
+    test('migração: schema 1 e 2 continuam legíveis, sem viagens', () {
+      for (final schema in [1, 2]) {
+        final load = decodeSavedStops(
+          jsonEncode({
+            'schema': schema,
+            'favorites': [
+              {'code': '1201', 'at': at.toIso8601String()},
+            ],
+            'recents': [],
+            if (schema == 2) 'lines': [],
+          }),
+        );
+        expect(load.unreadable, isFalse, reason: 'schema $schema');
+        expect(load.data.favorites.single.code, '1201');
+        expect(load.data.trips, isEmpty);
+      }
+    });
+
+    test('descarta inválidas, repetidas e origem = destino; corta o nome', () {
+      final load = decodeSavedStops(
+        jsonEncode({
+          'schema': 3,
+          'favorites': [],
+          'recents': [],
+          'trips': [
+            {'from': '1', 'to': '2', 'name': '  ${'N' * 90}  '},
+            {'from': '1', 'to': '2'},
+            {'from': '3', 'to': '3'},
+            {'from': 'a b', 'to': '2'},
+            {'from': 4, 'to': '2'},
+            'lixo',
+            {'from': '2', 'to': '1', 'name': '   ', 'at': 'ontem'},
+          ],
+        }),
+      );
+      expect(load.unreadable, isFalse);
+      expect(
+        [for (final t in load.data.trips) '${t.from}>${t.to}'],
+        ['1>2', '2>1'],
+      );
+      expect(load.data.trips.first.name!.length, maxTripNameLength);
+      expect(load.data.trips.last.name, isNull);
+      expect(load.data.trips.last.at.millisecondsSinceEpoch, 0);
+    });
   });
 }

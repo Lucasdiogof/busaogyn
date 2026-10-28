@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/map_config.dart';
 import '../../../../core/l10n/l10n.dart';
+import '../../../../core/location/location_service.dart';
+import '../../../../core/share/share_text.dart';
 import '../../../../core/theme/busao_tokens.dart';
 import '../../../../core/ui/busao_components.dart';
 import '../../../catalog/domain/network_geojson.dart';
@@ -18,6 +20,8 @@ import '../../../catalog/domain/trip_planner.dart';
 import '../../../catalog/presentation/catalog_access.dart';
 import '../../../catalog/presentation/catalog_schedule_widgets.dart';
 import '../../../catalog/presentation/catalog_widgets.dart';
+import '../../../catalog/presentation/nearby_widgets.dart';
+import '../../../catalog/presentation/share_texts.dart';
 import '../../../catalog/presentation/trip_planner_widgets.dart';
 import '../../../saved_stops/domain/saved_stop.dart';
 import '../../../saved_stops/presentation/cubit/saved_stops_cubit.dart';
@@ -42,10 +46,16 @@ import '../widgets/tracking_card.dart';
 /// celular, coluna central em telas largas) e o dock com Linhas, Pontos,
 /// Favoritos e Meu ônibus, com Ajustes na TopBar.
 class StopArrivalsPage extends StatefulWidget {
-  const StopArrivalsPage({this.mapBuilder, this.clock, super.key});
+  const StopArrivalsPage({
+    this.mapBuilder,
+    this.clock,
+    this.locationService = const DeviceLocationService(),
+    super.key,
+  });
 
   final VehicleMapBuilder? mapBuilder;
   final DateTime Function()? clock;
+  final LocationService locationService;
 
   @override
   State<StopArrivalsPage> createState() => _StopArrivalsPageState();
@@ -188,6 +198,41 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
 
   TripOption? _shownPlan;
   (String?, String?) _plannerEnds = (null, null);
+
+  /// "Perto de mim" (só com catálogo): a posição vive só aqui, em memória.
+  NearbyController? _nearbyController;
+  NearbyController? get _nearby {
+    final catalog = _catalog;
+    if (catalog == null) return null;
+    final current = _nearbyController;
+    if (current != null && identical(current.catalog, catalog)) return current;
+    current?.removeListener(_onNearbyChanged);
+    return _nearbyController = NearbyController(catalog, widget.locationService)
+      ..addListener(_onNearbyChanged);
+  }
+
+  /// Posição encontrada: o mapa mostra você e os pontos mais perto.
+  void _onNearbyChanged() {
+    if (!mounted) return;
+    final nearby = _nearbyController!;
+    setState(() {});
+    final me = nearby.fix?.position;
+    if (nearby.status != NearbyStatus.located || me == null) return;
+    final around = [
+      me,
+      for (final near in nearby.stops.take(4)) ?stopPosition(near.stop),
+    ];
+    if (around.length == 1) {
+      setState(() => _focus = MapFocus.point(++_focusSerial, me));
+    } else {
+      unawaited(
+        _frame(
+          GeoBounds.of(around),
+          stillWanted: () => identical(nearby.fix?.position, me),
+        ),
+      );
+    }
+  }
 
   /// Alternativa escolhida: sai o trajeto de linha, entra a viagem
   /// enquadrada.
@@ -402,6 +447,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     _plannerController
       ?..removeListener(_onPlannerChanged)
       ..dispose();
+    _nearbyController
+      ?..removeListener(_onNearbyChanged)
+      ..dispose();
     _follow.dispose();
     super.dispose();
   }
@@ -438,6 +486,48 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
     if (inFlight) return;
     _stopController.text = code;
     _search();
+  }
+
+  /// Salva (ou tira das salvas) a origem → destino do planejador.
+  Future<void> _toggleSavedTrip(bool saved) async {
+    final planner = _planner;
+    if (planner == null) return;
+    final cubit = context.read<SavedStopsCubit>();
+    final from = planner.origin, to = planner.destination;
+    if (saved) {
+      if (from != null && to != null) await cubit.removeTrip(from, to);
+      return;
+    }
+    final result = await cubit.saveTrip(from, to);
+    if (!mounted) return;
+    final message = switch (result) {
+      TripSaveResult.saved => l10n.tripSavedNotice,
+      TripSaveResult.limitReached => l10n.tripsLimit(defaultSavedTripsLimit),
+      _ => null,
+    };
+    if (message == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Abre uma viagem salva: o itinerário é recalculado agora, com o catálogo
+  /// atual. Ponto que sumiu do catálogo vira aviso, não uma rota inventada.
+  void _openTrip(SavedTrip trip) {
+    final catalog = _catalog;
+    final planner = _planner;
+    if (catalog == null || planner == null) return;
+    if (catalog.stop(trip.from) == null || catalog.stop(trip.to) == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.tripMissingStop)));
+      return;
+    }
+    _select(HomeTab.plan);
+    planner
+      ..set(PlannerField.origin, trip.from)
+      ..set(PlannerField.destination, trip.to)
+      ..search();
   }
 
   Future<void> _toggleFavorite(String code) async {
@@ -738,6 +828,7 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
                     routeShapeId: _routeShape,
                     focus: _focus,
                     plan: _shownPlan,
+                    me: _nearbyController?.fix?.position,
                     onStopTap: _onMapStopTap,
                   ),
                 ),
@@ -893,6 +984,8 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           stopId,
           l10n.queryingArrivals,
         ),
+        _ when _nearbyController?.status == NearbyStatus.located =>
+          l10n.nearbySummary(_nearbyController!.stops.length),
         _ => l10n.sheetSummaryStops,
       },
       HomeTab.plan => switch (_planner?.plan) {
@@ -1150,6 +1243,15 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
               enabled: state is StopArrivalsLoaded,
               onPressed: () => _toggleFavorite(stopId),
             ),
+            IconButton(
+              key: const ValueKey('share-stop'),
+              tooltip: l10n.shareStopAction,
+              onPressed: () => shareText(
+                context,
+                stopShareText(stopId, stop: catalog?.stop(stopId)),
+              ),
+              icon: const Icon(Icons.ios_share_rounded),
+            ),
             searchButton,
           ],
         ),
@@ -1243,13 +1345,15 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           onOpenTracking: () => _select(HomeTab.tracking),
           onExample: _searchExample,
           onRetrySearch: _search,
-          above: catalog != null && state is StopArrivalsLoaded
-              ? CatalogStopFacts(
-                  catalog: catalog,
-                  stopId: state.stopId,
-                  compact: true,
-                )
-              : null,
+          above: switch (state) {
+            StopArrivalsLoaded(:final stopId) when catalog != null =>
+              CatalogStopFacts(catalog: catalog, stopId: stopId, compact: true),
+            StopArrivalsInitial() when _nearby != null => NearbyStopsSection(
+              controller: _nearby!,
+              onOpenStop: _openPreview,
+            ),
+            _ => null,
+          },
           below: RecentStopsSection(
             onOpen: _openStop,
             excludeCode: state is StopArrivalsLoaded ? state.stopId : null,
@@ -1258,10 +1362,17 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
         );
         final planner = _planner;
         final Widget child = switch (_tab) {
-          HomeTab.plan when planner != null => TripPlannerPanel(
-            controller: planner,
-            onOpenStop: _focusOnStop,
-          ),
+          HomeTab.plan when planner != null =>
+            BlocSelector<SavedStopsCubit, SavedStopsState, bool>(
+              selector: (saved) =>
+                  saved.isSavedTrip(planner.origin, planner.destination),
+              builder: (context, saved) => TripPlannerPanel(
+                controller: planner,
+                onOpenStop: _focusOnStop,
+                saved: saved,
+                onToggleSave: () => _toggleSavedTrip(saved),
+              ),
+            ),
           // Sem catálogo não há Planejar (o dock nem mostra a aba).
           HomeTab.plan => arrivals,
           HomeTab.stop when catalog != null && _previewStop != null =>
@@ -1343,6 +1454,9 @@ class _StopArrivalsPageState extends State<StopArrivalsPage>
           HomeTab.saved => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (catalog != null) ...[
+                SavedTripsSection(catalog: catalog, onOpen: _openTrip),
+              ],
               FavoritesPanel(
                 onOpen: _openStop,
                 onSearchStop: _goToStopSearch,
@@ -1459,8 +1573,12 @@ class _MapBinding extends StatelessWidget {
     this.routeShapeId,
     this.focus,
     this.plan,
+    this.me,
     this.onStopTap,
   });
+
+  /// Posição do passageiro, só depois de "Perto de mim".
+  final GeoPosition? me;
 
   /// Viagem planejada selecionada (só desenho; não é rastreamento).
   final TripOption? plan;
@@ -1532,6 +1650,7 @@ class _MapBinding extends StatelessWidget {
       routeShapeId: routeShapeId,
       trackMatch: match,
       plan: plan,
+      me: me,
       focus: focus,
     );
   }

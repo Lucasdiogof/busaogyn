@@ -358,7 +358,37 @@ class TransitCatalog {
   /// Todas as palavras precisam aparecer (no início de alguma palavra do
   /// ponto); só dígitos também casam com o começo do código.
   List<CatalogStop> searchStops(String query, {int limit = 50}) =>
-      rankStops(query, limit: limit).map((r) => r.item).toList();
+      findStops(query, limit: limit).results.map((r) => r.item).toList();
+
+  /// Busca exata; sem nenhum resultado, tenta de novo tolerando UM erro de
+  /// digitação por palavra de 5+ letras ('araguia' -> 'araguaia'), e marca
+  /// [approximate] para a tela avisar. Palavras curtas e códigos nunca são
+  /// aproximados (seria fácil casar com o ponto errado).
+  ({List<Ranked<CatalogStop>> results, bool approximate}) findStops(
+    String query, {
+    int limit = 50,
+  }) {
+    final exact = rankStops(query, limit: limit);
+    if (exact.isNotEmpty) return (results: exact, approximate: false);
+    final tokens = searchTokens(query);
+    if (tokens.isEmpty || !tokens.any((t) => t.length >= 5)) {
+      return (results: exact, approximate: false);
+    }
+    final results = <Ranked<CatalogStop>>[
+      for (final entry in _stopIndex)
+        if (entry.score(tokens, null, tolerant: true) case final score
+            when score > 0)
+          Ranked(entry.stop, score),
+    ];
+    results.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      return byScore != 0 ? byScore : _compareIds(a.item.id, b.item.id);
+    });
+    return (
+      results: results.length <= limit ? results : results.sublist(0, limit),
+      approximate: results.isNotEmpty,
+    );
+  }
 
   List<Ranked<CatalogStop>> rankStops(String query, {int limit = 50}) {
     final tokens = searchTokens(query);
@@ -443,7 +473,7 @@ class _StopEntry {
   final CatalogStop stop;
   final List<(List<String>, int)> fields;
 
-  int score(List<String> tokens, String? codeQuery) {
+  int score(List<String> tokens, String? codeQuery, {bool tolerant = false}) {
     var total = 0;
     if (codeQuery != null) {
       if (stop.id == codeQuery) return 10000;
@@ -461,6 +491,15 @@ class _StopEntry {
             best = best > weight * 2 ? best : weight * 2;
           } else if (word.startsWith(token)) {
             best = best > weight ? best : weight;
+          } else if (tolerant &&
+              token.length >= 5 &&
+              (_withinOneEdit(token, word) ||
+                  (word.length > token.length &&
+                      _withinOneEdit(
+                        token,
+                        word.substring(0, token.length),
+                      )))) {
+            best = best > 1 ? best : 1;
           }
         }
       }
@@ -518,4 +557,27 @@ class _LineEntry {
     }
     return total;
   }
+}
+
+/// Distância de edição (inserção, remoção ou troca) no máximo 1.
+bool _withinOneEdit(String a, String b) {
+  if ((a.length - b.length).abs() > 1) return false;
+  var i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] == b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) {
+      i++;
+    } else if (a.length < b.length) {
+      j++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
 }

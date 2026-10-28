@@ -47,7 +47,10 @@ class ArrivalsPanel extends StatelessWidget {
       StopArrivalsInitial(:final searchError?)
           when searchError.isConnectivity =>
         [_ConnectionProblem(feedback: searchError, onRetry: onRetrySearch)],
-      StopArrivalsInitial() => [_Intro(onExample: onExample)],
+      StopArrivalsInitial() => [
+        if (above != null) ...[above!, const SizedBox(height: Space.md)],
+        _Intro(onExample: onExample),
+      ],
       StopArrivalsLoading(:final stopId) => [_LoadingView(stopId: stopId)],
       final StopArrivalsLoaded loaded => _loaded(context, loaded),
     };

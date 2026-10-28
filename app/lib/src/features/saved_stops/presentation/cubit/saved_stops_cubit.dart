@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/saved_stops_codec.dart';
 import '../../domain/saved_stop.dart';
 import '../../domain/saved_stops_store.dart';
 
@@ -11,6 +12,8 @@ enum SavedStopsStatus { loading, ready }
 /// O que aconteceu ao pedir para favoritar ou desfavoritar.
 enum FavoriteResult { added, removed, limitReached, invalidCode }
 
+enum TripSaveResult { saved, alreadySaved, limitReached, invalid }
+
 @immutable
 class SavedStopsState {
   const SavedStopsState({
@@ -18,6 +21,7 @@ class SavedStopsState {
     this.favorites = const [],
     this.recents = const [],
     this.lines = const [],
+    this.trips = const [],
     this.persistent = true,
     this.readFailed = false,
     this.writeFailed = false,
@@ -31,6 +35,9 @@ class SavedStopsState {
 
   /// Linhas favoritas por ponto, da mais nova à mais antiga.
   final List<SavedLine> lines;
+
+  /// Viagens salvas (origem → destino), mais recentes primeiro.
+  final List<SavedTrip> trips;
 
   /// `false`: o aparelho não guarda; o que foi salvo vale até fechar o app.
   final bool persistent;
@@ -49,11 +56,15 @@ class SavedStopsState {
   bool isFavoriteLine(String? stop, String? route) =>
       lines.any((line) => line.matches(stop ?? '', route ?? ''));
 
+  bool isSavedTrip(String? from, String? to) =>
+      trips.any((trip) => trip.matches(from ?? '', to ?? ''));
+
   SavedStopsState copyWith({
     SavedStopsStatus? status,
     List<SavedStop>? favorites,
     List<SavedStop>? recents,
     List<SavedLine>? lines,
+    List<SavedTrip>? trips,
     bool? persistent,
     bool? readFailed,
     bool? writeFailed,
@@ -62,6 +73,7 @@ class SavedStopsState {
     favorites: favorites ?? this.favorites,
     recents: recents ?? this.recents,
     lines: lines ?? this.lines,
+    trips: trips ?? this.trips,
     persistent: persistent ?? this.persistent,
     readFailed: readFailed ?? this.readFailed,
     writeFailed: writeFailed ?? this.writeFailed,
@@ -85,6 +97,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
     this.favoriteLimit = defaultFavoriteStopsLimit,
     this.recentLimit = defaultRecentStopsLimit,
     this.lineLimit = defaultFavoriteLinesLimit,
+    this.tripLimit = defaultSavedTripsLimit,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        super(SavedStopsState(persistent: _store.persistent)) {
@@ -95,6 +108,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
   final int favoriteLimit;
   final int recentLimit;
   final int lineLimit;
+  final int tripLimit;
   final DateTime Function() _clock;
 
   final _loaded = Completer<void>();
@@ -121,6 +135,9 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
           lines: data.lines.length <= lineLimit
               ? data.lines
               : data.lines.sublist(0, lineLimit),
+          trips: data.trips.length <= tripLimit
+              ? data.trips
+              : data.trips.sublist(0, tripLimit),
           readFailed: unreadable,
         ),
       );
@@ -251,6 +268,51 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
     );
   }
 
+  /// Salva o par origem → destino (sem o itinerário). O mesmo par não se
+  /// repete; passou do limite, nada é removido sozinho.
+  Future<TripSaveResult> saveTrip(String? rawFrom, String? rawTo) async {
+    final from = canonicalCatalogStopId(rawFrom);
+    final to = canonicalCatalogStopId(rawTo);
+    if (from == null || to == null || from == to) {
+      return TripSaveResult.invalid;
+    }
+    await _loaded.future;
+    if (isClosed) return TripSaveResult.invalid;
+    if (state.isSavedTrip(from, to)) return TripSaveResult.alreadySaved;
+    if (state.trips.length >= tripLimit) return TripSaveResult.limitReached;
+    _apply(
+      trips: [
+        SavedTrip(from: from, to: to, at: _clock()),
+        ...state.trips,
+      ],
+    );
+    return TripSaveResult.saved;
+  }
+
+  /// Nome em branco volta ao padrão ("origem → destino").
+  Future<void> renameTrip(String from, String to, String? name) async {
+    await _loaded.future;
+    if (isClosed || !state.isSavedTrip(from, to)) return;
+    final clean = tripName(name);
+    _apply(
+      trips: [
+        for (final trip in state.trips)
+          trip.matches(from, to) ? trip.copyWith(name: () => clean) : trip,
+      ],
+    );
+  }
+
+  Future<void> removeTrip(String from, String to) async {
+    await _loaded.future;
+    if (isClosed || !state.isSavedTrip(from, to)) return;
+    _apply(
+      trips: [
+        for (final trip in state.trips)
+          if (!trip.matches(from, to)) trip,
+      ],
+    );
+  }
+
   Future<void> clearRecents() async {
     await _loaded.future;
     if (isClosed || state.recents.isEmpty) return;
@@ -262,8 +324,16 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
     List<SavedStop>? favorites,
     List<SavedStop>? recents,
     List<SavedLine>? lines,
+    List<SavedTrip>? trips,
   }) {
-    emit(state.copyWith(favorites: favorites, recents: recents, lines: lines));
+    emit(
+      state.copyWith(
+        favorites: favorites,
+        recents: recents,
+        lines: lines,
+        trips: trips,
+      ),
+    );
     _dirty = true;
     if (!_writing) _flushing = _flush();
   }
@@ -279,6 +349,7 @@ class SavedStopsCubit extends Cubit<SavedStopsState> {
           favorites: state.favorites,
           recents: state.recents,
           lines: state.lines,
+          trips: state.trips,
         );
         try {
           await _store.save(snapshot);

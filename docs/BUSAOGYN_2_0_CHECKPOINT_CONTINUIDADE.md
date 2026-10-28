@@ -1,6 +1,6 @@
 # BusãoGyn 2.0 — Checkpoint de continuidade
 
-Atualizado em 2026-10-28. Serve para qualquer sessão retomar sem reconstruir o
+Atualizado em 2026-10-28 (Etapa C). Serve para qualquer sessão retomar sem reconstruir o
 histórico. Não contém dados oficiais nem pessoais.
 
 ## Estado do Git
@@ -31,27 +31,28 @@ Arquivos locais do usuário que **nunca** entram em commit: `app/pubspec.lock`,
   linha padronizados; título do planejador sem repetição; estrela de favorito
   com feedback animado (respeita movimento reduzido).
 
+- Etapa C (`docs/BUSAOGYN_2_0_ETAPA_C_FUNCIONALIDADES.md`): Perto de mim
+  (só dev, local, sem segundo plano), viagens salvas (schema 3 com migração),
+  compartilhar ponto/linha/viagem (texto, sem links), busca com um erro de
+  digitação, avisos acima do dock; estudos de alertas e de "reportar
+  problema" (não implementados, dependem de decisão).
+
 ## Testes e builds (último ciclo)
 
-- 589 testes Flutter, `flutter analyze` limpo, formatação ok.
+- 612 testes Flutter, `flutter analyze` limpo, formatação ok.
 - Builds produção web/APK/iOS sem dados CMTC (`app/scripts/check-no-official-catalog.sh <pasta>`);
   APK dev como controle positivo (verificador falha, como esperado).
 
-## Próxima ação (Etapa C — melhorias funcionais)
+## Próxima ação (Etapa D — qualidade e estabilidade)
 
-Auditar, nesta ordem, e implementar o que for viável e seguro:
+1. Testar Perto de mim, viagens salvas e compartilhar em aparelho físico
+   (Android e iPhone) e no navegador do celular.
+2. QA real: chegadas, seguir ônibus, GPS antigo, API fora, reconexão,
+   foreground/background, offline, desempenho.
+3. Decisões pendentes do usuário: alertas só com o app aberto; canal de
+   "Reportar problema"; links compartilháveis (domínio + deploy).
 
-1. Pontos próximos com localização (consentimento, sem segundo plano;
-   Android/iOS/Web; mensagem clara quando negado).
-2. Viagens salvas (origem/destino no armazenamento local existente; recalcula
-   o itinerário ao abrir).
-3. Compartilhar ponto/linha/itinerário (sem localização em tempo real).
-4. Busca por endereço/bairro/referência só com dados disponíveis (sem
-   geocodificação paga).
-5. Alertas de aproximação: só estudo; limites de segundo plano dos SOs.
-6. Reportar dado incorreto sem coletar dados pessoais.
-
-Depois: Etapa D (QA real, offline, desempenho), E (publicação), F (entrega
+Depois: E (publicação), F (entrega
 visual completa — 375×812, 390×844, 768×1024, 1024×1366, 1440×900, claro e
 escuro, HTML + ZIP).
 
@@ -69,6 +70,10 @@ escuro, HTML + ZIP).
 - Flutter do CI: `/Volumes/DevSSD/Flutter/fvm_cache/versions/3.38.5/bin`;
   iOS com Flutter master `/Volumes/DevSSD/flutter/bin`.
 - Android: `GRADLE_OPTS=-Dorg.gradle.java.home=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
-- Após cada comando Flutter, restaurar os lockfiles locais do usuário.
+- Após cada comando Flutter, restaurar os lockfiles locais do usuário. O
+  `pubspec.lock` versionado é o do CI (3.38.5); o local do usuário = versionado
+  + o diff do SDK dele (Flutter master).
+- Se o web acusar `MissingPluginException`, rode `flutter clean` (registro de
+  plugins em cache).
 - Catálogo dev: `python3 -I data/cmtc/pipeline/export_catalog.py` →
   `app/dev_catalog/`; web dev: `flutter build web --profile -t dev_catalog/main.dart`.
