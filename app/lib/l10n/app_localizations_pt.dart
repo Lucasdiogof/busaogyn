@@ -1388,4 +1388,158 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get trackReasonRepeatedSection =>
       'o trajeto passa duas vezes por este trecho';
+
+  @override
+  String get plannerOpen => 'Planejar viagem';
+
+  @override
+  String get plannerTitle => 'Planejar viagem';
+
+  @override
+  String get plannerIntro =>
+      'De ponto a ponto, com até uma baldeação. Funciona sem internet: usa só o catálogo do aparelho.';
+
+  @override
+  String get plannerOrigin => 'Origem';
+
+  @override
+  String get plannerDestination => 'Destino';
+
+  @override
+  String get plannerSearchHint => 'Código, rua, bairro ou cidade';
+
+  @override
+  String get plannerPickOnMap => 'Escolher no mapa';
+
+  @override
+  String plannerPicking(String field) {
+    return 'Toque num ponto no mapa para definir: $field.';
+  }
+
+  @override
+  String get plannerSwap => 'Inverter origem e destino';
+
+  @override
+  String get plannerSearch => 'Buscar viagens';
+
+  @override
+  String get plannerClose => 'Fechar planejador';
+
+  @override
+  String get plannerNotCovered => 'fora do planejador';
+
+  @override
+  String get plannerNoResultTitle => 'Nenhuma viagem para mostrar';
+
+  @override
+  String get plannerSameStop => 'Origem e destino são o mesmo ponto.';
+
+  @override
+  String get plannerUnknownStop => 'Ponto não encontrado no catálogo.';
+
+  @override
+  String get plannerNoCoverageOrigin =>
+      'A origem ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.';
+
+  @override
+  String get plannerNoCoverageDestination =>
+      'O destino ainda não está em nenhum trajeto com ordem de paradas confiável. Tente um ponto próximo.';
+
+  @override
+  String get plannerNoRoute =>
+      'Não há viagem com evidência suficiente com até uma baldeação. Isso não quer dizer que não exista ônibus: só que não dá para afirmar com os dados atuais.';
+
+  @override
+  String get plannerTruncated =>
+      'A busca parou no limite de processamento; pode haver outras opções.';
+
+  @override
+  String plannerResultsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count alternativas',
+      one: '1 alternativa',
+      zero: 'Nenhuma alternativa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerReliable => 'Confiável';
+
+  @override
+  String get plannerEstimated => 'Estimada';
+
+  @override
+  String plannerBuses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ônibus',
+      one: '1 ônibus',
+      zero: 'Nenhum ônibus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerDirect => 'direto';
+
+  @override
+  String plannerTransfers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count baldeações',
+      one: '1 baldeação',
+      zero: 'sem baldeação',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerBoard => 'Embarque';
+
+  @override
+  String get plannerTransfer => 'Baldeação';
+
+  @override
+  String get plannerAlight => 'Desembarque';
+
+  @override
+  String plannerLeg(String direction, String km, int stops, String variant) {
+    return '$variant · $direction · $stops paradas · $km km pelo trajeto';
+  }
+
+  @override
+  String plannerWalk(int meters) {
+    return 'a pé, ~$meters m em linha reta';
+  }
+
+  @override
+  String get plannerShowOnMap => 'Ver no mapa';
+
+  @override
+  String get plannerOnMap => 'No mapa';
+
+  @override
+  String get plannerNoTimes =>
+      'Sem tempo de viagem nem horário: os quadros não têm vigência confirmada. A ordem das paradas é estimada pelo trajeto oficial; o km é medido nele.';
+
+  @override
+  String get plannerCautionOrder =>
+      'Ordem das paradas não conferida com os logradouros oficiais.';
+
+  @override
+  String get plannerCautionUncertain =>
+      'Posição incerta de um ponto de embarque ou desembarque.';
+
+  @override
+  String get plannerCautionRepeated =>
+      'O ônibus passa mais de uma vez por um dos pontos.';
+
+  @override
+  String get plannerCautionWalk =>
+      'Baldeação a pé: travessia, calçada e acessibilidade não verificadas.';
 }

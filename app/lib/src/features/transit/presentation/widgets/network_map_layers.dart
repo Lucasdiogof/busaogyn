@@ -12,6 +12,7 @@ const netRouteStopsSourceId = 'busao-net-route-stops';
 const netStopsSourceId = 'busao-net-stops';
 const netSelectedSourceId = 'busao-net-selected';
 const netTrackSourceId = 'busao-net-track';
+const netPlanSourceId = 'busao-net-plan';
 
 const netRouteFadedLayerId = 'busao-net-route-faded';
 const netRouteOutboundLayerId = 'busao-net-route-ida';
@@ -24,6 +25,11 @@ const netClusterCountLayerId = 'busao-net-cluster-count';
 const netStopsLayerId = 'busao-net-stops-layer';
 const netRouteEndsLayerId = 'busao-net-route-ends-layer';
 const netSelectedLayerId = 'busao-net-selected-layer';
+const netPlanWalkLayerId = 'busao-net-plan-walk';
+const netPlanLeg1LayerId = 'busao-net-plan-leg1';
+const netPlanLeg2LayerId = 'busao-net-plan-leg2';
+const netPlanArrowsLayerId = 'busao-net-plan-arrows';
+const netPlanPointsLayerId = 'busao-net-plan-points';
 
 const netSourceIds = {
   netRouteSourceId,
@@ -32,6 +38,7 @@ const netSourceIds = {
   netStopsSourceId,
   netSelectedSourceId,
   netTrackSourceId,
+  netPlanSourceId,
 };
 
 const netLayerIds = {
@@ -46,6 +53,11 @@ const netLayerIds = {
   netStopsLayerId,
   netRouteEndsLayerId,
   netSelectedLayerId,
+  netPlanWalkLayerId,
+  netPlanLeg1LayerId,
+  netPlanLeg2LayerId,
+  netPlanArrowsLayerId,
+  netPlanPointsLayerId,
 };
 
 /// Acima deste zoom os pontos aparecem um a um; abaixo, agrupados.
@@ -97,6 +109,11 @@ Future<bool> addNetworkLayers({
     () => controller.addGeoJsonSource(netRouteEndsSourceId, overlay.routeEnds),
     () =>
         controller.addGeoJsonSource(netSelectedSourceId, overlay.selectedStop),
+    () => controller.addGeoJsonSource(
+      netPlanSourceId,
+      overlay.plan,
+      promoteId: 'id',
+    ),
 
     // Trajetos: outras variantes/sentidos esmaecidos; ida em âmbar contínuo,
     // volta em traço tracejado da cor do texto (forma, não só cor).
@@ -296,6 +313,120 @@ Future<bool> addNetworkLayers({
         circleStrokeWidth: 2.5,
       ),
       enableInteraction: false,
+    ),
+    // Viagem planejada: 1º ônibus âmbar, 2º na cor do texto (larguras e
+    // cores diferentes do trajeto da linha e do rastro do ônibus real),
+    // caminhada pontilhada, setas no sentido do percurso.
+    () => controller.addLineLayer(
+      netPlanSourceId,
+      netPlanWalkLayerId,
+      LineLayerProperties(
+        lineColor: muted,
+        lineWidth: 3,
+        lineDasharray: const [0.4, 1.6],
+        lineCap: 'round',
+      ),
+      filter: [
+        '==',
+        ['get', 'kind'],
+        'walk',
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addLineLayer(
+      netPlanSourceId,
+      netPlanLeg1LayerId,
+      LineLayerProperties(
+        lineColor: accent,
+        lineWidth: 7,
+        lineOpacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        '==',
+        ['get', 'kind'],
+        'leg1',
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addLineLayer(
+      netPlanSourceId,
+      netPlanLeg2LayerId,
+      LineLayerProperties(
+        lineColor: strong,
+        lineWidth: 7,
+        lineOpacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      ),
+      filter: [
+        '==',
+        ['get', 'kind'],
+        'leg2',
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addSymbolLayer(
+      netPlanSourceId,
+      netPlanArrowsLayerId,
+      SymbolLayerProperties(
+        symbolPlacement: 'line',
+        symbolSpacing: 90,
+        textField: '›',
+        textFont: const ['Noto Sans Bold'],
+        textSize: 18,
+        textColor: panel,
+        // Halo escuro: a seta aparece no âmbar e no traço escuro/claro.
+        textHaloColor: dark ? onAccent : strong,
+        textHaloWidth: 1.2,
+        textKeepUpright: false,
+        textAllowOverlap: true,
+      ),
+      filter: [
+        'in',
+        ['get', 'kind'],
+        [
+          'literal',
+          ['leg1', 'leg2'],
+        ],
+      ],
+      enableInteraction: false,
+    ),
+    () => controller.addCircleLayer(
+      netPlanSourceId,
+      netPlanPointsLayerId,
+      CircleLayerProperties(
+        circleRadius: [
+          'match',
+          ['get', 'kind'],
+          'transfer',
+          7,
+          8,
+        ],
+        circleColor: [
+          'match',
+          ['get', 'kind'],
+          'origin',
+          panel,
+          'destination',
+          accent,
+          panel,
+        ],
+        circleStrokeColor: [
+          'match',
+          ['get', 'kind'],
+          'transfer',
+          accent,
+          strong,
+        ],
+        circleStrokeWidth: 3,
+      ),
+      filter: [
+        '==',
+        ['geometry-type'],
+        'Point',
+      ],
     ),
     () => controller.addCircleLayer(
       netSelectedSourceId,

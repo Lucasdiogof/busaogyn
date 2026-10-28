@@ -120,6 +120,9 @@ TransitCatalog decodeCatalog(String json) {
         circular: r('circular') == true,
         encoded: r('entries') is String ? r('entries')! as String : '',
         ambiguous: [for (final v in _list(r('ambiguous'))) ?_code(v)],
+        streetRho: r('streetRho') is num
+            ? (r('streetRho')! as num).toDouble()
+            : null,
       );
     }),
     lines: _table(root['lines'], (r) {

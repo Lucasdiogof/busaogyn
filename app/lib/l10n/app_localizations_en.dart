@@ -1384,4 +1384,158 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get trackReasonRepeatedSection =>
       'the route passes this section twice';
+
+  @override
+  String get plannerOpen => 'Plan a trip';
+
+  @override
+  String get plannerTitle => 'Plan a trip';
+
+  @override
+  String get plannerIntro =>
+      'Stop to stop, with up to one transfer. Works offline: uses only the catalog on this device.';
+
+  @override
+  String get plannerOrigin => 'From';
+
+  @override
+  String get plannerDestination => 'To';
+
+  @override
+  String get plannerSearchHint => 'Code, street, district or city';
+
+  @override
+  String get plannerPickOnMap => 'Pick on the map';
+
+  @override
+  String plannerPicking(String field) {
+    return 'Tap a stop on the map to set: $field.';
+  }
+
+  @override
+  String get plannerSwap => 'Swap origin and destination';
+
+  @override
+  String get plannerSearch => 'Find trips';
+
+  @override
+  String get plannerClose => 'Close planner';
+
+  @override
+  String get plannerNotCovered => 'not covered by the planner';
+
+  @override
+  String get plannerNoResultTitle => 'No trip to show';
+
+  @override
+  String get plannerSameStop => 'Origin and destination are the same stop.';
+
+  @override
+  String get plannerUnknownStop => 'Stop not found in the catalog.';
+
+  @override
+  String get plannerNoCoverageOrigin =>
+      'The origin is not yet on any route with a reliable stop order. Try a nearby stop.';
+
+  @override
+  String get plannerNoCoverageDestination =>
+      'The destination is not yet on any route with a reliable stop order. Try a nearby stop.';
+
+  @override
+  String get plannerNoRoute =>
+      'No trip with enough evidence and up to one transfer. That does not mean there is no bus, only that current data cannot confirm one.';
+
+  @override
+  String get plannerTruncated =>
+      'The search stopped at its processing limit; there may be other options.';
+
+  @override
+  String plannerResultsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count options',
+      one: '1 option',
+      zero: 'No options',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerReliable => 'Reliable';
+
+  @override
+  String get plannerEstimated => 'Estimated';
+
+  @override
+  String plannerBuses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count buses',
+      one: '1 bus',
+      zero: 'No bus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerDirect => 'direct';
+
+  @override
+  String plannerTransfers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transfers',
+      one: '1 transfer',
+      zero: 'no transfer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerBoard => 'Board';
+
+  @override
+  String get plannerTransfer => 'Transfer';
+
+  @override
+  String get plannerAlight => 'Get off';
+
+  @override
+  String plannerLeg(String direction, String km, int stops, String variant) {
+    return '$variant · $direction · $stops stops · $km km along the route';
+  }
+
+  @override
+  String plannerWalk(int meters) {
+    return 'on foot, ~$meters m in a straight line';
+  }
+
+  @override
+  String get plannerShowOnMap => 'Show on map';
+
+  @override
+  String get plannerOnMap => 'On the map';
+
+  @override
+  String get plannerNoTimes =>
+      'No travel time or schedule: timetables have no confirmed validity. Stop order is estimated from the official route; km are measured along it.';
+
+  @override
+  String get plannerCautionOrder =>
+      'Stop order not cross-checked with the official street list.';
+
+  @override
+  String get plannerCautionUncertain =>
+      'Uncertain position of a boarding or alighting stop.';
+
+  @override
+  String get plannerCautionRepeated =>
+      'The bus passes one of the stops more than once.';
+
+  @override
+  String get plannerCautionWalk =>
+      'Walking transfer: crossing, sidewalk and accessibility not verified.';
 }

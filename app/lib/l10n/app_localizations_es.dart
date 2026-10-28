@@ -1390,4 +1390,158 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get trackReasonRepeatedSection =>
       'el trayecto pasa dos veces por este tramo';
+
+  @override
+  String get plannerOpen => 'Planear viaje';
+
+  @override
+  String get plannerTitle => 'Planear viaje';
+
+  @override
+  String get plannerIntro =>
+      'De parada a parada, con hasta un transbordo. Funciona sin internet: usa solo el catálogo del dispositivo.';
+
+  @override
+  String get plannerOrigin => 'Origen';
+
+  @override
+  String get plannerDestination => 'Destino';
+
+  @override
+  String get plannerSearchHint => 'Código, calle, barrio o ciudad';
+
+  @override
+  String get plannerPickOnMap => 'Elegir en el mapa';
+
+  @override
+  String plannerPicking(String field) {
+    return 'Toque una parada en el mapa para definir: $field.';
+  }
+
+  @override
+  String get plannerSwap => 'Invertir origen y destino';
+
+  @override
+  String get plannerSearch => 'Buscar viajes';
+
+  @override
+  String get plannerClose => 'Cerrar planificador';
+
+  @override
+  String get plannerNotCovered => 'fuera del planificador';
+
+  @override
+  String get plannerNoResultTitle => 'Ningún viaje para mostrar';
+
+  @override
+  String get plannerSameStop => 'Origen y destino son la misma parada.';
+
+  @override
+  String get plannerUnknownStop => 'Parada no encontrada en el catálogo.';
+
+  @override
+  String get plannerNoCoverageOrigin =>
+      'El origen aún no está en ningún trayecto con orden de paradas confiable. Pruebe una parada cercana.';
+
+  @override
+  String get plannerNoCoverageDestination =>
+      'El destino aún no está en ningún trayecto con orden de paradas confiable. Pruebe una parada cercana.';
+
+  @override
+  String get plannerNoRoute =>
+      'No hay viaje con evidencia suficiente y hasta un transbordo. No significa que no haya ómnibus, solo que los datos actuales no lo confirman.';
+
+  @override
+  String get plannerTruncated =>
+      'La búsqueda se detuvo en el límite de procesamiento; puede haber otras opciones.';
+
+  @override
+  String plannerResultsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count alternativas',
+      one: '1 alternativa',
+      zero: 'Ninguna alternativa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerReliable => 'Confiable';
+
+  @override
+  String get plannerEstimated => 'Estimada';
+
+  @override
+  String plannerBuses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ómnibus',
+      one: '1 ómnibus',
+      zero: 'Ningún ómnibus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerDirect => 'directo';
+
+  @override
+  String plannerTransfers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transbordos',
+      one: '1 transbordo',
+      zero: 'sin transbordo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get plannerBoard => 'Embarque';
+
+  @override
+  String get plannerTransfer => 'Transbordo';
+
+  @override
+  String get plannerAlight => 'Bajada';
+
+  @override
+  String plannerLeg(String direction, String km, int stops, String variant) {
+    return '$variant · $direction · $stops paradas · $km km por el trayecto';
+  }
+
+  @override
+  String plannerWalk(int meters) {
+    return 'a pie, ~$meters m en línea recta';
+  }
+
+  @override
+  String get plannerShowOnMap => 'Ver en el mapa';
+
+  @override
+  String get plannerOnMap => 'En el mapa';
+
+  @override
+  String get plannerNoTimes =>
+      'Sin tiempo de viaje ni horario: los cuadros no tienen vigencia confirmada. El orden de las paradas es estimado por el trayecto oficial; los km se miden en él.';
+
+  @override
+  String get plannerCautionOrder =>
+      'Orden de paradas no verificado con las calles oficiales.';
+
+  @override
+  String get plannerCautionUncertain =>
+      'Posición incierta de una parada de subida o bajada.';
+
+  @override
+  String get plannerCautionRepeated =>
+      'El ómnibus pasa más de una vez por una de las paradas.';
+
+  @override
+  String get plannerCautionWalk =>
+      'Transbordo a pie: cruce, vereda y accesibilidad no verificados.';
 }

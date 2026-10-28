@@ -545,6 +545,105 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('planejador: origem pela busca, destino no mapa, baldeação', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(routeName: null));
+    await _tapKey(tester, 'planner-open');
+    expect(find.byKey(const ValueKey('trip-planner')), findsOneWidget);
+    expect(find.textContaining('Funciona sem internet'), findsOneWidget);
+
+    // Origem pela busca local (nada sai do aparelho).
+    await tester.enterText(
+      find.byKey(const ValueKey('planner-input-origin')),
+      'trindade',
+    );
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-result-origin-1202');
+    expect(find.byKey(const ValueKey('planner-origin-1202')), findsOneWidget);
+    // O mapa vai até a origem escolhida.
+    expect(_map(tester).network!.focus!.point!.longitude, -49.49);
+
+    // Destino tocando no mapa: preenche o campo, não abre o ponto.
+    await _tapKey(tester, 'planner-pick-destination');
+    expect(
+      find.byKey(const ValueKey('planner-picking-destination')),
+      findsOneWidget,
+    );
+    _map(tester).onStopTap!('1201');
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('planner-destination-1201')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('catalog-stop-facts-1201')), findsNothing);
+
+    await _tapKey(tester, 'planner-search');
+    expect(find.byKey(const ValueKey('planner-option-0')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('planner-reliability-estimated')),
+      findsOneWidget,
+    );
+    expect(find.text('2 ônibus · 1 baldeação'), findsOneWidget);
+    // Extensão no formato do idioma (vírgula em pt), medida no trajeto.
+    expect(find.textContaining('3,8 km pelo trajeto'), findsOneWidget);
+    expect(find.textContaining('Sem tempo de viagem'), findsOneWidget);
+
+    // Mapa: dois trechos, pontos da viagem, pontos gerais fora, enquadrado.
+    final network = _map(tester).network!;
+    final kinds = [
+      for (final f in _features(network.plan)) f['properties']['kind'],
+    ];
+    expect(kinds, ['leg1', 'leg2', 'origin', 'transfer', 'destination']);
+    expect(_features(network.stops), isEmpty);
+    expect(network.focus!.bounds, isNotNull);
+    expect(_features(network.route), isEmpty);
+
+    // Inverter: limpa o resultado; o contrário não tem evidência.
+    await _tapKey(tester, 'planner-swap');
+    expect(_features(_map(tester).network!.plan), isEmpty);
+    await _tapKey(tester, 'planner-search');
+    expect(
+      find.byKey(const ValueKey('planner-status-noRoute')),
+      findsOneWidget,
+    );
+
+    // Mesmo ponto.
+    await _tapKey(tester, 'planner-clear-destination');
+    await _tapKey(tester, 'planner-pick-destination');
+    _map(tester).onStopTap!('1201');
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-search');
+    expect(
+      find.byKey(const ValueKey('planner-status-sameStop')),
+      findsOneWidget,
+    );
+
+    // Fechar volta ao mapa normal sem recriar o mapa.
+    await _tapKey(tester, 'planner-close');
+    expect(find.byKey(const ValueKey('trip-planner')), findsNothing);
+    expect(_features(_map(tester).network!.plan), isEmpty);
+    expect(_features(_map(tester).network!.stops), hasLength(4));
+    expect(_CountingMap.created, 1);
+  });
+
+  testWidgets('planejador funciona offline e não mexe no tracking', (
+    tester,
+  ) async {
+    await _pump(tester, _OfflineRepository());
+    await _tapKey(tester, 'planner-open');
+    await _tapKey(tester, 'planner-pick-origin');
+    _map(tester).onStopTap!('1202');
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-pick-destination');
+    _map(tester).onStopTap!('00294');
+    await tester.pumpAndSettle();
+    await _tapKey(tester, 'planner-search');
+    expect(find.text('1 ônibus · direto'), findsOneWidget);
+    expect(_map(tester).vehicleNumber, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final (size, scale) in [
     (const Size(320, 640), 1.0),
     (const Size(390, 844), 2.0),
@@ -570,6 +669,23 @@ void main() {
         _map(tester).onStopTap!('00294');
         await _settle(tester);
         expect(tester.takeException(), isNull);
+        // Planejador com resultado.
+        await tester.tap(_dock('Pontos'));
+        await _settle(tester);
+        await _tapKey(tester, 'planner-open');
+        await _tapKey(tester, 'planner-pick-origin');
+        _map(tester).onStopTap!('1202');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-pick-destination');
+        _map(tester).onStopTap!('1201');
+        await _settle(tester);
+        await _tapKey(tester, 'planner-search');
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('planner-option-0')),
+        );
+        await _settle(tester);
+        expect(tester.takeException(), isNull);
+        await _tapKey(tester, 'planner-close');
         await _startTracking(tester);
         await tester.tap(_dock('Meu ônibus'));
         await _settle(tester);

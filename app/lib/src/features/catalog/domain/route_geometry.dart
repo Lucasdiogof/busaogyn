@@ -162,6 +162,32 @@ class RouteLine {
     }
     return [points.last];
   }
+
+  /// Trecho entre [fromM] e [toM] ao longo do trajeto (de embarque a
+  /// desembarque), com as pontas interpoladas.
+  List<GeoPosition> slice(double fromM, double toM) => [
+    _at(fromM),
+    for (var i = 1; i < points.length - 1; i++)
+      if (_cum[i] > fromM && _cum[i] < toM) points[i],
+    _at(toM),
+  ];
+
+  GeoPosition _at(double alongM) {
+    if (alongM <= 0) return points.first;
+    for (var i = 0; i < points.length - 1; i++) {
+      if (_cum[i + 1] >= alongM) {
+        final seg = _cum[i + 1] - _cum[i];
+        final t = seg == 0 ? 0.0 : (alongM - _cum[i]) / seg;
+        final a = points[i];
+        final b = points[i + 1];
+        return GeoPosition(
+          latitude: a.latitude + (b.latitude - a.latitude) * t,
+          longitude: a.longitude + (b.longitude - a.longitude) * t,
+        );
+      }
+    }
+    return points.last;
+  }
 }
 
 /// Retângulo geográfico (para enquadrar a câmera).

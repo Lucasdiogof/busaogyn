@@ -149,6 +149,11 @@ void main() {
       );
       expect(find.byKey(const ValueKey('catalog-lines-search')), findsNothing);
       expect(find.textContaining('cadastro oficial'), findsNothing);
+      // Planejador (dados CMTC) não existe em produção.
+      await tester.tap(_dock('Pontos'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('planner-open')), findsNothing);
+      expect(find.text('Planejar viagem'), findsNothing);
     });
   });
 
