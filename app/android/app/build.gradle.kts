@@ -2,7 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -48,10 +48,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -108,6 +104,12 @@ gradle.taskGraph.whenReady {
                     "validação, defina BUSAOGYN_ALLOW_DEBUG_SIGNED_RELEASE=true.",
             )
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

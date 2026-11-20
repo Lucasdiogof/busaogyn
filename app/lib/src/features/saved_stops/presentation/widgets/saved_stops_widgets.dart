@@ -362,6 +362,7 @@ class _LineTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Semantics(
+                  container: true,
                   button: true,
                   label: l10n.lineOpenArrivals(line.routeId, line.stopCode),
                   excludeSemantics: true,
