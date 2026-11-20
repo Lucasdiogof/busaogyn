@@ -62,8 +62,9 @@ void main() {
     const res = 'android/app/src/main/res';
 
     test('ícone adaptativo referencia fundo, foreground e monochrome', () {
-      final xml = File('$res/mipmap-anydpi-v26/ic_launcher.xml')
-          .readAsStringSync();
+      final xml = File(
+        '$res/mipmap-anydpi-v26/ic_launcher.xml',
+      ).readAsStringSync();
       expect(xml, contains('@color/ic_launcher_background'));
       expect(
         xml,
@@ -78,11 +79,13 @@ void main() {
         ),
       );
 
-      final colors = File('$res/values/ic_launcher_background.xml')
-          .readAsStringSync();
+      final colors = File(
+        '$res/values/ic_launcher_background.xml',
+      ).readAsStringSync();
       expect(
-        RegExp(r'<color name="ic_launcher_background">#[0-9A-Fa-f]{6}</color>')
-            .hasMatch(colors),
+        RegExp(
+          r'<color name="ic_launcher_background">#[0-9A-Fa-f]{6}</color>',
+        ).hasMatch(colors),
         isTrue,
       );
     });
@@ -173,8 +176,9 @@ void main() {
       _expectSquare('$launch/LaunchImage.png', 144, alpha: true);
       _expectSquare('$launch/LaunchImage@2x.png', 288, alpha: true);
       _expectSquare('$launch/LaunchImage@3x.png', 432, alpha: true);
-      final storyboard = File('ios/Runner/Base.lproj/LaunchScreen.storyboard')
-          .readAsStringSync();
+      final storyboard = File(
+        'ios/Runner/Base.lproj/LaunchScreen.storyboard',
+      ).readAsStringSync();
       expect(
         storyboard,
         contains('<image name="LaunchImage" width="144" height="144"/>'),
@@ -182,8 +186,9 @@ void main() {
     });
 
     test('bundle id preservado', () {
-      final project = File('ios/Runner.xcodeproj/project.pbxproj')
-          .readAsStringSync();
+      final project = File(
+        'ios/Runner.xcodeproj/project.pbxproj',
+      ).readAsStringSync();
       expect(project, contains('com.lucksrei.busaogyn'));
     });
   });

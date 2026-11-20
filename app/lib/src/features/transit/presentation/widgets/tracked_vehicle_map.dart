@@ -37,10 +37,8 @@ class MapSurfaceParams {
 }
 
 /// Constrói a superfície do mapa nativo; substituível em testes.
-typedef VehicleMapBuilder = Widget Function(
-  BuildContext context,
-  MapSurfaceParams params,
-);
+typedef VehicleMapBuilder =
+    Widget Function(BuildContext context, MapSurfaceParams params);
 
 /// Mapa principal, montado uma única vez. Recebe só a posição real do ônibus
 /// acompanhado (ou nada) e nunca é reconstruído por mudanças de estado.

@@ -113,8 +113,9 @@ class TrackingCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
             child: Text(
               notice,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: tokens.mutedText),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
             ),
           ),
         ],
@@ -252,8 +253,10 @@ class _PositionLine extends StatelessWidget {
             Expanded(
               child: Text(
                 status.text,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: color, fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -417,8 +420,9 @@ class _VehicleDetails extends StatelessWidget {
             const SizedBox(height: Space.xs),
             Text(
               l10n.trailNote,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: tokens.mutedText),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
             ),
           ],
         ),

@@ -537,8 +537,9 @@ void main() {
               expect(box.size.width, greaterThanOrEqualTo(48));
             }
             // O dock mede o que a geometria da página calcula.
-            final media = MediaQueryData.fromView(tester.view)
-                .copyWith(textScaler: TextScaler.linear(scale));
+            final media = MediaQueryData.fromView(
+              tester.view,
+            ).copyWith(textScaler: TextScaler.linear(scale));
             final width = size.width - Chrome.gutter * 2;
             final expected = Chrome.dockLayout(
               width,

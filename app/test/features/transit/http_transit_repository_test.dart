@@ -53,8 +53,9 @@ void main() {
     });
 
     test('lista vazia e meta ausente', () async {
-      final snapshot = await repositoryReturning({'data': <Object>[]})
-          .getArrivals('30402');
+      final snapshot = await repositoryReturning({
+        'data': <Object>[],
+      }).getArrivals('30402');
       expect(snapshot.data, isEmpty);
       expect(snapshot.ageSeconds, 0);
       expect(snapshot.fetchedAt, isNull);
@@ -166,8 +167,9 @@ void main() {
     };
 
     test('data null é ônibus sem posição', () async {
-      final snapshot = await repositoryReturning({'data': null})
-          .getVehiclePosition(vehicleNumber: '20529', stopId: '00001');
+      final snapshot = await repositoryReturning({
+        'data': null,
+      }).getVehiclePosition(vehicleNumber: '20529', stopId: '00001');
       expect(snapshot.data, isNull);
       expect(requests.single.queryParameters, {'stopId': '00001'});
     });
@@ -203,8 +205,9 @@ void main() {
 
     test('sem id é formato inesperado, não TypeError', () async {
       await expectLater(
-        repositoryReturning({'data': vehicle(id: null)})
-            .getVehiclePosition(vehicleNumber: '20529', stopId: '30402'),
+        repositoryReturning({
+          'data': vehicle(id: null),
+        }).getVehiclePosition(vehicleNumber: '20529', stopId: '30402'),
         throwsFormatException,
       );
     });

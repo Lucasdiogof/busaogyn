@@ -39,9 +39,9 @@ void main() {
   });
 
   test('só guarda código, nome, hora e versão (nenhuma previsão)', () {
-    final json = jsonDecode(
-      encodeSavedStops(SavedStopsData(favorites: [stop('1')])),
-    ) as Map;
+    final json =
+        jsonDecode(encodeSavedStops(SavedStopsData(favorites: [stop('1')])))
+            as Map;
     expect(json.keys.toSet(), {'schema', 'favorites', 'recents', 'lines'});
     expect((json['favorites'] as List).single.keys.toSet(), {
       'code',
