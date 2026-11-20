@@ -13,7 +13,7 @@ concurrency:
   group: deploy-web
   cancel-in-progress: true
 env:
-  FLUTTER_VERSION: "3.47.4"        # pin to the version the app is developed with
+  FLUTTER_VERSION: "3.50.1"        # pin to the version the app is developed with
   APP_DIR: "app"                    # folder with pubspec.yaml and wrangler.jsonc (OrbiJob: app)
   FLUTTER_WEB_FLAGS: ""             # e.g. --no-web-resources-cdn
   # Only live URLs: add https://busaogyn.lucksrei.com when the custom-domain route in app/wrangler.jsonc is enabled.
