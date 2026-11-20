@@ -94,7 +94,10 @@ class BusaoGynApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             locale: locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              ...GlobalMaterialLocalizations.delegates,
+            ],
             localeListResolutionCallback: (locales, supported) =>
                 resolveAppLocale(locales?.firstOrNull),
             // Os textos de formatadores e cubits vêm do idioma global; trocar

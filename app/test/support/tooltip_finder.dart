@@ -5,8 +5,8 @@ import 'package:material_ui/material_ui.dart';
 /// quando `excludeFromSemantics: true`; este finder cobre os dois casos.
 extension TooltipFinder on CommonFinders {
   Finder byTip(Pattern message) => byWidgetPredicate((widget) {
-        if (widget is! Tooltip) return false;
-        final text = widget.message ?? widget.richMessage?.toPlainText() ?? '';
-        return message is RegExp ? message.hasMatch(text) : text == message;
-      }, skipOffstage: true);
+    if (widget is! Tooltip) return false;
+    final text = widget.message ?? widget.richMessage?.toPlainText() ?? '';
+    return message is RegExp ? message.hasMatch(text) : text == message;
+  }, skipOffstage: true);
 }

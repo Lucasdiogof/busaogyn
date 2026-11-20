@@ -637,9 +637,8 @@ class RecentStopsSection extends StatelessWidget {
                 ),
                 child: Text(
                   l10n.recentsEmpty,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: tokens.mutedText),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: tokens.mutedText),
                 ),
               )
             else ...[
@@ -706,9 +705,8 @@ class FavoriteArrivalsSummary extends StatelessWidget {
       builder: (context, state) {
         final entry = state.byStop[stopCode];
         if (entry == null) return const SizedBox.shrink();
-        final style = Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: context.tokens.mutedText);
+        final style = Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: context.tokens.mutedText);
         final Widget content = switch (entry.status) {
           FavoriteStopStatus.loading => Text(
             l10n.favoriteStatusLoading,

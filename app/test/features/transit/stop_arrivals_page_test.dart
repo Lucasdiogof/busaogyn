@@ -12,6 +12,7 @@ import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehic
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../../support/tooltip_finder.dart';
 
 /// Sem platform view nativa no flutter_test.
