@@ -4,7 +4,7 @@ import 'dart:math' as math;
 
 import 'package:busaogyn/src/core/config/map_config.dart';
 import 'package:busaogyn/src/core/map/busao_style.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _glyphs = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';

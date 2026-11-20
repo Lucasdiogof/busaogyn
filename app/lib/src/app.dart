@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/l10n/l10n.dart';
@@ -94,7 +94,7 @@ class BusaoGynApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             locale: locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
             localeListResolutionCallback: (locales, supported) =>
                 resolveAppLocale(locales?.firstOrNull),
             // Os textos de formatadores e cubits vêm do idioma global; trocar

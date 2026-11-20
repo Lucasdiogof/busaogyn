@@ -11,7 +11,7 @@ import 'package:busaogyn/src/features/transit/presentation/formatters/error_mess
 import 'package:busaogyn/src/features/transit/presentation/formatters/transit_labels.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _arb(String locale) =>

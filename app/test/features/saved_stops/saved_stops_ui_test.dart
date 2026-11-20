@@ -13,10 +13,11 @@ import 'package:busaogyn/src/features/transit/domain/repositories/transit_reposi
 import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart';
+import '../../support/tooltip_finder.dart';
 
 class _CountingMap extends StatefulWidget {
   const _CountingMap();
@@ -157,11 +158,11 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 Future<void> _search(WidgetTester tester, String code) async {
   // Com um ponto na tela o campo fica atrás do botão de buscar outro ponto.
   if (find.byType(TextField).evaluate().isEmpty) {
-    await tester.tap(find.byTooltip('Buscar outro ponto'));
+    await tester.tap(find.byTip('Buscar outro ponto'));
     await tester.pumpAndSettle();
   }
   await tester.enterText(find.byType(TextField), code);
-  await tester.tap(find.byTooltip('Buscar'));
+  await tester.tap(find.byTip('Buscar'));
   await tester.pumpAndSettle();
 }
 
@@ -194,9 +195,9 @@ Finder _recentTile(String code) => find.descendant(
 Finder _iconButton(Finder tooltip) =>
     find.ancestor(of: tooltip, matching: find.byType(IconButton)).first;
 
-Finder _favStar(String code) => find.byTooltip('Favoritar o ponto $code');
+Finder _favStar(String code) => find.byTip('Favoritar o ponto $code');
 Finder _unfavStar(String code) =>
-    find.byTooltip('Remover o ponto $code dos favoritos');
+    find.byTip('Remover o ponto $code dos favoritos');
 
 Color? _fieldBorder(WidgetTester tester) => tester
     .widget<GlassSurface>(
@@ -269,7 +270,7 @@ void main() {
       await _pump(tester, repository: repository, store: store);
 
       await tester.enterText(find.byType(TextField), '30402');
-      await tester.tap(find.byTooltip('Buscar'));
+      await tester.tap(find.byTip('Buscar'));
       await tester.pump();
       final loading = tester.widget<IconButton>(_iconButton(_favStar('30402')));
       expect(loading.onPressed, isNull);
@@ -501,9 +502,9 @@ void main() {
 
   group('linhas favoritas', () {
     Finder lineStar(String route, String stop) =>
-        find.byTooltip('Favoritar a linha $route neste ponto');
+        find.byTip('Favoritar a linha $route neste ponto');
     Finder lineUnstar(String route, String stop) =>
-        find.byTooltip('Remover a linha $route do ponto $stop dos favoritos');
+        find.byTip('Remover a linha $route do ponto $stop dos favoritos');
 
     testWidgets('favorita a linha no ponto, lista em Favoritos e remove', (
       tester,
@@ -522,14 +523,14 @@ void main() {
       await _openTab(tester, 'Favoritos');
       expect(find.text('LINHAS FAVORITAS'), findsOneWidget);
       expect(
-        find.byTooltip('Remover a linha 020 do ponto 30402 dos favoritos'),
+        find.byTip('Remover a linha 020 do ponto 30402 dos favoritos'),
         findsOneWidget,
       );
       // Só linha favorita: não cai no estado vazio.
       expect(find.text('Seus pontos favoritos aparecerão aqui.'), findsNothing);
 
       await tester.tap(
-        find.byTooltip('Remover a linha 020 do ponto 30402 dos favoritos'),
+        find.byTip('Remover a linha 020 do ponto 30402 dos favoritos'),
       );
       await tester.pumpAndSettle();
       expect(store.data.lines, isEmpty);
@@ -645,7 +646,7 @@ void main() {
       final saves = store.saves.length;
 
       repository.failures['30402'] = _offline;
-      await tester.tap(find.byTooltip('Atualizar chegadas'));
+      await tester.tap(find.byTip('Atualizar chegadas'));
       await tester.pumpAndSettle();
       expect(store.saves, hasLength(saves));
     });
@@ -675,7 +676,7 @@ void main() {
       // vira registro.
       repository.failures.remove('30100');
       final before = store.saves.length;
-      await tester.tap(find.byTooltip('Atualizar chegadas'));
+      await tester.tap(find.byTip('Atualizar chegadas'));
       await tester.pumpAndSettle();
       expect(store.saves, hasLength(before));
     });
@@ -735,7 +736,7 @@ void main() {
     testWidgets('remove um item dos recentes', (tester) async {
       final store = FakeStore(initial: _data(recents: ['30100', '30402']));
       await _pump(tester, store: store);
-      await _tap(tester, find.byTooltip('Remover o ponto 30100 dos recentes'));
+      await _tap(tester, find.byTip('Remover o ponto 30100 dos recentes'));
       expect(_recentTile('30100'), findsNothing);
       expect(_recentTile('30402'), findsOneWidget);
       expect(codes(store.data.recents), ['30402']);
@@ -992,14 +993,14 @@ void main() {
         'linha do recente',
       );
       expectTarget(
-        find.byTooltip('Remover o ponto 30100 dos recentes'),
+        find.byTip('Remover o ponto 30100 dos recentes'),
         'remover recente',
       );
       expectTarget(find.widgetWithText(TextButton, 'Limpar'), 'Limpar');
 
       await _openTab(tester, 'Favoritos');
       expectTarget(
-        find.byTooltip('Remover o ponto 30402 dos favoritos'),
+        find.byTip('Remover o ponto 30402 dos favoritos'),
         'remover favorito',
       );
       expect(tester.getSize(_favTile('30402')).height, greaterThan(10));
@@ -1048,7 +1049,7 @@ void main() {
             );
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
-            await tester.tap(find.byTooltip('Buscar outro ponto'));
+            await tester.tap(find.byTip('Buscar outro ponto'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
 
@@ -1095,7 +1096,7 @@ void main() {
             expect(_recentTile('30601'), findsOneWidget);
             await _search(tester, '30402');
             expect(tester.takeException(), isNull);
-            await tester.tap(find.byTooltip('Ajustes'));
+            await tester.tap(find.byTip('Ajustes'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
           },
@@ -1116,7 +1117,7 @@ void main() {
       expect(_CountingMap.created, 1);
 
       await _search(tester, '30402');
-      await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
+      await tester.tap(find.byTip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
       TransitMap map() => tester.widget<TransitMap>(find.byType(TransitMap));
       expect(map().vehicleNumber, '20529');

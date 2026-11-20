@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:busaogyn/src/core/theme/app_theme.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/vehicle_map_data.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
@@ -51,6 +51,7 @@ class _FakeController extends Fake implements MapLibreMapController {
     String name,
     Uint8List bytes, [
     bool sdf = false,
+    double? pixelRatio,
   ]) async {
     final gate = firstImageGate;
     if (gate != null) {

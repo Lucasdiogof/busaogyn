@@ -11,12 +11,14 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: any
+  intl: ^0.20.3
   http: ^1.5.0
   flutter_bloc: ^9.1.1
-  maplibre_gl: ^0.27.1
+  maplibre_gl: ^0.28.0
   shared_preferences: ^2.5.3
 
+  material_ui: ^1.11.1
+  cupertino_ui: ^1.1.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

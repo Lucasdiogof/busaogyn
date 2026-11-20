@@ -13,8 +13,9 @@ import 'package:busaogyn/src/features/transit/domain/repositories/transit_reposi
 import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/tooltip_finder.dart';
 
 /// Conta quantas vezes o widget do mapa é criado e descartado.
 class _CountingMap extends StatefulWidget {
@@ -127,7 +128,7 @@ Future<void> _pump(
 
 Future<void> _search(WidgetTester tester, String code) async {
   await tester.enterText(find.byType(TextField), code);
-  await tester.tap(find.byTooltip('Buscar'));
+  await tester.tap(find.byTip('Buscar'));
   await tester.pumpAndSettle();
 }
 
@@ -272,17 +273,17 @@ void main() {
       tester,
     ) async {
       await _pump(tester, _Repository());
-      final size = tester.getSize(find.byTooltip('Ajustes'));
+      final size = tester.getSize(find.byTip('Ajustes'));
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
 
       await _openTab(tester, 'Favoritos');
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       expect(find.text('Tema'), findsOneWidget);
       expect(find.text('Seus pontos favoritos aparecerão aqui.'), findsNothing);
 
-      await tester.tap(find.byTooltip('Fechar ajustes'));
+      await tester.tap(find.byTip('Fechar ajustes'));
       await tester.pumpAndSettle();
       expect(
         find.text('Seus pontos favoritos aparecerão aqui.'),
@@ -295,11 +296,11 @@ void main() {
     ) async {
       await _pump(tester, _Repository());
       await _openTab(tester, 'Linhas');
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       expect(find.text('Tema'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       expect(
         find.text('As linhas estarão disponíveis em breve.'),
@@ -310,7 +311,7 @@ void main() {
     testWidgets('sair de Ajustes por outro destino do dock', (tester) async {
       final semantics = tester.ensureSemantics();
       await _pump(tester, _Repository());
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       // Com Ajustes aberto, nenhum destino do dock aparece selecionado.
       expect(_isSelected(tester, 'Pontos'), isFalse);
@@ -327,7 +328,7 @@ void main() {
     testWidgets('tema e fontes de dados continuam funcionando', (tester) async {
       final store = MemoryThemePreferenceStore();
       await _pump(tester, _Repository(), themeStore: store);
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
 
       expect(
@@ -352,14 +353,14 @@ void main() {
       for (final label in ['Linhas', 'Favoritos', 'Meu ônibus', 'Pontos']) {
         await _openTab(tester, label);
       }
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       // Troca de tema com Ajustes aberto.
       await tester.tap(find.text('Noturno'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Claro'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Fechar ajustes'));
+      await tester.tap(find.byTip('Fechar ajustes'));
       await tester.pumpAndSettle();
       // Redimensionar (celular → largo → celular).
       tester.view.physicalSize = const Size(1366, 768);
@@ -406,7 +407,7 @@ void main() {
       final repository = _Repository();
       await _pump(tester, repository);
       await _search(tester, '30402');
-      await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
+      await tester.tap(find.byTip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
       expect(find.text('ACOMPANHANDO'), findsOneWidget);
       expect(_map(tester).vehicleNumber, '20529');
@@ -416,9 +417,9 @@ void main() {
         expect(_map(tester).vehicleNumber, '20529', reason: 'em $label');
       }
       // Ajustes pela TopBar também não encerra.
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Fechar ajustes'));
+      await tester.tap(find.byTip('Fechar ajustes'));
       await tester.pumpAndSettle();
       expect(_map(tester).vehicleNumber, '20529');
 
@@ -436,14 +437,14 @@ void main() {
     testWidgets('parar o acompanhamento volta a Pontos', (tester) async {
       await _pump(tester, _Repository());
       await _search(tester, '30402');
-      await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
+      await tester.tap(find.byTip('Acompanhar ônibus 20529'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Parar de acompanhar'));
+      await tester.tap(find.byTip('Parar de acompanhar'));
       await tester.pumpAndSettle();
       expect(_map(tester).vehicleNumber, isNull);
       expect(find.text('Ponto 30402'), findsOneWidget);
-      expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
+      expect(find.byTip('Acompanhar ônibus 20529'), findsOneWidget);
     });
   });
 
@@ -546,7 +547,7 @@ void main() {
             ).height;
             expect(tester.getSize(find.byType(NavDock)).height, expected);
             expect(
-              tester.getSize(find.byTooltip('Ajustes')).shortestSide,
+              tester.getSize(find.byTip('Ajustes')).shortestSide,
               greaterThanOrEqualTo(48),
             );
 
@@ -561,7 +562,7 @@ void main() {
               await tester.pumpAndSettle();
               expect(tester.takeException(), isNull, reason: tab);
             }
-            await tester.tap(find.byTooltip('Ajustes'));
+            await tester.tap(find.byTip('Ajustes'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
           },
@@ -587,7 +588,7 @@ void main() {
             );
             expect(tester.takeException(), isNull);
             await _search(tester, '30402');
-            await tester.tap(find.byTooltip('Acompanhar ônibus 20529'));
+            await tester.tap(find.byTip('Acompanhar ônibus 20529'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
             for (final tab in ['Linhas', 'Favoritos', 'Meu ônibus', 'Pontos']) {
@@ -597,7 +598,7 @@ void main() {
               );
               expect(tester.takeException(), isNull, reason: tab);
             }
-            await tester.tap(find.byTooltip('Ajustes'));
+            await tester.tap(find.byTip('Ajustes'));
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
             expect(find.byKey(const Key('fake-map')), findsOneWidget);
@@ -653,7 +654,7 @@ void main() {
       await _search(tester, '30402');
 
       repository.failures['30402'] = _offline;
-      await tester.tap(find.byTooltip('Atualizar chegadas'));
+      await tester.tap(find.byTip('Atualizar chegadas'));
       await tester.pumpAndSettle();
       expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
       expect(

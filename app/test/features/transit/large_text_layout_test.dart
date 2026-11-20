@@ -9,9 +9,10 @@ import 'package:busaogyn/src/features/transit/presentation/widgets/arrival_card.
 import 'package:busaogyn/src/features/transit/presentation/widgets/home_chrome.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/tooltip_finder.dart';
 
 /// Palavras de até 10 letras: a fonte do flutter_test (Ahem) é bem mais larga
 /// que a Geist, então uma palavra mais longa não cabe nem num cartão inteiro.
@@ -89,12 +90,12 @@ Future<void> _pump(
   );
   await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField), '30402');
-  await tester.tap(find.byTooltip('Buscar'));
+  await tester.tap(find.byTip('Buscar'));
   await tester.pumpAndSettle();
 }
 
 Future<void> _track(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Acompanhar ônibus 20693'));
+  await tester.tap(find.byTip('Acompanhar ônibus 20693'));
   await tester.pumpAndSettle();
 }
 
@@ -199,7 +200,7 @@ void main() {
         }
 
         // Ajustes (TopBar) e Pontos continuam funcionando.
-        await tester.tap(find.byTooltip('Ajustes'));
+        await tester.tap(find.byTip('Ajustes'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await tester.tap(

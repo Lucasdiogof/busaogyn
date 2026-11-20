@@ -2,9 +2,10 @@ import 'package:busaogyn/src/core/theme/app_theme.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/map_vehicle.dart';
 import 'package:busaogyn/src/features/transit/domain/entities/tracked_vehicle.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/secondary_vehicle_callout.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/tooltip_finder.dart';
 
 Widget _host(Widget child) {
   return MaterialApp(
@@ -49,7 +50,7 @@ void main() {
 
     await tester.tap(find.text('Acompanhar este ônibus'));
     expect(tracked, 1);
-    await tester.tap(find.byTooltip('Fechar'));
+    await tester.tap(find.byTip('Fechar'));
     expect(closed, 1);
   });
 

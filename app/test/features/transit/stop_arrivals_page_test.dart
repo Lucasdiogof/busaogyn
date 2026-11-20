@@ -9,9 +9,10 @@ import 'package:busaogyn/src/features/transit/domain/models/transit_snapshot.dar
 import 'package:busaogyn/src/features/transit/domain/repositories/transit_repository.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/search_header.dart';
 import 'package:busaogyn/src/features/transit/presentation/widgets/tracked_vehicle_map.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/tooltip_finder.dart';
 
 /// Sem platform view nativa no flutter_test.
 Widget _fakeMap(BuildContext context, MapSurfaceParams params) {
@@ -160,12 +161,12 @@ Future<void> _pumpApp(
 
 Future<void> _search(WidgetTester tester, String code) async {
   await tester.enterText(find.byType(TextField), code);
-  await tester.tap(find.byTooltip('Buscar'));
+  await tester.tap(find.byTip('Buscar'));
   await tester.pumpAndSettle();
 }
 
 Future<void> _track(WidgetTester tester, String vehicle) async {
-  await tester.tap(find.byTooltip('Acompanhar ônibus $vehicle'));
+  await tester.tap(find.byTip('Acompanhar ônibus $vehicle'));
   await tester.pumpAndSettle();
 }
 
@@ -182,14 +183,14 @@ void main() {
     expect(find.byKey(const Key('fake-map')), findsOneWidget);
     expect(find.text('Digite o código do ponto'), findsOneWidget);
     expect(find.byType(SearchHeader), findsOneWidget);
-    expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.byTip('Centralizar ônibus'), findsNothing);
     expect(find.text('Ao vivo'), findsNothing);
     // Dock com os quatro destinos e Ajustes na TopBar.
     expect(find.text('Linhas'), findsOneWidget);
     expect(find.text('Pontos'), findsOneWidget);
     expect(find.text('Favoritos'), findsOneWidget);
     expect(find.text('Meu ônibus'), findsOneWidget);
-    expect(find.byTooltip('Ajustes'), findsOneWidget);
+    expect(find.byTip('Ajustes'), findsOneWidget);
     expect(find.text('Ponto'), findsNothing);
     expect(find.text('Acompanhando'), findsNothing);
   });
@@ -220,8 +221,8 @@ void main() {
     expect(find.text('020'), findsOneWidget);
     expect(find.text('003'), findsOneWidget);
     // Só o ônibus com GPS confirmado pode ser acompanhado.
-    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
-    expect(find.byTooltip('Acompanhar ônibus 20648'), findsNothing);
+    expect(find.byTip('Acompanhar ônibus 20529'), findsOneWidget);
+    expect(find.byTip('Acompanhar ônibus 20648'), findsNothing);
   });
 
   testWidgets('"Ao vivo" só com tempo real recente', (tester) async {
@@ -237,7 +238,7 @@ void main() {
     expect(find.text('Ao vivo'), findsNothing);
     expect(find.text('Programado'), findsOneWidget);
     expect(find.text('PROGRAMADO'), findsOneWidget);
-    expect(find.byTooltip('Acompanhar ônibus 20529'), findsNothing);
+    expect(find.byTip('Acompanhar ônibus 20529'), findsNothing);
   });
 
   testWidgets('dado stale aparece como desatualizado, não ao vivo', (
@@ -278,21 +279,21 @@ void main() {
     expect(find.text('Ao vivo'), findsOneWidget);
     // Coordenadas cruas não aparecem como informação de produto.
     expect(find.textContaining('-16.7'), findsNothing);
-    expect(find.byTooltip('Centralizar ônibus'), findsOneWidget);
+    expect(find.byTip('Centralizar ônibus'), findsOneWidget);
     expect(_map(tester).vehicleNumber, '20529');
     expect(_map(tester).position, isNotNull);
     // Uma única posição real: rastro com 1 ponto e sem direção inventada.
     expect(_map(tester).observedTrail, hasLength(1));
     expect(_map(tester).observedHeading, isNull);
 
-    await tester.tap(find.byTooltip('Parar de acompanhar'));
+    await tester.tap(find.byTip('Parar de acompanhar'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.byTip('Centralizar ônibus'), findsNothing);
     expect(_map(tester).vehicleNumber, isNull);
     expect(_map(tester).observedTrail, isEmpty);
     // Volta às chegadas do mesmo ponto.
     expect(find.text('Ponto 30402'), findsOneWidget);
-    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
+    expect(find.byTip('Acompanhar ônibus 20529'), findsOneWidget);
   });
 
   testWidgets('pausar o follow e centralizar de novo', (tester) async {
@@ -335,7 +336,7 @@ void main() {
     expect(find.text('Posição temporariamente indisponível'), findsOneWidget);
     expect(find.text('Localizando'), findsOneWidget);
     expect(find.text('Ao vivo'), findsNothing);
-    expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.byTip('Centralizar ônibus'), findsNothing);
     expect(find.widgetWithText(OutlinedButton, 'Centralizar'), findsOneWidget);
     final center = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Centralizar'),
@@ -355,7 +356,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Ver chegadas'), findsNothing);
-    expect(find.byTooltip('Centralizar ônibus'), findsNothing);
+    expect(find.byTip('Centralizar ônibus'), findsNothing);
 
     await tester.tap(find.text('Buscar um ponto'));
     await tester.pumpAndSettle();
@@ -382,7 +383,7 @@ void main() {
     expect(find.text('ACOMPANHANDO'), findsNothing);
     expect(find.text('min até o ponto 30402'), findsNothing);
 
-    await tester.tap(find.byTooltip('Buscar outro ponto'));
+    await tester.tap(find.byTip('Buscar outro ponto'));
     await tester.pumpAndSettle();
     await _search(tester, '30100');
 
@@ -394,7 +395,7 @@ void main() {
   testWidgets('Ajustes troca o tema e o mapa acompanha', (tester) async {
     final store = MemoryThemePreferenceStore();
     await _pumpApp(tester, _FakeTransitRepository(), themeStore: store);
-    await tester.tap(find.byTooltip('Ajustes'));
+    await tester.tap(find.byTip('Ajustes'));
     await tester.pumpAndSettle();
 
     expect(find.text('Tema'), findsOneWidget);
@@ -418,7 +419,7 @@ void main() {
     expect(store.read(), ThemeMode.light);
     expect(_map(tester).styleString, MapConfig.styles.light);
 
-    await tester.tap(find.byTooltip('Fechar ajustes'));
+    await tester.tap(find.byTip('Fechar ajustes'));
     await tester.pumpAndSettle();
     expect(find.byType(SearchHeader), findsOneWidget);
   });
@@ -460,7 +461,7 @@ void main() {
           expect(tester.takeException(), isNull);
           expect(find.text('ACOMPANHANDO'), findsOneWidget);
 
-          await tester.tap(find.byTooltip('Ajustes'));
+          await tester.tap(find.byTip('Ajustes'));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           expect(find.byKey(const Key('fake-map')), findsOneWidget);
@@ -494,7 +495,7 @@ void main() {
 
       await _track(tester, '20529');
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip('Ajustes'));
+      await tester.tap(find.byTip('Ajustes'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
@@ -512,7 +513,7 @@ void main() {
     expect(repository.requestedStops, hasLength(2));
 
     for (final tab in ['Meu ônibus', 'Ajustes']) {
-      await tester.tap(tab == 'Ajustes' ? find.byTooltip(tab) : find.text(tab));
+      await tester.tap(tab == 'Ajustes' ? find.byTip(tab) : find.text(tab));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 90));
       expect(repository.requestedStops, hasLength(2), reason: tab);
@@ -589,14 +590,14 @@ void main() {
       await tester.tap(find.text('Pontos'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Buscar outro ponto'));
+      await tester.tap(find.byTip('Buscar outro ponto'));
       await tester.pumpAndSettle();
       await _search(tester, '99999');
 
       expect(find.byType(SearchErrorNote), findsOneWidget);
       expect(find.textContaining('Ponto não encontrado'), findsWidgets);
       // O ponto anterior e o ônibus acompanhado continuam.
-      expect(find.byTooltip('Acompanhar ônibus 20529'), findsNothing);
+      expect(find.byTip('Acompanhar ônibus 20529'), findsNothing);
       expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
       expect(_map(tester).vehicleNumber, '20529');
 
@@ -615,14 +616,14 @@ void main() {
       final repository = _FakeTransitRepository()..failures['99999'] = notFound;
       await _pumpApp(tester, repository);
       await _search(tester, '30402');
-      await tester.tap(find.byTooltip('Buscar outro ponto'));
+      await tester.tap(find.byTip('Buscar outro ponto'));
       await tester.pumpAndSettle();
       await _search(tester, '99999');
       expect(find.byType(SearchErrorNote), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), '');
       await tester.pump();
-      await tester.tap(find.byTooltip('Voltar ao ponto'));
+      await tester.tap(find.byTip('Voltar ao ponto'));
       await tester.pumpAndSettle();
 
       expect(find.text('Ponto 30402'), findsOneWidget);
@@ -777,7 +778,7 @@ void main() {
       expect(find.text('PRÓXIMOS ÔNIBUS'), findsOneWidget);
 
       repository.failures['30402'] = offline;
-      await tester.tap(find.byTooltip('Atualizar chegadas'));
+      await tester.tap(find.byTip('Atualizar chegadas'));
       await tester.pumpAndSettle();
 
       // A previsão anterior continua, mas rotulada como de uma hora passada.
@@ -853,7 +854,7 @@ void main() {
     expect(find.text('Acompanhar este ônibus'), findsOneWidget);
     expect(_map(tester).showControls, isFalse);
 
-    await tester.tap(find.byTooltip('Fechar'));
+    await tester.tap(find.byTip('Fechar'));
     await tester.pumpAndSettle();
     expect(find.text('Acompanhar este ônibus'), findsNothing);
     expect(_map(tester).showControls, isTrue);
@@ -1118,7 +1119,7 @@ void main() {
     expect(find.text('Buscar um ponto'), findsNothing);
     await tester.tap(find.text('Ver chegadas'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Acompanhar ônibus 20529'), findsOneWidget);
+    expect(find.byTip('Acompanhar ônibus 20529'), findsOneWidget);
   });
 
   testWidgets('banner de Chegadas leva ao Meu ônibus', (tester) async {
